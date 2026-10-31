@@ -175,5 +175,34 @@ document.querySelectorAll("button[data-copy]").forEach((b) => b.addEventListener
   navigator.clipboard.writeText($("#" + b.dataset.copy).textContent).then(() => { b.textContent = "copied"; setTimeout(() => (b.textContent = "copy"), 1200); });
 }));
 
+/* Client-on-the-network panel: drives the lab DNS proxy through /api/client/*. */
+async function refreshClient() {
+  try {
+    const st = await api("/api/client/status");
+    $("#client-net").textContent = `${st.title || st.scenario_id} · ${st.device} · ${st.queries} queries`;
+    $("#client-net").className = "";
+    const sel = $("#client-scenario");
+    if (sel.options.length === 0) {
+      for (const s of scenarios.filter((x) => !x.requires_internet)) {
+        const o = document.createElement("option"); o.value = s.id; o.textContent = `${s.id} — ${s.title}`; sel.appendChild(o);
+      }
+    }
+    sel.value = st.scenario_id;
+    $("#client-device").value = st.device;
+    $("#client-grants").innerHTML = st.grants.length
+      ? st.grants.map((g) => `<div><span class="chip ${g.decision === "accepted" ? (g.local_dnssec_mode === "delegated" ? "accepted" : "caution") : "rejected"}">${esc(g.decision)}</span> ${esc(g.resolver)} for <code>${esc((g.scopes || []).join(", "))}</code> — ${esc(g.reason)}${g.expires_at ? ` · until ${esc(g.expires_at)}` : ""}</div>`).join("")
+      : `<div>No verdicts cached yet — the proxy verifies the network's claims on the first query it receives.</div>`;
+  } catch (err) {
+    $("#client-net").textContent = `no DNS proxy (${err.message})`;
+  }
+}
+$("#client-join").addEventListener("click", async () => {
+  try {
+    await api("/api/client/join", { scenario_id: $("#client-scenario").value, device: $("#client-device").value });
+    await refreshClient();
+  } catch (err) { alert(err.message); }
+});
+
 api("/api/capabilities").then((c) => { $("#caps").textContent = `validator: ${c.validator} · devices: ${(c.devices || []).join(", ")}`; }).catch(() => {});
-loadScenarios().catch((err) => { $("#trace-hint").textContent = `Cannot load scenarios: ${err.message}`; });
+loadScenarios().then(refreshClient).catch((err) => { $("#trace-hint").textContent = `Cannot load scenarios: ${err.message}`; });
+setInterval(refreshClient, 5000);

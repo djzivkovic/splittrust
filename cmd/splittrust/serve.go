@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/djzivkovic/splittrust/internal/api"
@@ -25,7 +26,7 @@ func runServe(args []string, out, errOut io.Writer) int {
 	if e == nil {
 		return code
 	}
-	srv := &http.Server{Addr: *addr, Handler: api.NewHandler(e), ReadHeaderTimeout: 5 * time.Second, WriteTimeout: 60 * time.Second}
+	srv := &http.Server{Addr: *addr, Handler: api.NewHandlerWithProxy(e, os.Getenv("SPLITTRUST_PROXY")), ReadHeaderTimeout: 5 * time.Second, WriteTimeout: 60 * time.Second}
 	fmt.Fprintf(out, "SplitTrust console on http://%s  (validator: %s, %d scenarios, trust_context=lab)\n", *addr, e.Capabilities()["validator"], len(e.Manifest.Order))
 	if err := srv.ListenAndServe(); err != nil {
 		fmt.Fprintln(errOut, err)

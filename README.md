@@ -18,7 +18,7 @@ vectors, and a worked example that cannot be reproduced. SplitTrust provides all
 
 | Piece | What it does |
 |---|---|
-| `splittrust` (one Go binary) | RFC 9704 verifier: claim canonicalisation, token, Verification Record lookup with local DNSSEC validation (libunbound) through the network's resolver or iteratively, the §6.1 external-resolver path for devices configured that way, resolver TLS identity (RFC 9525), §7 `ds` key binding over `resolver.arpa.`, grants with TTL/RRSIG/PvD-bounded expiry; scoped resolution; owner tool; DHCP option 90/11 codec; CLI, HTTP API and an embedded console |
+| `splittrust` (one Go binary) | RFC 9704 verifier: claim canonicalisation, token, Verification Record lookup with local DNSSEC validation (libunbound) through the network's resolver or iteratively, the §6.1 external-resolver path for devices configured that way, resolver TLS identity (RFC 9525), §7 `ds` key binding over `resolver.arpa.`, grants with TTL/RRSIG/PvD-bounded expiry; scoped resolution; **a Do53 proxy so ordinary stubs resolve through the verdicts**; owner tool; DHCP option 90/11 codec; CLI, HTTP API and an embedded console |
 | `lab/` | Docker Compose lab: BIND serving a signed private root, `lab` TLD and seven parent zones (one expired, one unsigned); CoreDNS hybrid resolvers for the company (`dns.corp.lab`, DoT) and the hotel (`dns.hotel.lab`, honest and *forging* views); nginx PvD server; unbound as `quad9.lab`; a one-shot bootstrap that regenerates keys, zones and certificates relative to now |
 | Ten lab scenarios + one real-DNS scenario × three simulated devices | `legit`, `hotel`, `hotel-forged`, `stale-salt`, `expired-signature`, `unsigned`, `wrong-ds`, `replay`, `hotel-blocks-external`, `special-use`, `real-zivkovic`; devices `validating-stub`, `private-dns`, `hybrid` |
 | `vectors/` | Published test vectors: token encoding (incl. the RFC example under both salts, `*`, IDN, SHA-512), TXT parsing, DHCP payloads, PvD documents, expected verdicts |
@@ -89,6 +89,34 @@ validated under the delegated keys; everything else takes the device's default p
 | `special-use` | rejected `SPECIAL_USE_NAME`, no traffic | | |
 | `real-zivkovic` (real DNS, see below) | accepted `AUTHORIZED` once `zivkovic.me` is DNSSEC-signed; `DNSSEC_INSECURE_NO_FALLBACK` while it is not | accepted `EXTERNAL_TOKEN_MATCH` via the real `dns.quad9.net` | |
 
+## No CLI needed: the DNS front door
+
+`splittrust proxy` is a plain-DNS (Do53) forwarding resolver any stub can be pointed at. In the lab a
+client container with **no SplitTrust code** gets it as its DNS server; its naive twin gets the hotel's DNS:
+
+```bash
+docker compose -f lab/compose.yaml exec client curl -s http://host.internal.corp.lab   # company intranet page, AD=1
+docker compose -f lab/compose.yaml exec client dig host.internal.corp.lab +dnssec      # flags: ... ad; EDE: validated under the delegated key
+# move the client to the hotel Wi-Fi (also a dropdown in the console):
+docker compose -f lab/compose.yaml exec client curl -s -X POST http://172.30.97.60:8001/join -d '{"scenario_id":"hotel"}'
+docker compose -f lab/compose.yaml exec client curl -s http://www.banka.lab              # cannot resolve: SERVFAIL, EDE 6 DNSSEC Bogus
+docker compose -f lab/compose.yaml exec naive  curl -s http://www.banka.lab              # "FAKE www.banka.lab served by the hotel ... password :)"
+docker compose -f lab/compose.yaml exec client curl -s -X POST http://172.30.97.60:8001/join -d '{"scenario_id":"hotel","device":"private-dns"}'
+docker compose -f lab/compose.yaml exec client curl -s http://www.banka.lab              # "REAL www.banka.lab" via quad9.lab
+```
+
+Per query: inside a verified claim → authenticated DoT to the authorised resolver, validated under the
+delegated key when one exists (`AD=1`), token-only authority answers with `AD=0`; outside → the device's
+default path (local DNSSEC validation, or the external DoT resolver for `private-dns`); Bogus →
+`SERVFAIL`. Rejected claims never route a query. Grants are cached and re-verified before they expire
+(RFC 9704 §11); verdicts are explained to EDNS clients as Extended DNS Errors (RFC 8914). Names outside
+the lab namespaces are `REFUSED` without any traffic. `GET /status` and `POST /join` on `:8001` move
+the simulated client between networks; the console mirrors them under "Client on the network".
+
+On a real host this is the dnscrypt-proxy/stubby pattern (point the OS resolver at `127.0.0.1`); we
+document it, we do not do it on stage. Driving the OS's own split-DNS machinery instead (systemd-resolved
+per-domain DoT + DNSSEC, Windows NRPT, macOS `/etc/resolver`) is the natural next step for a product.
+
 ## The one scenario that leaves the lab
 
 `real-zivkovic` verifies a Verification Record published in the **real** zone `zivkovic.me` (Cloudflare):
@@ -112,7 +140,7 @@ record stays valid across lab rebuilds. Only ordinary DNS queries leave the mach
 
 ## What this is not
 
-- Not an OS integration: nothing intercepts the host's DNS; protection applies to explicit `splittrust` queries.
+- Not an OS integration: nothing intercepts the host's DNS; protection applies to clients that use the SplitTrust proxy (or the CLI) as their resolver.
 - Not DHCP/RA discovery: discovery is pre-configured per scenario; the DHCP option is encoded and decoded, not sent.
 - Not the global DNS: verdicts are about a private root the lab controls. Rejecting a claim does not make an untrusted default resolver safe; publishing a record protects only clients that implement the check.
 - The `LIBUNBOUND=0` build is a code-level fallback, not an operational image: it needs an external validating unbound daemon (`SPLITTRUST_DAEMON=host:port`, lab trust anchor and root hints configured there) and supports iterative resolution only. The lab always builds with libunbound.
@@ -120,12 +148,13 @@ record stays valid across lab rebuilds. Only ordinary DNS queries leave the mach
 ## Repository map
 
 ```
-cmd/splittrust        CLI (inspect, build-record, verify, resolve, scenarios, dhcp, vectors, lab-init, serve)
+cmd/splittrust        CLI (inspect, build-record, verify, resolve, scenarios, dhcp, vectors, lab-init, serve, proxy)
 internal/claim        canonical form, RFC 4034 order, $X, token, record owner, special-use list
 internal/txtrec       Verification Record TXT codec        internal/dhcp     option 90/11 payload codec
 internal/pvd          RFC 8801 fetch/validate              internal/dot      DoT client with RFC 9525 identity
 internal/validate     libunbound (cgo) / daemon fallback   internal/verify   the pipeline, ds binding, local validation
-internal/route        scoped resolution                    internal/engine   wiring shared by CLI and API
+internal/route        scoped resolution                    internal/proxy    Do53 front door with grant cache + EDE
+internal/engine       wiring shared by CLI, API and proxy
 internal/api          HTTP API + embedded console          internal/lab      scenario catalogue + manifest
 internal/labgen       lab artefacts the engine must make   internal/vectors  published vectors + forensics
 lab/                  compose, Dockerfiles, bootstrap, CoreDNS/nginx/unbound configs

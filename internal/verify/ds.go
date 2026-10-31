@@ -51,14 +51,34 @@ func MatchDS(dsB64 []string, keys []*dns.DNSKEY) []*dns.DNSKEY {
 	return approved
 }
 
-// ValidateLocalA validates a split-view answer with only the approved keys: the
-// child's DNSKEY RRset must carry an RRSIG made by an approved key, then the A
-// RRset must verify under that DNSKEY set. A key set that merely contains an
-// approved key but is signed by an unrelated key fails. Only direct A records at
-// the queried name are supported; anything else is LOCAL_RESPONSE_UNSUPPORTED.
+// ValidateLocalA is ValidateLocal for A records, returning the addresses.
 func ValidateLocalA(approved []*dns.DNSKEY, dnskeyMsg, aMsg *dns.Msg, now time.Time) ([]string, error) {
-	if dnskeyMsg == nil || aMsg == nil {
-		return nil, &Error{Code: "LOCAL_RESPONSE_UNSUPPORTED", Detail: "missing DNSKEY or A response"}
+	qname := ""
+	for _, rr := range aMsg.Answer {
+		if rr.Header().Rrtype == dns.TypeA {
+			qname = rr.Header().Name
+		}
+	}
+	rrs, err := ValidateLocal(approved, dnskeyMsg, aMsg, qname, dns.TypeA, now)
+	if err != nil {
+		return nil, err
+	}
+	var out []string
+	for _, rr := range rrs {
+		out = append(out, rr.(*dns.A).A.String())
+	}
+	return out, nil
+}
+
+// ValidateLocal validates a split-view answer with only the approved keys: the
+// child's DNSKEY RRset must carry an RRSIG made by an approved key, then the
+// RRset of the queried type at qname must verify under that DNSKEY set. A key
+// set that merely contains an approved key but is signed by an unrelated key
+// fails. Only direct records at the queried name are supported; anything else
+// (CNAME chains, denial proofs) is LOCAL_RESPONSE_UNSUPPORTED.
+func ValidateLocal(approved []*dns.DNSKEY, dnskeyMsg, answer *dns.Msg, qname string, qtype uint16, now time.Time) ([]dns.RR, error) {
+	if dnskeyMsg == nil || answer == nil {
+		return nil, &Error{Code: "LOCAL_RESPONSE_UNSUPPORTED", Detail: "missing DNSKEY or data response"}
 	}
 	keys, keySigs := split[*dns.DNSKEY](dnskeyMsg.Answer, dns.TypeDNSKEY)
 	if len(keys) == 0 {
@@ -85,26 +105,34 @@ func ValidateLocalA(approved []*dns.DNSKEY, dnskeyMsg, aMsg *dns.Msg, now time.T
 		return nil, &Error{Code: "LOCAL_SIGNATURE_INVALID", Detail: "the DNSKEY RRset is not signed by any key approved through the Verification Record's ds values"}
 	}
 
-	as, aSigs := split[*dns.A](aMsg.Answer, dns.TypeA)
-	if len(as) == 0 {
-		return nil, &Error{Code: "LOCAL_RESPONSE_UNSUPPORTED", Detail: "no direct A records in the answer (CNAME chains and denial proofs are not supported in this profile)"}
+	q := dns.CanonicalName(qname)
+	var set []dns.RR
+	var sigs []*dns.RRSIG
+	for _, rr := range answer.Answer {
+		if dns.CanonicalName(rr.Header().Name) != q {
+			continue
+		}
+		if sig, ok := rr.(*dns.RRSIG); ok {
+			if sig.TypeCovered == qtype {
+				sigs = append(sigs, sig)
+			}
+			continue
+		}
+		if rr.Header().Rrtype == qtype {
+			set = append(set, rr)
+		}
 	}
-	aset := make([]dns.RR, len(as))
-	for i, a := range as {
-		aset[i] = a
+	if len(set) == 0 {
+		return nil, &Error{Code: "LOCAL_RESPONSE_UNSUPPORTED", Detail: fmt.Sprintf("no direct %s records for %s in the answer (CNAME chains and denial proofs are not supported in this profile)", dns.TypeToString[qtype], q)}
 	}
-	for _, sig := range aSigs {
+	for _, sig := range sigs {
 		for _, k := range keys {
-			if sig.KeyTag == k.KeyTag() && sig.Algorithm == k.Algorithm && sig.ValidityPeriod(now) && sig.Verify(k, aset) == nil {
-				var out []string
-				for _, a := range as {
-					out = append(out, a.A.String())
-				}
-				return out, nil
+			if sig.KeyTag == k.KeyTag() && sig.Algorithm == k.Algorithm && sig.ValidityPeriod(now) && sig.Verify(k, set) == nil {
+				return set, nil
 			}
 		}
 	}
-	return nil, &Error{Code: "LOCAL_SIGNATURE_INVALID", Detail: fmt.Sprintf("no valid RRSIG over the A RRset for %s under the approved key set", as[0].Hdr.Name)}
+	return nil, &Error{Code: "LOCAL_SIGNATURE_INVALID", Detail: fmt.Sprintf("no valid RRSIG over the %s RRset for %s under the approved key set", dns.TypeToString[qtype], q)}
 }
 
 func split[T dns.RR](rrs []dns.RR, typ uint16) ([]T, []*dns.RRSIG) {

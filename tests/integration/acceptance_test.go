@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/miekg/dns"
+
 	"github.com/djzivkovic/splittrust/internal/engine"
 	"github.com/djzivkovic/splittrust/internal/verify"
 )
@@ -124,7 +126,7 @@ func TestResolvePaths(t *testing.T) {
 	e := loadEngine(t)
 	ctx := context.Background()
 	rep, err := e.Resolve(ctx, "legit", "host.internal.corp.lab", verify.Options{})
-	if err != nil || rep.Route != "local" || len(rep.Answers) != 1 || rep.Answers[0] != "10.0.5.20" {
+	if err != nil || rep.Route != "local" || len(rep.Answers) != 1 || rep.Answers[0] != "172.30.97.70" {
 		t.Fatalf("legit local route: %v %+v", err, rep)
 	}
 	rep, _ = e.Resolve(ctx, "legit", "host.mail.corp.lab", verify.Options{})
@@ -160,4 +162,69 @@ func stageOf(c verify.ClaimReport, id string) verify.Stage {
 		}
 	}
 	return verify.Stage{}
+}
+
+// The DNS front door: a plain stub pointed at the proxy gets validated local
+// answers for granted names, and the hijacked bank name never resolves to the
+// hotel's address for a validating device.
+func TestProxyFrontDoor(t *testing.T) {
+	manifest(t)
+	proxyAddr := os.Getenv("SPLITTRUST_PROXY_DNS")
+	if proxyAddr == "" {
+		proxyAddr = "172.30.97.60:53"
+	}
+	control := os.Getenv("SPLITTRUST_PROXY")
+	if control == "" {
+		control = "http://172.30.97.60:8001"
+	}
+	c := &dns.Client{Timeout: 10 * time.Second}
+	ask := func(name string) *dns.Msg {
+		t.Helper()
+		m := new(dns.Msg)
+		m.SetQuestion(dns.Fqdn(name), dns.TypeA)
+		m.SetEdns0(1232, true)
+		r, _, err := c.Exchange(m, proxyAddr)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		return r
+	}
+	join := func(scenario, device string) {
+		t.Helper()
+		body, _ := json.Marshal(map[string]string{"scenario_id": scenario, "device": device})
+		resp, err := http.Post(control+"/join", "application/json", bytes.NewReader(body))
+		if err != nil || resp.StatusCode != 200 {
+			t.Fatalf("join %s/%s: %v %v", scenario, device, err, resp)
+		}
+		resp.Body.Close()
+	}
+	defer join("legit", "validating-stub")
+
+	join("legit", "validating-stub")
+	r := ask("host.internal.corp.lab")
+	if r.Rcode != dns.RcodeSuccess || !r.AuthenticatedData || len(r.Answer) == 0 {
+		t.Fatalf("company intranet via proxy: rcode=%s ad=%v answer=%v", dns.RcodeToString[r.Rcode], r.AuthenticatedData, r.Answer)
+	}
+	if a, ok := r.Answer[0].(*dns.A); !ok || a.A.String() != "172.30.97.70" {
+		t.Errorf("answer = %v", r.Answer)
+	}
+	if r = ask("host.mail.corp.lab"); r.Rcode != dns.RcodeSuccess || r.AuthenticatedData {
+		t.Errorf("token-only scope must answer with AD=0: rcode=%s ad=%v", dns.RcodeToString[r.Rcode], r.AuthenticatedData)
+	}
+	if r = ask("example.com"); r.Rcode != dns.RcodeRefused {
+		t.Errorf("out-of-lab name must be refused, got %s", dns.RcodeToString[r.Rcode])
+	}
+
+	join("hotel", "validating-stub")
+	if r = ask("www.banka.lab"); r.Rcode != dns.RcodeServerFailure {
+		t.Errorf("hijacked bank on a validating device must be SERVFAIL, got %s %v", dns.RcodeToString[r.Rcode], r.Answer)
+	}
+	join("hotel", "private-dns")
+	r = ask("www.banka.lab")
+	if r.Rcode != dns.RcodeSuccess || len(r.Answer) == 0 {
+		t.Fatalf("private-dns device on the hotel network: rcode=%s", dns.RcodeToString[r.Rcode])
+	}
+	if a, ok := r.Answer[0].(*dns.A); !ok || a.A.String() != "172.30.97.80" {
+		t.Errorf("private-dns device must get the real bank, got %v", r.Answer)
+	}
 }
