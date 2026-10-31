@@ -18,7 +18,7 @@ vectors, and a worked example that cannot be reproduced. SplitTrust provides all
 
 | Piece | What it does |
 |---|---|
-| `splittrust` (one Go binary) | RFC 9704 verifier: claim canonicalisation, token, Verification Record lookup with local DNSSEC validation (libunbound) through the network's resolver or iteratively, the §6.1 external-resolver path for devices configured that way, resolver TLS identity (RFC 9525), §7 `ds` key binding over `resolver.arpa.`, grants with TTL/RRSIG/PvD-bounded expiry; scoped resolution; **a Do53 proxy so ordinary stubs resolve through the verdicts**; owner tool; DHCP option 90/11 codec; CLI, HTTP API and the embedded animated console |
+| `splittrust` (one Go binary) | RFC 9704 verifier: claim canonicalisation, token, Verification Record lookup with local DNSSEC validation (libunbound) through the network's resolver or iteratively, the §6.1 external-resolver path for devices configured that way, resolver TLS identity (RFC 9525), §7 `ds` key binding over `resolver.arpa.`, grants with TTL/RRSIG/PvD-bounded expiry; scoped resolution; **a Do53 proxy so ordinary stubs resolve through the verdicts**; owner tool; DHCP option 90/11 codec; CLI, HTTP API and the embedded demo deck |
 | `lab/` | Docker Compose lab: CoreDNS hybrid resolvers for the office (`dns.splittrust.zivkovic.me` / `dns.corp.lab`, DoT, plus Beta's plain-DNS resolver) and the hotel (`dns.hotel.lab`: honest, forging and plain views), both with Internet access; BIND serving a signed private root, `lab` TLD and seven parent zones (one expired, one unsigned); nginx PvD server; unbound as `quad9.lab`; web servers for both intranets and the hotel's fake page; a plain client and its twin without SplitTrust; a one-shot bootstrap that regenerates keys, zones and certificates |
 | Three real-domain scenes + ten lab scenarios × three simulated devices | demo: `real-office`, `real-hotel-forged`, `real-replay` (Alfa's real zone `zivkovic.me`); corner cases: `legit`, `hotel`, `hotel-forged`, `stale-salt`, `expired-signature`, `unsigned`, `wrong-ds`, `replay`, `hotel-blocks-external`, `special-use`; devices `validating-stub`, `private-dns`, `hybrid` |
 | `vectors/` | Published test vectors: token encoding (incl. the RFC example under both salts, `*`, IDN, SHA-512), TXT parsing, DHCP payloads, PvD documents, expected verdicts |
@@ -28,24 +28,20 @@ vectors, and a worked example that cannot be reproduced. SplitTrust provides all
 
 ## The console
 
-`http://127.0.0.1:8000` has three pages:
-
-- **Demo** (the presentation): three scenes, three screens each, two companies side by side. *Monday at
-  the office*: both intranets load; only Alfa's device verified the network's claim first (live, against
-  the real DNS). *Tuesday at the hotel*: the hotel claims both domains and serves copies of the zones; Beta's
-  laptop gets the hotel's page, Alfa's laptop rejects the forged record (Bogus) and fails safely, Alfa's
-  phone with Private DNS reaches the real site through Quad9. *What Alfa's IT did*: sign the zone, publish
-  one TXT record, point devices at a resolver that checks; a copied claim is rejected on the certificate;
-  the real zone's TXT and DS records as they are right now. Keys: left/right arrows, `1 2 3` Alfa's device,
-  `space` replay, `e` evidence (the query as `dig` shows it, the resolver's certificate), `n` presenter notes.
-- **Tools**: the same engine with every option exposed (verify, resolve, inspect a claim, build a record, the
-  DNS proxy's status) and the raw JSON.
-- **How it works**: what the project does, what the lab is, how to present, limits.
+`http://127.0.0.1:8000` is the demo deck: a title and three scenes, two companies side by side. **Alfa**
+adopted RFC 9704 (its zone is the real `zivkovic.me`); **Beta** did not. *Monday, at the office*: both
+intranets load; only Alfa's laptop checked that the resolver was allowed to answer. *Tuesday, at the
+hotel*: the hotel claims both domains; Beta's laptop gets the hotel's login page, Alfa's laptop refuses
+the forged answer and fails safely; press `2` and Alfa's phone reaches the real site through Quad9.
+*What Alfa did*: sign the zone, publish one record, devices that check; a copied claim fails on the
+certificate. Each scene animates the real checks on a drawing, then shows what each employee's browser
+gets. Keys: left/right arrows, `space` replay, `1 2` Alfa's device, `e` raw evidence. The deck needs
+Internet access; the engine, CLI and lab scenarios do not.
 
 The console is React + Vite + Tailwind in `web/`, built in the image's first stage and embedded into the Go
 binary; the committed `internal/api/web/dist` is a convenience for `go build` on hosts without Node
-(`cd web && npm ci && npm run build` regenerates it). The demo needs Internet access for Alfa's verdicts; the
-lab scenarios in Tools do not.
+(`cd web && npm ci && npm run build` regenerates it). Everything else (all thirteen scenarios, every
+option, raw JSON) is reachable through the CLI and the HTTP API.
 
 ## Run it (Docker only; macOS, Windows or Linux)
 
@@ -176,8 +172,8 @@ internal/pvd          RFC 8801 fetch/validate              internal/dot      DoT
 internal/validate     libunbound (cgo, -tags libunbound)   internal/verify   the pipeline, ds binding, local validation
 internal/route        scoped resolution                    internal/proxy    Do53 front door with grant cache + EDE
 internal/engine       wiring shared by CLI, API and proxy
-internal/api          HTTP API, /api/browse, embedded console (dist)   internal/lab  scenario catalogue + manifest
-web/                  the console: React + Vite + Tailwind + framer-motion (Demo, Tools, How it works)
+internal/api          HTTP API, /api/browse, /api/live, embedded deck   internal/lab  scenario catalogue + manifest
+web/                  the demo deck: React + Vite + Tailwind + framer-motion
 internal/labgen       lab artefacts the engine must make   internal/vectors  published vectors + forensics
 lab/                  compose, Dockerfiles, bootstrap, CoreDNS/nginx/unbound configs
 tests/integration     runs inside the lab (compose "test" service)

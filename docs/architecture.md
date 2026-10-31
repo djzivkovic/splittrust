@@ -186,7 +186,7 @@ internal/engine       wiring: manifest -> verifier with real dependencies; used 
 internal/api          HTTP API, /api/browse, embedded console    internal/lab      catalogue (scenarios.json) and manifest
 internal/labgen       lab artefacts the engine must generate    internal/owner    the owner's record builder
 internal/vectors      published test vectors and the RFC 5.1 forensics
-web/                  the console (React, Vite, Tailwind, framer-motion), built into internal/api/web/dist
+web/                  the demo deck (React, Vite, Tailwind, framer-motion), built into internal/api/web/dist
 tests/integration     runs inside the lab (compose service "test")
 ```
 
@@ -248,7 +248,9 @@ reports grants and the query count. The `client` container only knows the proxy 
 
 ### Path D: the console and API
 
-`splittrust serve` mounts the API and the built console from the same binary. The API is a thin layer
+`splittrust serve` mounts the API and the built demo deck from the same binary. The deck is deliberately
+small: a title and three scenes, each a drawing that animates the real verification stages (built from the
+report's ordered stages) and two browser frames fed by `/api/browse`. Everything else is CLI and API. The API is a thin layer
 over the engine: strict JSON envelopes (unknown fields are 422, bodies over 16 KiB are 413, unknown
 scenarios 404, rejections are ordinary 200 reports). `POST /api/browse` is the proof endpoint: it resolves
 a name through the proxy (Alfa's device) and through a chosen lab resolver on port 53 (`naive_dns`, Beta's
