@@ -9,7 +9,7 @@ import { SceneArt, stepsFor } from "./components/SceneArt";
 import { BrowserFrame } from "./components/Browser";
 import { BLUE, Doc, GREEN, INK, Laptop, Lock, Mark, RED, Resolver, Shield } from "./components/Art";
 
-const BEAT_MS = 950;
+const BEAT_MS = 1500;
 
 export default function App() {
   const [summaries, setSummaries] = useState<Summary[] | null>(null);
@@ -41,7 +41,7 @@ export default function App() {
   const scene = slide > 0 ? SCENES[slide - 1] : null;
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-slate-100 text-slate-900">
-      <div className="flex-1 overflow-hidden">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <AnimatePresence mode="wait">
           <motion.div key={slide} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.25 }} className="h-full">
             {scene ? <SceneSlide scene={scene} device={device} evidence={evidence} /> : <TitleSlide />}
@@ -70,9 +70,9 @@ function TitleSlide() {
   return (
     <div className="mx-auto flex h-full max-w-6xl flex-col justify-center px-10">
       <div className="text-sm font-semibold uppercase tracking-widest text-blue-700">RFC 9704, implemented</div>
-      <h1 className="mt-3 text-6xl font-bold tracking-tight">Who may answer for your domain<br />inside a network?</h1>
-      <p className="mt-5 text-2xl text-slate-600">Two companies, one week.</p>
-      <div className="mt-12 grid grid-cols-2 gap-8">
+      <h1 className="mt-3 text-4xl font-bold tracking-tight lg:text-5xl xl:text-6xl">Who may answer for your domain<br />inside a network?</h1>
+      <p className="mt-5 text-xl text-slate-600 lg:text-2xl">Two companies, one week.</p>
+      <div className="mt-10 grid gap-6 md:grid-cols-2 lg:gap-8">
         <Company name={BETA.name} domain={BETA.domain} adopted={false} line="Trusts whatever resolver the network hands out." />
         <Company name={ALFA.name} domain={ALFA.domain} adopted line="Checks, against the real DNS, that the resolver is allowed to answer." />
       </div>
@@ -82,15 +82,15 @@ function TitleSlide() {
 
 function Company({ name, domain, adopted, line }: { name: string; domain: string; adopted: boolean; line: string }) {
   return (
-    <div className={`flex items-center gap-6 rounded-2xl border-2 bg-white p-6 shadow-sm ${adopted ? "border-blue-300" : "border-slate-200"}`}>
-      <svg viewBox="-70 -60 140 120" className="h-28 w-32 shrink-0">
+    <div className={`flex items-center gap-5 rounded-2xl border-2 bg-white p-5 shadow-sm ${adopted ? "border-blue-300" : "border-slate-200"}`}>
+      <svg viewBox="-70 -60 140 120" className="h-24 w-28 shrink-0">
         <g transform="translate(0,6)"><Laptop tone={adopted ? BLUE : INK} /></g>
         {adopted && <g transform="translate(44,-30)"><Shield /></g>}
       </svg>
       <div>
-        <div className="flex items-baseline gap-3"><span className="text-3xl font-bold">{name}</span><code className="text-sm text-slate-500">{domain}</code></div>
+        <div className="flex flex-wrap items-baseline gap-x-3"><span className="text-2xl font-bold lg:text-3xl">{name}</span><code className="text-sm text-slate-500">{domain}</code></div>
         <div className={`mt-1 text-sm font-semibold ${adopted ? "text-blue-700" : "text-slate-500"}`}>{adopted ? "uses SplitTrust" : "no SplitTrust"}</div>
-        <p className="mt-2 text-lg text-slate-700">{line}</p>
+        <p className="mt-2 text-base text-slate-700 lg:text-lg">{line}</p>
       </div>
     </div>
   );
@@ -144,11 +144,11 @@ function SceneSlide({ scene, device, evidence }: { scene: Scene; device: Device;
   const claim = run?.claims[0];
 
   return (
-    <div className="mx-auto flex h-full max-w-7xl flex-col px-8 pt-5">
-      <div className="flex items-baseline gap-4">
+    <div className="mx-auto flex h-full max-w-7xl flex-col px-6 pt-4 lg:px-8">
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
         <span className="rounded-md bg-slate-900 px-2.5 py-1 text-sm font-bold text-white">{scene.day}</span>
-        <h2 className="text-3xl font-bold tracking-tight">{scene.headline}</h2>
-        <span className="text-lg text-slate-500">{scene.sub}</span>
+        <h2 className="text-2xl font-bold tracking-tight lg:text-3xl">{scene.headline}</h2>
+        <span className="text-base text-slate-500 lg:text-lg">{scene.sub}</span>
         {claim && <span className={`ml-auto rounded-md px-2.5 py-1 text-sm font-semibold ${claim.decision === "accepted" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>Alfa: {REASONS[claim.reason] ?? claim.reason}</span>}
       </div>
 
@@ -158,10 +158,10 @@ function SceneSlide({ scene, device, evidence }: { scene: Scene; device: Device;
         <Recipe live={live} claim={claim ?? null} />
       ) : (
         <>
-          <div className="mt-2 flex-1">
+          <div className="mt-1 flex min-h-0 flex-1 items-center justify-center">
             <SceneArt place={scene.place} device={device} steps={steps} at={at} resolverName="dns.splittrust.zivkovic.me" />
           </div>
-          <div className="grid grid-cols-2 gap-6 pb-4">
+          <div className="grid grid-cols-2 gap-4 pb-3 lg:gap-6">
             <div className={`transition-opacity ${done ? "opacity-100" : "opacity-0"}`}>
               <BrowserFrame who={`${BETA.name}'s laptop`} url={`http://${scene.betaName}/`} l={beta?.naive ?? null} tone="beta" />
             </div>
@@ -170,7 +170,7 @@ function SceneSlide({ scene, device, evidence }: { scene: Scene; device: Device;
             </div>
           </div>
           <AnimatePresence>
-            {done && <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="pb-4 text-center text-xl font-medium text-slate-800">{scene.takeaway}</motion.p>}
+            {done && <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="pb-3 text-center text-lg font-medium text-slate-800 lg:text-xl">{scene.takeaway}</motion.p>}
           </AnimatePresence>
         </>
       )}
@@ -185,15 +185,15 @@ function Recipe({ live, claim }: { live: LiveRecord | null; claim: Run["claims"]
   const txt = live?.txt.answer?.[0]?.split(/\s+/).slice(-1)[0]?.replace(/"/g, "");
   const ds = live?.ds.answer?.[0]?.split(/\s+/).slice(3).join(" ");
   const tile = (icon: React.ReactNode, title: string, sub: React.ReactNode) => (
-    <div className="flex flex-col items-center rounded-2xl border-2 border-slate-200 bg-white p-6 text-center shadow-sm">
-      <svg viewBox="-50 -50 100 100" className="h-24 w-24">{icon}</svg>
-      <div className="mt-3 text-2xl font-bold">{title}</div>
-      <div className="mt-2 min-h-12 w-full break-all font-mono text-xs text-slate-500">{sub}</div>
+    <div className="flex flex-col items-center rounded-2xl border-2 border-slate-200 bg-white p-5 text-center shadow-sm">
+      <svg viewBox="-50 -50 100 100" className="h-20 w-20 lg:h-24 lg:w-24">{icon}</svg>
+      <div className="mt-2 text-xl font-bold lg:text-2xl">{title}</div>
+      <div className="mt-2 w-full break-all font-mono text-[11px] leading-relaxed text-slate-500">{sub}</div>
     </div>
   );
   return (
-    <div className="mt-8 flex flex-1 flex-col">
-      <div className="grid grid-cols-3 gap-6">
+    <div className="mt-5 flex flex-1 flex-col">
+      <div className="grid gap-4 md:grid-cols-3 lg:gap-6">
         {tile(<><g transform="translate(0,4) scale(1.6)"><Lock tone={GREEN} /></g><g transform="translate(26,-22)"><Mark ok size={10} /></g></>, "Sign the zone",
           live ? <>DNSSEC at Cloudflare, DS at the .me registry<br />{live.ds.security}: {ds ?? "no DS"}</> : "checking the real zone...")}
         {tile(<g transform="scale(1.3)"><Doc tone={BLUE} /></g>, "Publish one record",
@@ -201,19 +201,19 @@ function Recipe({ live, claim }: { live: LiveRecord | null; claim: Run["claims"]
         {tile(<><g transform="translate(-6,8) scale(0.9)"><Laptop tone={BLUE} /></g><g transform="translate(30,-18)"><Shield /></g></>, "Devices that check",
           <>a resolver that verifies the network's claim<br />before trusting it with the company's names</>)}
       </div>
-      <div className="mt-8 flex items-center gap-6 rounded-2xl border-2 border-slate-200 bg-white p-6 shadow-sm">
-        <svg viewBox="-80 -50 160 100" className="h-28 w-48 shrink-0">
+      <div className="mt-5 flex items-center gap-6 rounded-2xl border-2 border-slate-200 bg-white p-5 shadow-sm">
+        <svg viewBox="-80 -50 160 100" className="h-24 w-40 shrink-0 lg:h-28 lg:w-48">
           <g transform="translate(-20,0)"><Resolver hostile /></g>
           <text x={-20} y={-36} textAnchor="middle" fontSize={11} fontWeight={700} fill={INK}>"I am dns.splittrust.zivkovic.me"</text>
           <text x={-20} y={44} textAnchor="middle" fontSize={11} fill={RED} fontFamily="ui-monospace, Menlo, monospace">certificate: dns.hotel.lab</text>
           <g transform="translate(58,0)"><Mark ok={false} size={16} /></g>
         </svg>
         <div>
-          <div className="text-2xl font-bold">The record is public. Can it be copied?</div>
-          <p className="mt-1 text-lg text-slate-700">Yes. A hotel copied Alfa's claim word for word. Alfa's laptop asked the resolver to prove its name first: {claim ? <b className={claim.decision === "rejected" ? "text-red-700" : "text-green-700"}>{REASONS[claim.reason] ?? claim.reason}</b> : "..."}. No DNS query was ever sent to it.</p>
+          <div className="text-xl font-bold lg:text-2xl">The record is public. Can it be copied?</div>
+          <p className="mt-1 text-base text-slate-700 lg:text-lg">Yes. A hotel copied Alfa's claim word for word. Alfa's laptop asked the resolver to prove its name first: {claim ? <b className={claim.decision === "rejected" ? "text-red-700" : "text-green-700"}>{REASONS[claim.reason] ?? claim.reason}</b> : "..."}. No DNS query was ever sent to it.</p>
         </div>
       </div>
-      <p className="mt-auto pb-6 text-center text-xl font-medium text-slate-800">{SCENES[2].takeaway}</p>
+      <p className="mt-auto py-4 text-center text-lg font-medium text-slate-800 lg:text-xl">{SCENES[2].takeaway}</p>
     </div>
   );
 }

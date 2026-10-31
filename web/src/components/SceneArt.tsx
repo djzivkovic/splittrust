@@ -81,7 +81,7 @@ export function SceneArt({ place, device, steps, at, resolverName }: { place: Pl
   );
 
   return (
-    <svg viewBox="0 0 1200 520" className="h-auto w-full select-none" role="img" aria-label="Scene">
+    <svg viewBox="0 0 1200 520" className="h-full w-full select-none" role="img" aria-label="Scene">
       {/* network area */}
       <rect x={60} y={350} width={1080} height={150} rx={24} fill={hotel ? "#fff7ed" : "#eff6ff"} />
       <text x={600} y={500} textAnchor="middle" fontSize={14} fontWeight={600} fill={hotel ? "#9a3412" : "#1e40af"}>{hotel ? "Hotel Wi-Fi" : "Office Wi-Fi"}</text>
@@ -123,7 +123,7 @@ export function SceneArt({ place, device, steps, at, resolverName }: { place: Pl
       <AnimatePresence>
         {current && [current.beta, current.alfa].map((b, i) => b && b.from !== b.to && (
           <motion.g key={`${at}-${i}`} initial={{ x: P[b.from].x, y: P[b.from].y, opacity: 0 }} animate={{ x: P[b.to].x, y: P[b.to].y, opacity: [0, 1, 1, 0.6] }}
-            exit={{ opacity: 0 }} transition={{ duration: 0.8, ease: "easeInOut" }}>
+            exit={{ opacity: 0 }} transition={{ duration: 1.2, ease: "easeInOut" }}>
             <circle r={9} fill={b.side === "alfa" ? BLUE : INK} />
             {b.label && <text y={-16} textAnchor="middle" fontSize={12} fontWeight={600} fill={b.side === "alfa" ? BLUE : INK}>{b.label}</text>}
           </motion.g>
@@ -132,12 +132,14 @@ export function SceneArt({ place, device, steps, at, resolverName }: { place: Pl
 
       {/* marks */}
       {marks.map((m, i) => {
-        const off = m.node === "cloud" ? { x: -60, y: 40 } : m.node === "alfa" || m.node === "beta" ? { x: 56, y: -40 } : { x: 60, y: -28 };
+        const left = m.node === "alfa" || m.node === "alfaRes" || m.node === "alfaSrv";
+        const nth = marks.slice(0, i).filter((o) => o.node === m.node).length; // later marks on the same actor stack upwards
+        const off = m.node === "cloud" ? { x: -70, y: 44 + nth * 30 } : m.node === "alfa" || m.node === "beta" ? { x: left ? -62 : 62, y: -44 - nth * 30 } : { x: left ? -66 : 66, y: -30 - nth * 30 };
         return (
           <motion.g key={i} initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 300, damping: 16 }}
             transform={`translate(${P[m.node].x + off.x}, ${P[m.node].y + off.y})`}>
             <Mark ok={m.ok} />
-            {m.text && <text x={20} y={5} fontSize={13} fontWeight={600} fill={m.ok ? GREEN : RED}>{m.text}</text>}
+            {m.text && <text x={left ? -20 : 20} y={5} textAnchor={left ? "end" : "start"} fontSize={13} fontWeight={600} fill={m.ok ? GREEN : RED}>{m.text}</text>}
           </motion.g>
         );
       })}
