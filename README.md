@@ -24,6 +24,7 @@ vectors, and a worked example that cannot be reproduced. SplitTrust provides all
 | `vectors/` | Published test vectors: token encoding (incl. the RFC example under both salts, `*`, IDN, SHA-512), TXT parsing, DHCP payloads, PvD documents, expected verdicts |
 | `docs/rfc9704-example-erratum.md` | The forensic explanation of the RFC's broken §5.1 example, a second erratum for Figure 1, and eight points the RFC leaves to implementers |
 | `docs/demo.md` | The 5-minute demo script and Q&A cards |
+| `docs/architecture.md` | What the tool does exactly, how the Docker lab is built, and how a request travels through the code |
 
 ## The console
 
