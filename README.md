@@ -29,12 +29,13 @@ vectors, and a worked example that cannot be reproduced. SplitTrust provides all
 
 `http://127.0.0.1:8000` has three pages:
 
-- **Demo** (the presentation), four steps top to bottom: *1 Choose the device* (laptop that validates DNSSEC,
-  phone with Private DNS, hybrid); *2 Join a network* (Corp Wi-Fi, Hotel Guest with four variants, Startup Cafe,
-  Branch Office, Home, Real Internet); *3 Verification*: the DNS query animated on a map of the actors, a
-  six-step checklist in plain language, and a verdict card that states the consequence; *4 Resolve a name*: an
-  address bar that resolves and fetches a page as a plain client on that network would, next to a device
-  without SplitTrust on the same Wi-Fi. Keys: `1 2 3` device, left/right arrows network, `space` replay.
+- **Demo** (the presentation): guided scenes, one real situation at a time, five full-screen steps each.
+  1 Situation (who you are, what the network announces, what is actually true); 2 What the network sent (the
+  PvD document verbatim and the token the device derives from it); 3 What the device checks (the query
+  animated on a map of the actors, with a plain-language checklist); 4 Verdict and evidence (the
+  consequence in one sentence, the query as `dig` would show it, the resolver's certificate next to the
+  announced name); 5 Proof (two devices open the page: one without SplitTrust, one with). Keys: left/right
+  arrows move through steps and scenes, `1 2 3` switch the device, `space` replays, `n` shows presenter notes.
 - **Tools**: the same engine with every option exposed (verify, resolve, inspect a claim, build a record, the
   DNS proxy's status) and the raw JSON.
 - **How it works**: what the project does, what the lab is, how to present, limits.

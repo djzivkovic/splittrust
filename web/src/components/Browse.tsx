@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { api, type BrowseResult, type Lookup } from "../lib/api";
 import { suggestions } from "../lib/networks";
 
-function Result({ title, l }: { title: string; l: Lookup }) {
+export function Result({ title, l }: { title: string; l: Lookup }) {
   const failed = !!l.error || l.answers.length === 0;
   const fake = l.page?.startsWith("FAKE");
   const box = failed ? "border-slate-300" : fake ? "border-red-300 bg-red-50" : "border-green-300 bg-green-50";

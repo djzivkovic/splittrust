@@ -2,6 +2,7 @@ package verify
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/json"
 
 	"github.com/djzivkovic/splittrust/internal/claim"
@@ -29,5 +30,10 @@ func (a DoTAdapter) Dial(ctx context.Context, addr, serverName string) (DoTConn,
 	if err != nil {
 		return nil, err
 	}
-	return c, nil
+	return peerConn{c}, nil
 }
+
+// peerConn lets the verifier read the authenticated certificate as evidence.
+type peerConn struct{ *dot.Conn }
+
+func (p peerConn) PeerCertificate() *x509.Certificate { return p.Conn.Peer }

@@ -26,6 +26,9 @@ type Client struct {
 type IdentityError struct {
 	ServerName string
 	Err        error
+	// Peer is the leaf certificate the endpoint presented, kept as evidence
+	// (never trusted): "the certificate is for dns.hotel.lab, not dns.corp.lab".
+	Peer *x509.Certificate
 }
 
 func (e *IdentityError) Error() string {
@@ -63,7 +66,11 @@ func (c *Client) Dial(ctx context.Context, addr, serverName string) (*Conn, erro
 	if err != nil {
 		var cve *tls.CertificateVerificationError
 		if errors.As(err, &cve) {
-			return nil, &IdentityError{ServerName: serverName, Err: cve.Err}
+			ie := &IdentityError{ServerName: serverName, Err: cve.Err}
+			if len(cve.UnverifiedCertificates) > 0 {
+				ie.Peer = cve.UnverifiedCertificates[0]
+			}
+			return nil, ie
 		}
 		var hostErr x509.HostnameError
 		var authErr x509.UnknownAuthorityError
@@ -110,3 +117,16 @@ func (cn *Conn) Query(ctx context.Context, qname string, qtype uint16) (*dns.Msg
 
 // Close closes the connection.
 func (cn *Conn) Close() error { return cn.conn.Close() }
+
+// CertSummary renders the identity-relevant parts of a certificate for reports.
+func CertSummary(c *x509.Certificate) map[string]any {
+	if c == nil {
+		return nil
+	}
+	return map[string]any{
+		"subject":   c.Subject.String(),
+		"sans":      c.DNSNames,
+		"issuer":    c.Issuer.String(),
+		"not_after": c.NotAfter.UTC().Format(time.RFC3339),
+	}
+}

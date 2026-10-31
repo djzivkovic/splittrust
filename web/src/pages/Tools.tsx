@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api, type ClientStatus, type Device, type Resolution, type ResolveReport, type Run, type Summary } from "../lib/api";
 import { RawTrace, toneChip } from "../components/Verdict";
 import { runTone } from "../lib/story";
+import { Browse } from "../components/Browse";
 
 const DEVICES: Device[] = ["validating-stub", "private-dns", "hybrid"];
 
@@ -133,6 +134,10 @@ export function Tools({ summaries }: { summaries: Summary[] }) {
         </div>
         <button className="btn btn-primary mt-3" onClick={doBuild}>Build</button>
         {built !== null && <Json v={built} />}
+      </Section>
+
+      <Section title="Resolve and fetch as the lab client" hint="POST /api/browse: a real DNS lookup through the SplitTrust proxy (and, on hotel networks, through the hotel's DNS) followed by a real page fetch inside the lab. Move the client first.">
+        <Browse scenarioId={status?.scenario_id ?? scenario} hotel={(status?.scenario_id ?? scenario).startsWith("hotel") || (status?.scenario_id ?? scenario) === "replay"} />
       </Section>
 
       {caps && <Section title="Capabilities"><Json v={caps} /></Section>}
