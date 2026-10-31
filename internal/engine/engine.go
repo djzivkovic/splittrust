@@ -111,6 +111,26 @@ func (e *Engine) Resolve(ctx context.Context, scenarioID, qname string, opt veri
 	return (&route.Resolver{V: v}).Resolve(ctx, p, qname, opt), nil
 }
 
+// Summaries lists the scenarios.
+func (e *Engine) Summaries() []lab.Summary { return e.Manifest.Summaries() }
+
+// Capabilities describes this build for /api/capabilities.
+func (e *Engine) Capabilities() map[string]any {
+	return map[string]any{
+		"trust_context":      "lab",
+		"validator":          validate.Backend(),
+		"devices":            verify.Devices,
+		"resolutions":        []verify.Resolution{verify.ViaNetwork, verify.Iterative},
+		"verification_paths": []string{"rfc9704-6.2-dnssec", "rfc9704-6.1-external-resolver"},
+		"ds_support":         true,
+		"multi_claim":        true,
+		"dhcp":               "codec-only",
+		"discovery":          "pre-configured per scenario (no DHCP/RA listener)",
+		"scenarios":          len(e.Manifest.Order),
+		"generated_at":       e.Manifest.GeneratedAt,
+	}
+}
+
 // InlineProfileID is the manifest profile used for `verify --claim FILE`.
 const InlineProfileID = "legit"
 
