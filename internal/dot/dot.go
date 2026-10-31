@@ -99,8 +99,11 @@ func (cn *Conn) Query(ctx context.Context, qname string, qtype uint16) (*dns.Msg
 	if err != nil {
 		return nil, err
 	}
-	if in.Id != m.Id {
-		return nil, errors.New("response id mismatch")
+	if in.Id != m.Id || !in.Response || in.Opcode != dns.OpcodeQuery {
+		return nil, errors.New("not a response to our query")
+	}
+	if len(in.Question) != 1 || dns.CanonicalName(in.Question[0].Name) != dns.CanonicalName(qname) || in.Question[0].Qtype != qtype || in.Question[0].Qclass != dns.ClassINET {
+		return nil, errors.New("response question does not match the query")
 	}
 	return in, nil
 }

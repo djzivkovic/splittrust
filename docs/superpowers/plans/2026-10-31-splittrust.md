@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Module path `github.com/djzivkovic/splittrust`; `go.mod` says `go 1.25`; no frameworks (no cobra, testify, gin).
+- Module path `github.com/djzivkovic/splittrust`; `go.mod` says `go 1.26.0` (floor set by golang.org/x/net); no frameworks (no cobra, testify, gin).
 - JSON: snake_case, `schema_version: 1`, RFC 3339 UTC times; reason codes and stage ids exactly as design §6.
 - Exit codes: 0 accepted/success, 1 conclusive rejection, 2 invalid input or indeterminate.
 - Every report carries `trust_context: "lab"`.

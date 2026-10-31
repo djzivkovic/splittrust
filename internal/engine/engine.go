@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/djzivkovic/splittrust/internal/claim"
@@ -23,7 +24,9 @@ import (
 // Engine is the configured application.
 type Engine struct {
 	Manifest lab.Manifest
-	pools    map[string]*x509.CertPool
+
+	mu    sync.Mutex
+	pools map[string]*x509.CertPool
 }
 
 // ErrUnknownScenario is returned for ids that are not in the manifest.
@@ -39,6 +42,11 @@ func Load(manifestPath string) (*Engine, error) {
 }
 
 func (e *Engine) pool(caFile string) (*x509.CertPool, error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.pools == nil {
+		e.pools = map[string]*x509.CertPool{}
+	}
 	if p, ok := e.pools[caFile]; ok {
 		return p, nil
 	}

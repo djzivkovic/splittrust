@@ -163,3 +163,27 @@ func TestDoTIdentity(t *testing.T) {
 	}
 	t.Logf("resolver.arpa. DNSKEY: %s", msg.Answer[0])
 }
+
+// A validator whose forwarder never answers must time out cleanly and leave the
+// process healthy for the next lookup (the libunbound context is owned by the
+// resolving goroutine and destroyed only after ub_resolve returns).
+func TestValidatorTimeoutIsClean(t *testing.T) {
+	m := manifest(t)
+	p := m.Profiles["legit"]
+	cfg := validate.Config{AnchorFile: p.AnchorFile, RootHintsFile: p.RootHints, CAFile: p.CAFile, Timeout: 1500 * time.Millisecond,
+		Forward: &validate.Forwarder{Addr: "172.30.97.99:853", ServerName: "dns.nowhere.lab"}}
+	v, err := validate.New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 3; i++ {
+		ev, err := v.Resolve(context.Background(), recordOwner(t, p), dns.TypeTXT)
+		if err == nil || ev.Security != validate.ErrorState {
+			t.Fatalf("blackholed forwarder: err=%v security=%s", err, ev.Security)
+		}
+	}
+	ev, err := validatorFor(t, p, true).Resolve(context.Background(), recordOwner(t, p), dns.TypeTXT)
+	if err != nil || ev.Security != validate.Secure {
+		t.Fatalf("validator unhealthy after timeouts: %v %s", err, ev.Security)
+	}
+}

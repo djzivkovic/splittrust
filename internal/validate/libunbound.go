@@ -74,25 +74,32 @@ func (r *libunboundResolver) Resolve(ctx context.Context, qname string, qtype ui
 	if err != nil {
 		return ev, err
 	}
-	defer os.Remove(f.Name())
 	if _, err := f.WriteString(r.configText()); err != nil {
+		os.Remove(f.Name())
 		f.Close()
 		return ev, err
 	}
 	f.Close()
 
-	u := unbound.New()
-	defer u.Destroy()
-	if err := u.Config(f.Name()); err != nil {
-		return ev, fmt.Errorf("libunbound config: %v", err)
-	}
-
+	// The goroutine owns the libunbound context: ub_resolve is a blocking C call,
+	// and destroying the context from the caller on timeout would free memory the
+	// C code is still using. On timeout the caller returns and the goroutine
+	// finishes (libunbound has its own upstream timeouts) and destroys the context.
 	type outcome struct {
 		res *unbound.Result
 		err error
 	}
 	done := make(chan outcome, 1)
+	cfgPath := f.Name()
 	go func() {
+		u := unbound.New()
+		defer u.Destroy()
+		err := u.Config(cfgPath)
+		os.Remove(cfgPath)
+		if err != nil {
+			done <- outcome{nil, fmt.Errorf("libunbound config: %v", err)}
+			return
+		}
 		res, err := u.Resolve(dns.Fqdn(qname), qtype, dns.ClassINET)
 		done <- outcome{res, err}
 	}()

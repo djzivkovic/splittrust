@@ -42,7 +42,7 @@ forces a fresh generation.
 
 ### Without the lab
 
-The pure parts run anywhere with Go ≥ 1.25:
+The pure parts run anywhere with Go ≥ 1.26 (the floor set by our dependencies):
 
 ```bash
 go run ./cmd/splittrust inspect --claim examples/firma-claim.json          # canonical form, token, record owner
@@ -91,7 +91,7 @@ validated under the delegated keys; everything else takes the device's default p
 - Not an OS integration: nothing intercepts the host's DNS; protection applies to explicit `splittrust` queries.
 - Not DHCP/RA discovery: discovery is pre-configured per scenario; the DHCP option is encoded and decoded, not sent.
 - Not the global DNS: verdicts are about a private root the lab controls. Rejecting a claim does not make an untrusted default resolver safe; publishing a record protects only clients that implement the check.
-- The daemon fallback (`LIBUNBOUND=0`) supports iterative resolution only.
+- The `LIBUNBOUND=0` build is a code-level fallback, not an operational image: it needs an external validating unbound daemon (`SPLITTRUST_DAEMON=host:port`, lab trust anchor and root hints configured there) and supports iterative resolution only. The lab always builds with libunbound.
 
 ## Repository map
 

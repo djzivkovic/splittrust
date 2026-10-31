@@ -451,3 +451,20 @@ func stage(c ClaimReport, id string) Stage {
 	}
 	return Stage{}
 }
+
+// A malformed local answer (no question section, no valid signature) must be an
+// error, never a panic in the long-running API process.
+func TestValidateLocalAWithoutQuestionDoesNotPanic(t *testing.T) {
+	zone := "internal.corp.lab."
+	approved, priv := newKey(t, zone, 257)
+	good := new(dns.Msg)
+	good.Answer = append([]dns.RR{approved}, signSet(t, []dns.RR{approved}, approved, priv, now.Add(-time.Minute), now.Add(time.Hour)))
+	a := &dns.A{Hdr: dns.RR_Header{Name: "host." + zone, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 60}, A: []byte{10, 0, 5, 20}}
+	aMsg := new(dns.Msg) // no Question, unsigned A
+	aMsg.Answer = []dns.RR{a}
+	_, err := ValidateLocalA([]*dns.DNSKEY{approved}, good, aMsg, now)
+	var le *Error
+	if !errors.As(err, &le) || le.Code != "LOCAL_SIGNATURE_INVALID" {
+		t.Fatalf("got %v", err)
+	}
+}

@@ -104,7 +104,7 @@ func ValidateLocalA(approved []*dns.DNSKEY, dnskeyMsg, aMsg *dns.Msg, now time.T
 			}
 		}
 	}
-	return nil, &Error{Code: "LOCAL_SIGNATURE_INVALID", Detail: fmt.Sprintf("no valid RRSIG over the A RRset for %s under the approved key set", aMsg.Question[0].Name)}
+	return nil, &Error{Code: "LOCAL_SIGNATURE_INVALID", Detail: fmt.Sprintf("no valid RRSIG over the A RRset for %s under the approved key set", as[0].Hdr.Name)}
 }
 
 func split[T dns.RR](rrs []dns.RR, typ uint16) ([]T, []*dns.RRSIG) {
