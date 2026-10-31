@@ -55,6 +55,8 @@ func NewHandlerWithProxy(svc Service, proxyURL string, browser *Browser) http.Ha
 	h := &handler{svc: svc, proxyURL: strings.TrimSuffix(proxyURL, "/"), browser: browser}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/client/status", h.clientStatus)
+	mux.HandleFunc("GET /api/client/log", h.clientLog)
+	mux.HandleFunc("GET /api/lab/status", h.labStatus)
 	mux.HandleFunc("POST /api/client/join", h.clientJoin)
 	mux.HandleFunc("POST /api/browse", h.browse)
 	mux.HandleFunc("POST /api/live", h.live)
@@ -285,6 +287,14 @@ func (h *handler) clientStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.relay(w, r, http.MethodGet, "/status", nil)
+}
+
+func (h *handler) clientLog(w http.ResponseWriter, r *http.Request) {
+	if h.proxyURL == "" {
+		writeError(w, http.StatusNotFound, "no DNS proxy configured (SPLITTRUST_PROXY)")
+		return
+	}
+	h.relay(w, r, http.MethodGet, "/log", nil)
 }
 
 func (h *handler) clientJoin(w http.ResponseWriter, r *http.Request) {

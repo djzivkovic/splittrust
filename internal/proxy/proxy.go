@@ -36,6 +36,29 @@ type Config struct {
 	Log      func(format string, a ...any)
 }
 
+// LogLines returns the most recent log lines (newest last), for the console's
+// live view of what the proxy is doing.
+func (s *Server) LogLines() []string {
+	s.logMu.Lock()
+	defer s.logMu.Unlock()
+	out := make([]string, len(s.logBuf))
+	copy(out, s.logBuf)
+	return out
+}
+
+func (s *Server) logf(format string, a ...any) {
+	line := time.Now().UTC().Format("15:04:05") + " " + fmt.Sprintf(format, a...)
+	s.logMu.Lock()
+	s.logBuf = append(s.logBuf, line)
+	if len(s.logBuf) > 200 {
+		s.logBuf = s.logBuf[len(s.logBuf)-200:]
+	}
+	s.logMu.Unlock()
+	if s.cfg.Log != nil {
+		s.cfg.Log(format, a...)
+	}
+}
+
 // ErrBadDevice is returned by Join for an unknown device profile.
 var ErrBadDevice = errors.New("unknown device")
 
@@ -91,6 +114,9 @@ type Server struct {
 	grants       []*grantEntry
 	grantsUntil  time.Time
 	lastVerified time.Time
+
+	logMu  sync.Mutex
+	logBuf []string
 }
 
 // New creates a proxy that has not joined a network yet.
@@ -136,7 +162,7 @@ func (s *Server) Join(scenario string, device verify.Device, resolution verify.R
 	defer s.mu.Unlock()
 	s.profile, s.v, s.device, s.resolution = p, v, device, resolution
 	s.grants, s.grantsUntil, s.lastVerified = nil, time.Time{}, time.Time{}
-	s.cfg.Log("joined network %q as %s (%s)", scenario, device, resolution)
+	s.logf("joined network %q as %s (%s)", scenario, device, resolution)
 	return nil
 }
 
@@ -243,7 +269,7 @@ func (s *Server) covering(ctx context.Context, qname string, p lab.Profile, v *v
 				s.grantsUntil = e.until
 			}
 			s.grants = append(s.grants, e)
-			s.cfg.Log("verified %s on %q: %s %s", c.Resolver, p.ScenarioID, c.Decision, c.Reason)
+			s.logf("verified %s on %q: %s %s", c.Resolver, p.ScenarioID, c.Decision, c.Reason)
 		}
 	}
 	for _, e := range s.grants {
@@ -392,7 +418,7 @@ func (s *Server) finish(req, resp *dns.Msg, rcode int, ad bool, code uint16, tex
 		}
 	}
 	q := req.Question[0]
-	s.cfg.Log("%s %s -> %s ad=%v %s", q.Name, dns.TypeToString[q.Qtype], dns.RcodeToString[rcode], ad, text)
+	s.logf("%s %s -> %s ad=%v %s", q.Name, dns.TypeToString[q.Qtype], dns.RcodeToString[rcode], ad, text)
 }
 
 func stripSigs(rrs []dns.RR, keep bool) []dns.RR {
@@ -439,6 +465,7 @@ func (s *Server) ControlHandler() http.Handler {
 		_ = enc.Encode(v)
 	}
 	mux.HandleFunc("GET /status", func(w http.ResponseWriter, r *http.Request) { writeJSON(w, 200, s.Status()) })
+	mux.HandleFunc("GET /log", func(w http.ResponseWriter, r *http.Request) { writeJSON(w, 200, map[string]any{"lines": s.LogLines()}) })
 	mux.HandleFunc("POST /join", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			ScenarioID string `json:"scenario_id"`

@@ -23,6 +23,10 @@ export function BuiltSlide() {
       <Canvas viewBox="0 0 1200 520" label="Architecture">
           {/* the binary */}
           <rect x={30} y={30} width={560} height={460} rx={18} fill="#eff6ff" stroke={BLUE} strokeWidth={2.5} />
+          <line x1={310} y1={360} x2={310} y2={380} stroke={LINE2} strokeWidth={2} />
+          <line x1={130} y1={360} x2={130} y2={380} stroke={LINE2} strokeWidth={2} />
+          <line x1={490} y1={360} x2={490} y2={380} stroke={LINE2} strokeWidth={2} />
+          <line x1={50} y1={360} x2={570} y2={360} stroke={LINE2} strokeWidth={2} />
           <text x={50} y={60} fontSize={18} fontWeight={800} fill={BLUE}>splittrust</text>
           <text x={150} y={60} fontSize={13} fill={MUTED}>one Go binary, 5,200 lines, libunbound in-process</text>
           {box(50, 80, 250, 80, "claim and token (RFC 9704 s.5)", ["canonical order, $X, SHA-384/512", "IDNA, Special-Use names, '*'"], BLUE)}
@@ -34,10 +38,6 @@ export function BuiltSlide() {
           {box(50, 380, 160, 90, "CLI", ["verify, resolve, inspect", "build-record, vectors"], INK)}
           {box(230, 380, 160, 90, "HTTP API", ["/api/verify, /api/browse", "this deck"], INK)}
           {box(410, 380, 160, 90, "DNS proxy", ["Do53 front door for any stub", "verdict cache, EDE codes"], GREEN, "#f0fdf4")}
-          <line x1={310} y1={360} x2={310} y2={380} stroke={LINE2} strokeWidth={2} />
-          <line x1={130} y1={360} x2={130} y2={380} stroke={LINE2} strokeWidth={2} />
-          <line x1={490} y1={360} x2={490} y2={380} stroke={LINE2} strokeWidth={2} />
-          <line x1={50} y1={360} x2={570} y2={360} stroke={LINE2} strokeWidth={2} />
 
           {/* the lab */}
           <rect x={620} y={30} width={550} height={300} rx={18} fill="#fafaf9" stroke={INK} strokeWidth={2.5} />
