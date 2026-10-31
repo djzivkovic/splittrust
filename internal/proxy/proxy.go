@@ -36,6 +36,43 @@ type Config struct {
 	Log      func(format string, a ...any)
 }
 
+// Event is one structured thing the proxy did, for the console's live view.
+type Event struct {
+	Time     time.Time `json:"time"`
+	Kind     string    `json:"kind"` // join, verify, query
+	Scenario string    `json:"scenario,omitempty"`
+	Device   string    `json:"device,omitempty"`
+	Resolver string    `json:"resolver,omitempty"`
+	Decision string    `json:"decision,omitempty"`
+	Reason   string    `json:"reason,omitempty"`
+	Name     string    `json:"name,omitempty"`
+	Qtype    string    `json:"qtype,omitempty"`
+	Rcode    string    `json:"rcode,omitempty"`
+	AD       bool      `json:"ad,omitempty"`
+	EDE      uint16    `json:"ede,omitempty"`
+	EDEName  string    `json:"ede_name,omitempty"`
+	Text     string    `json:"text,omitempty"`
+}
+
+// Events returns the most recent events (newest last).
+func (s *Server) Events() []Event {
+	s.logMu.Lock()
+	defer s.logMu.Unlock()
+	out := make([]Event, len(s.events))
+	copy(out, s.events)
+	return out
+}
+
+func (s *Server) record(ev Event) {
+	ev.Time = time.Now().UTC()
+	s.logMu.Lock()
+	s.events = append(s.events, ev)
+	if len(s.events) > 100 {
+		s.events = s.events[len(s.events)-100:]
+	}
+	s.logMu.Unlock()
+}
+
 // LogLines returns the most recent log lines (newest last), for the console's
 // live view of what the proxy is doing.
 func (s *Server) LogLines() []string {
@@ -117,6 +154,7 @@ type Server struct {
 
 	logMu  sync.Mutex
 	logBuf []string
+	events []Event
 }
 
 // New creates a proxy that has not joined a network yet.
@@ -163,6 +201,7 @@ func (s *Server) Join(scenario string, device verify.Device, resolution verify.R
 	s.profile, s.v, s.device, s.resolution = p, v, device, resolution
 	s.grants, s.grantsUntil, s.lastVerified = nil, time.Time{}, time.Time{}
 	s.logf("joined network %q as %s (%s)", scenario, device, resolution)
+	s.record(Event{Kind: "join", Scenario: scenario, Device: string(device)})
 	return nil
 }
 
@@ -270,6 +309,7 @@ func (s *Server) covering(ctx context.Context, qname string, p lab.Profile, v *v
 			}
 			s.grants = append(s.grants, e)
 			s.logf("verified %s on %q: %s %s", c.Resolver, p.ScenarioID, c.Decision, c.Reason)
+			s.record(Event{Kind: "verify", Scenario: p.ScenarioID, Resolver: strings.TrimSuffix(c.Resolver, "."), Decision: string(c.Decision), Reason: c.Reason})
 		}
 	}
 	for _, e := range s.grants {
@@ -419,6 +459,11 @@ func (s *Server) finish(req, resp *dns.Msg, rcode int, ad bool, code uint16, tex
 	}
 	q := req.Question[0]
 	s.logf("%s %s -> %s ad=%v %s", q.Name, dns.TypeToString[q.Qtype], dns.RcodeToString[rcode], ad, text)
+	ev := Event{Kind: "query", Name: strings.TrimSuffix(q.Name, "."), Qtype: dns.TypeToString[q.Qtype], Rcode: dns.RcodeToString[rcode], AD: ad, Text: text}
+	if text != "" {
+		ev.EDE, ev.EDEName = code, dns.ExtendedErrorCodeToString[code]
+	}
+	s.record(ev)
 }
 
 func stripSigs(rrs []dns.RR, keep bool) []dns.RR {
@@ -466,6 +511,7 @@ func (s *Server) ControlHandler() http.Handler {
 	}
 	mux.HandleFunc("GET /status", func(w http.ResponseWriter, r *http.Request) { writeJSON(w, 200, s.Status()) })
 	mux.HandleFunc("GET /log", func(w http.ResponseWriter, r *http.Request) { writeJSON(w, 200, map[string]any{"lines": s.LogLines()}) })
+	mux.HandleFunc("GET /events", func(w http.ResponseWriter, r *http.Request) { writeJSON(w, 200, map[string]any{"events": s.Events()}) })
 	mux.HandleFunc("POST /join", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			ScenarioID string `json:"scenario_id"`

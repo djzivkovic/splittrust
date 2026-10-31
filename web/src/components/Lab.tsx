@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { api, type LabProbe } from "../lib/api";
 import { Slide } from "./Slide";
-import { ProxyLog, Terminal } from "./Terminal";
+import { ProxyDecisions } from "./Terminal";
 
 export function LabSlide() {
   const [probes, setProbes] = useState<LabProbe[] | null>(null);
@@ -17,15 +17,15 @@ export function LabSlide() {
   }, []);
   const ok = probes?.filter((p) => p.ok).length ?? 0;
   return (
-    <Slide section="The lab" title="The network the laptops were on, probed from this page right now"
-      sub="DNS queries, TLS handshakes and HTTP requests to each service, every four seconds"
+    <Slide section="Evidence" title="The network the laptops were on, probed from this page right now"
+      sub="14 endpoints across the lab's services: DNS queries, TLS handshakes, HTTP requests, every four seconds"
       right={probes && <span className={`rounded-md px-2.5 py-1 text-sm font-semibold ${ok === probes.length ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"}`}>{ok} / {probes.length} answering{at && `, ${new Date(at).toLocaleTimeString()}`}</span>}
       takeaway="This is the network the two laptops were on. Nothing in the scenes was recorded or mocked.">
       <div className="grid min-h-0 flex-1 gap-5 lg:grid-cols-[3fr_2fr]">
         <div className="grid content-start gap-2 md:grid-cols-2">
           {(["demo", "testbed"] as const).map((g) => (
             <div key={g} className="md:col-span-2 mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {g === "demo" ? "Runs the scenes: two networks, their resolvers, the proxy, the pages" : "Test bed: the RFC's corner cases (private root, lab zones, quad9.lab), plain clients, 46 checks"}
+              {g === "demo" ? "Runs the scenes: the two networks' resolvers, the PvD server, the proxy, the pages" : "Test bed: the RFC's corner cases (private root, lab zones, quad9.lab, banka.lab) and the integration suite"}
             </div>
           )).flatMap((hdr, gi) => [hdr, ...(probes ?? []).filter((p) => p.group === (gi === 0 ? "demo" : "testbed")).map((p) => (
             <div key={p.name} className={`flex items-start gap-3 rounded-xl border bg-white px-3 py-2 shadow-sm ${p.ok ? "border-slate-200" : "border-red-300"}`}>
@@ -39,7 +39,7 @@ export function LabSlide() {
           ))])}
           {!probes && <div className="animate-pulse text-slate-400">probing...</div>}
         </div>
-        <Terminal title="splittrust proxy, live log (172.30.97.60)"><ProxyLog since={0} /></Terminal>
+        <ProxyDecisions since={0} limit={12} />
       </div>
     </Slide>
   );

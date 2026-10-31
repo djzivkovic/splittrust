@@ -21,8 +21,8 @@ const OPTIONS: { name: string; short: string; marks: boolean[]; text: string; de
     text: "A forged copy of a signed zone fails validation, so the hotel's attack is caught. But the office intranet fails too: internal names do not exist in the public zone, so a validating laptop gets a signed proof that they do not exist and rejects the office resolver's answer.",
     detail: "DNSSEC can say 'this is not the owner's answer'. It cannot say 'the owner allows this resolver to answer for these names'. That is the missing sentence." },
   { name: "RFC 9704 with SplitTrust", short: "the owner authorises, the device checks", marks: [true, true, true, true],
-    text: "The owner publishes one signed TXT record naming the resolver and the names it may answer for. The device verifies the record and the resolver's certificate, then routes only those names there. Everything else keeps its normal path.",
-    detail: "One record in a zone you already run, DNSSEC you should already have, and a resolver on the device that checks. No application notices." },
+    text: "The owner publishes one signed TXT record under the resolver's name: a salted hash of the exact claim (resolver, zone, subdomains). The device recomputes the hash from the network's claim, validates the record with DNSSEC, checks the resolver's certificate, then routes only those names there. Everything else keeps its normal path.",
+    detail: "One record in a zone you already run, DNSSEC you should already have (or a resolver the device already trusts), and a resolver on the device that checks. No application notices." },
 ];
 
 export function WhyNotSlide() {
@@ -65,24 +65,24 @@ export function WhyNotSlide() {
 /* ---------- What SplitTrust brings ---------- */
 
 const FEATURES: { icon: React.ReactNode; title: string; lines: string[] }[] = [
-  { icon: <g transform="scale(1.1)"><Shield /></g>, title: "The complete device side of RFC 9704",
-    lines: ["claim canonicalisation and token (s.5)", "resolver identity over DoT (RFC 9525)", "DNSSEC validation in-process (libunbound)", "ds key binding (s.7), scoped grants with expiry"] },
+  { icon: <g transform="scale(1.1)"><Shield /></g>, title: "The RFC 9704 device side: verify, then enforce",
+    lines: ["claim canonicalisation and token (s.5)", "resolver identity over DoT (RFC 9525)", "DNSSEC validation in-process (libunbound)", "ds key binding (s.7), scoped grants with expiry", "discovery simulated: PvD served, DHCP codec only"] },
   { icon: <g transform="translate(0,4) scale(0.9)"><Laptop tone={BLUE} /></g>, title: "Works for any client, today",
     lines: ["a plain DNS proxy: point a stub at it", "verdicts enforced per query, cached, re-verified", "Extended DNS Errors say why (EDE 6 Bogus, ...)", "no change to browsers or applications"] },
   { icon: <g transform="scale(1.3)"><Lock tone={RED} /></g>, title: "Fails safe and explains itself",
     lines: ["rejected claims never route a query", "SERVFAIL instead of a wrong address", "nine-stage trace with evidence per verdict", "grey (cannot decide) is never red or green"] },
   { icon: <g transform="scale(1.1)"><Doc tone={BLUE} /></g>, title: "The owner's side too",
     lines: ["build-record: claim in, TXT record out", "DHCP option 90/11 codec, PvD documents", "test vectors for the next implementer", "an erratum for the RFC's worked example"] },
-  { icon: <g transform="scale(0.9)"><Resolver tone={GREEN} /></g>, title: "Proven against the real DNS",
+  { icon: <g transform="scale(0.9)"><Resolver tone={GREEN} /></g>, title: "Tested live against the public DNS",
     lines: ["a real zone: zivkovic.me, DNSSEC at Cloudflare", "validated under the IANA root, live", "phone profile through the real dns.quad9.net", "the hotel's forgery fails exactly as the RFC says"] },
   { icon: <g transform="scale(0.9)"><Server /></g>, title: "A lab that attacks it",
-    lines: ["13 scenarios, 3 device profiles", "forged records, replayed claims, stale salts,", "expired signatures, wrong keys, blocked Quad9", "46 end-to-end checks, green"] },
+    lines: ["13 scenarios, 3 device profiles, 20 expected verdicts", "forged records, replayed claims, stale salts,", "expired signatures, wrong keys, blocked Quad9", "46 generated checks plus 5 end-to-end tests, green"] },
 ];
 
 export function SolutionSlide() {
   return (
     <Slide section="Our solution" title="SplitTrust: one Go binary that checks, enforces and explains" sub="Verifier, DNS proxy, owner tool, lab."
-      takeaway="No public implementation of RFC 9704 existed when we started. This one runs, fails safe, and shows its work.">
+      takeaway="We found no public implementation of RFC 9704; its authors reported none known in February 2025. This one runs, fails safe, and shows its work.">
       <div className="grid flex-1 content-center gap-4 md:grid-cols-3">
         {FEATURES.map((f) => (
           <div key={f.title} className="rounded-2xl border-2 border-slate-200 bg-white p-5 shadow-sm">
@@ -168,7 +168,7 @@ export function ImpactSlide() {
   );
   return (
     <Slide section="Why adopt it" title="What changes for a company like Alfa" sub="Security outcome, operational cost, user experience."
-      takeaway="The attack that works on Beta does not work on Alfa. Alfa changed one zone and one setting, not its applications.">
+      takeaway="The attack that works on Beta does not work on Alfa. Alfa changed its DNS and its devices' resolver, not a single application.">
       <div className="grid flex-1 content-center gap-5 lg:grid-cols-3">
         {col("Security", "border-green-200", [
           ["Hostile networks cannot impersonate internal services", "A forged record or a hijacked name fails DNSSEC validation; the resolver is never used for the company's names."],
@@ -178,7 +178,7 @@ export function ImpactSlide() {
         ])}
         {col("Operations", "border-blue-200", [
           ["One TXT record", "Built with the owner tool from the exact claim; published once; rotate the salt to revoke."],
-          ["DNSSEC on the zone", "Which most registrars and Cloudflare offer as a switch, and which protects everything else too."],
+          ["DNSSEC on the zone (recommended)", "Cloudflare and most registrars offer it; without it, RFC 9704 s.6.1 lets devices verify through an external resolver they already trust."],
           ["DoT on the office resolver", "A certificate for its own name. The resolver software does not change."],
           ["No agents in applications", "The proxy is the device's DNS server; a product would use the OS split-DNS hooks."],
         ])}
@@ -198,13 +198,13 @@ export function ImpactSlide() {
 export function RoadmapSlide() {
   const steps: [string, string, string][] = [
     ["Now", "Verifier, proxy, owner tool, lab, vectors, erratum draft", "done"],
-    ["Next", "DHCP option 90 and RA discovery on the wire; a CoreDNS plugin for the office side", "planned"],
-    ["Then", "OS integration: systemd-resolved per-domain DoT + DNSSEC, Windows NRPT, macOS resolver files", "planned"],
-    ["Standards", "Erratum filed; vectors and implementer notes to the ADD working group; one resolver vendor trying it", "ask"],
+    ["Next", "Pilot on managed devices: the proxy as a local service, claims delivered by MDM or VPN config (no DNR or PvD needed); a CoreDNS plugin for the office side", "planned"],
+    ["Then", "OS integration: systemd-resolved (DNR parsed since 257), Windows DNS client and NRPT, Apple NetworkExtension; DHCP option 90 and RA on the wire", "planned"],
+    ["Standards", "Erratum drafted, to be filed; vectors and implementer notes to the ADD working group; one resolver vendor trying it", "ask"],
   ];
   return (
     <Slide section="What's next" title="From a working verifier to something your laptop ships with"
-      takeaway="The protocol is published. What it lacked was running code, test vectors and a correct example. Now it has them.">
+      takeaway="The protocol is published. What it lacked was running code, test vectors and a reproducible example. This repository has all three; the erratum is drafted.">
       <div className="flex flex-1 flex-col justify-center gap-6">
         <svg viewBox="0 0 1200 120" className="h-28 w-full">
           <line x1={80} y1={60} x2={1120} y2={60} stroke="#cbd5e1" strokeWidth={4} />

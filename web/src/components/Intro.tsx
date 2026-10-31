@@ -58,9 +58,9 @@ export function ProblemSlide() {
         <g transform="translate(1040, 54)"><Mark ok={false} size={16} /></g>
       </Canvas>
       <div className="grid grid-cols-3 gap-5 pb-2 text-base text-slate-700 lg:text-lg">
-        <div className="rounded-xl bg-white p-4 shadow-sm"><b>Today:</b> the device takes the network's word for it. DHCP says "use this resolver", and it does.</div>
-        <div className="rounded-xl bg-white p-4 shadow-sm"><b>Encryption does not help:</b> DNS over TLS to the hotel's resolver is a private conversation with the attacker.</div>
-        <div className="rounded-xl bg-white p-4 shadow-sm"><b>RFC 9704 (January 2025)</b> gives the domain owner a way to say who may answer, and the device a way to check. No public implementation when we started.</div>
+        <div className="rounded-xl bg-white p-4 shadow-sm"><b>Today:</b> the device takes the network's word for it. DHCP says "use this resolver", and it does. Encrypting the queries to that resolver is a private conversation with the attacker.</div>
+        <div className="rounded-xl bg-white p-4 shadow-sm"><b>Not hypothetical:</b> DNS interception was measured in 259 of 3,047 networks probed (USENIX Security 2018); a hotel in Amsterdam was documented rewriting DNS answers and stripping DNSSEC signatures (2013); DarkHotel delivered malware over hotel networks (Kaspersky, 2014).</div>
+        <div className="rounded-xl bg-white p-4 shadow-sm"><b>RFC 9704 (January 2025)</b> gives the domain owner a way to say who may answer for which names, and the device a way to check. Its authors reported no known implementation in February 2025.</div>
       </div>
     </Slide>
   );
@@ -76,18 +76,18 @@ export function HowSlide() {
   );
   return (
     <Slide section="RFC 9704" title="How it works, in three steps" sub="The owner publishes, the network claims, the device checks."
-      takeaway="The token can be copied by anyone. The owner's DNSSEC signature and the resolver's certificate cannot.">
+      takeaway="The token can be copied by anyone. The owner's signature (or a trusted resolver's word) and the resolver's certificate cannot.">
       <Canvas viewBox="0 0 1240 440" label="The three steps of RFC 9704">
         <line x1={300} y1={300} x2={470} y2={300} stroke="#cbd5e1" strokeWidth={2.5} strokeDasharray="6 6" />
         <line x1={700} y1={300} x2={840} y2={300} stroke="#cbd5e1" strokeWidth={2.5} strokeDasharray="6 6" />
-        {col(200, 1, "The domain owner publishes", "in its own DNSSEC-signed zone")}
+        {col(200, 1, "The domain owner publishes", "one TXT record in its own zone")}
         {col(600, 2, "The network announces a claim", "DHCP option or PvD document")}
         {col(1010, 3, "The device checks before trusting", "SplitTrust does this part")}
 
         {/* 1: zone with lock and the TXT record */}
         <g transform="translate(200, 230)"><Cloud /></g>
         <text x={194} y={226} textAnchor="middle" fontSize={15} fontWeight={700} fill={INK}>alfa.example zone</text>
-        <text x={194} y={246} textAnchor="middle" fontSize={11} fill={MUTED}>signed with DNSSEC</text>
+        <text x={194} y={246} textAnchor="middle" fontSize={11} fill={MUTED}>DNSSEC-signed, or reached via a trusted resolver</text>
         <g transform="translate(262, 190)"><Lock tone={GREEN} /></g>
         <g transform="translate(200, 350)"><Doc tone={BLUE} /></g>
         <text x={200} y={404} textAnchor="middle" fontSize={12} fontFamily="ui-monospace, Menlo, monospace" fill={INK}>dns.alfa.example._splitdns-challenge.alfa.example</text>
@@ -103,7 +103,7 @@ export function HowSlide() {
         <g transform="translate(924, 300)"><Shield /></g>
         {[
           ["the resolver proves its name", "DNS over TLS, certificate (RFC 9525)"],
-          ["the owner's record validates", "DNSSEC, via the network's own resolver"],
+          ["the owner's record validates", "DNSSEC locally, or via a resolver the device trusts"],
           ["the token matches the claim", "only then route those names there"],
         ].map(([t, s], i) => (
           <g key={t} transform={`translate(975, ${190 + i * 62})`}>
@@ -153,9 +153,9 @@ export function ClosingSlide() {
         <div className="rounded-2xl border-2 border-green-200 bg-white p-6 shadow-sm">
           <div className="text-xl font-bold text-green-800">Real</div>
           <ul className="mt-3 space-y-2 text-base text-slate-700">
-            <li>A complete RFC 9704 device-side implementation, plus the owner's tool</li>
+            <li>The RFC 9704 device-side pipeline, verification and enforcement, plus the owner's tool</li>
             <li>A DNS proxy any ordinary client can use today</li>
-            <li>A real zone, verified live under the IANA root</li>
+            <li>Tested live against the public DNS with our own signed zone</li>
             <li>Published test vectors and a draft erratum</li>
           </ul>
         </div>
@@ -164,7 +164,7 @@ export function ClosingSlide() {
           <ul className="mt-3 space-y-2 text-base text-slate-700">
             <li>Not an OS integration: protection applies to clients that use the proxy; a product would drive systemd-resolved or Windows NRPT</li>
             <li>Discovery is pre-configured; the DHCP option is encoded, not sent</li>
-            <li>Unsigned zones can only be verified through an external resolver the device already trusts</li>
+            <li>Unsigned zones are verified only through an external resolver the device already trusts (s.6.1); that trust is then the whole story</li>
           </ul>
         </div>
         <div className="rounded-2xl border-2 border-blue-200 bg-white p-6 shadow-sm">

@@ -9,9 +9,10 @@ import { SceneArt, stepsFor, type Step } from "./components/SceneArt";
 import { BrowserFrame } from "./components/Browser";
 import { BuiltSlide } from "./components/Built";
 import { LabSlide } from "./components/Lab";
-import { Dig, ProxyLog, Terminal } from "./components/Terminal";
+import { DigPanel, ProxyDecisions } from "./components/Terminal";
 import { ClosingSlide, CompaniesSlide, HowSlide, ProblemSlide, TitleSlide } from "./components/Intro";
 import { ImpactSlide, RoadmapSlide, SolutionSlide, TryItSlide, WhyNotSlide } from "./components/Content";
+import { AudienceSlide, WhyNowSlide } from "./components/Pitch";
 import { Slide } from "./components/Slide";
 import { BLUE, Doc, GREEN, INK, Laptop, Lock, Mark, RED, Resolver, Shield } from "./components/Art";
 
@@ -26,8 +27,8 @@ export default function App() {
   useEffect(() => { api.scenarios().then(setSummaries).catch((e) => setErr((e as Error).message)); }, []);
 
   // the deck, in order
-  type Kind = "title" | "problem" | "whynot" | "how" | "solution" | "tryit" | "companies" | "scene" | "impact" | "built" | "lab" | "roadmap" | "close";
-  const order: Kind[] = ["title", "problem", "whynot", "how", "solution", "tryit", "companies", ...SCENES.map(() => "scene" as const), "impact", "built", "lab", "roadmap", "close"];
+  type Kind = "title" | "problem" | "whynow" | "how" | "solution" | "companies" | "scene" | "tryit" | "audience" | "whynot" | "impact" | "built" | "lab" | "roadmap" | "close";
+  const order: Kind[] = ["title", "problem", "whynow", "how", "solution", "companies", ...SCENES.map(() => "scene" as const), "tryit", "audience", "whynot", "impact", "built", "lab", "roadmap", "close"];
   const total = order.length;
   const sceneIndex = (n: number) => n - order.indexOf("scene");
   const go = useCallback((n: number) => { setSlide(Math.max(0, Math.min(total - 1, n))); setDevice("validating-stub"); }, [total]);
@@ -53,10 +54,11 @@ export default function App() {
   const kind = order[slide];
   const scene = kind === "scene" ? SCENES[sceneIndex(slide)] : null;
   const content = scene ? <SceneSlide scene={scene} device={device} evidence={evidence} />
-    : kind === "problem" ? <ProblemSlide /> : kind === "whynot" ? <WhyNotSlide /> : kind === "how" ? <HowSlide />
-    : kind === "solution" ? <SolutionSlide /> : kind === "tryit" ? <TryItSlide /> : kind === "companies" ? <CompaniesSlide />
-    : kind === "impact" ? <ImpactSlide /> : kind === "built" ? <BuiltSlide /> : kind === "lab" ? <LabSlide />
-    : kind === "roadmap" ? <RoadmapSlide /> : kind === "close" ? <ClosingSlide /> : <TitleSlide />;
+    : kind === "problem" ? <ProblemSlide /> : kind === "whynow" ? <WhyNowSlide /> : kind === "how" ? <HowSlide />
+    : kind === "solution" ? <SolutionSlide /> : kind === "companies" ? <CompaniesSlide /> : kind === "tryit" ? <TryItSlide />
+    : kind === "audience" ? <AudienceSlide /> : kind === "whynot" ? <WhyNotSlide /> : kind === "impact" ? <ImpactSlide />
+    : kind === "built" ? <BuiltSlide /> : kind === "lab" ? <LabSlide /> : kind === "roadmap" ? <RoadmapSlide />
+    : kind === "close" ? <ClosingSlide /> : <TitleSlide />;
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-slate-100 text-slate-900">
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -76,7 +78,7 @@ export default function App() {
             ))}
           </span>
         )}
-        <span className="ml-auto">{slide + 1} / {total}<span className="kbd ml-4">←</span> <span className="kbd">→</span> slides{scene && <><span className="kbd ml-2">space</span> replay <span className="kbd ml-2">t</span> terminal: {evidence ? "dig" : "proxy log"}</>}</span>
+        <span className="ml-auto">{slide + 1} / {total}<span className="kbd ml-4">←</span> <span className="kbd">→</span> slides{scene && <><span className="kbd ml-2">space</span> replay <span className="kbd ml-2">t</span> {evidence ? "back to the pages" : "show dig output"}</>}</span>
       </footer>
     </div>
   );
@@ -151,17 +153,22 @@ function SceneSlide({ scene, device, evidence }: { scene: Scene; device: Device;
             <SceneArt place={scene.place} device={device} steps={steps} at={at} resolverName="dns.splittrust.zivkovic.me" />
           </div>
           {claim && <StageStrip claim={claim} steps={steps} at={at} />}
-          <div className="grid h-56 grid-cols-[1fr_1fr_1.1fr] gap-4 pb-3">
-            <div className={`transition-opacity ${done ? "opacity-100" : "opacity-0"}`}>
-              <BrowserFrame who={`${BETA.name}'s laptop`} url={`http://${scene.betaName}/`} l={beta?.naive ?? null} tone="beta" />
+          {evidence ? (
+            <div className="h-64 pb-3">
+              <DigPanel leftTitle={`Beta's laptop asks the network's resolver (${scene.betaDNS})`} left={beta?.naive ?? null}
+                rightTitle={`Alfa's ${device === "private-dns" ? "phone" : "laptop"} asks the SplitTrust proxy (172.30.97.60)`} right={alfa?.device ?? null} />
             </div>
-            <div className={`transition-opacity ${done ? "opacity-100" : "opacity-0"}`}>
-              <BrowserFrame who={`${ALFA.name}'s ${device === "private-dns" ? "phone" : "laptop"}`} url={`${phoneOff ? "https" : "http"}://${alfaName}/`} l={alfa?.device ?? null} tone="alfa" />
+          ) : (
+            <div className="grid h-56 grid-cols-[1fr_1fr_1.2fr] gap-4 pb-3">
+              <div className={`transition-opacity ${done ? "opacity-100" : "opacity-0"}`}>
+                <BrowserFrame who={`${BETA.name}'s laptop`} url={`http://${scene.betaName}/`} l={beta?.naive ?? null} tone="beta" />
+              </div>
+              <div className={`transition-opacity ${done ? "opacity-100" : "opacity-0"}`}>
+                <BrowserFrame who={`${ALFA.name}'s ${device === "private-dns" ? "phone" : "laptop"}`} url={`${phoneOff ? "https" : "http"}://${alfaName}/`} l={alfa?.device ?? null} tone="alfa" />
+              </div>
+              <ProxyDecisions since={runAt} />
             </div>
-            {evidence
-              ? <Terminal title={`Alfa's lookup through the proxy, then Beta's (${scene.betaDNS})`}><Dig l={alfa?.device ?? null} />{"\n"}<Dig l={beta?.naive ?? null} /></Terminal>
-              : <Terminal title="splittrust proxy, live log (client container's DNS server)"><ProxyLog since={runAt} /></Terminal>}
-          </div>
+          )}
           <AnimatePresence>
             {done && <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="pb-3 text-center text-lg font-medium text-slate-800 lg:text-xl">{scene.takeaway}</motion.p>}
           </AnimatePresence>

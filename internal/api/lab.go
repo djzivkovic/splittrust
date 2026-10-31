@@ -44,7 +44,7 @@ var labTargets = []labTarget{
 	{"intranet", "demo", "nginx: Alfa's intranet", "172.30.97.70:80", "http", "host.internal.splittrust.zivkovic.me", ""},
 	{"beta-intranet", "demo", "nginx: Beta's intranet", "172.30.97.71:80", "http", "intranet.beta.example", ""},
 	{"fake-bank", "demo", "nginx: the hotel's page", "172.30.97.66:80", "http", "www.zivkovic.me", ""},
-	{"public-dns", "testbed", "BIND: private root, lab TLD, 7 signed zones", "172.30.97.10:53", "dns", "", "lab."},
+	{"public-dns", "testbed", "BIND: private root, lab TLD, 7 parent zones (1 unsigned)", "172.30.97.10:53", "dns", "", "lab."},
 	{"hotel-dot :853", "testbed", "CoreDNS: the hotel's honest view (lab scenario)", "172.30.97.21:853", "dot", "dns.hotel.lab", "banka.lab."},
 	{"external", "testbed", "unbound: quad9.lab, the lab's external resolver", "172.30.97.40:853", "dot", "quad9.lab", "lab."},
 	{"bank", "testbed", "nginx: www.banka.lab", "172.30.97.80:80", "http", "www.banka.lab", ""},

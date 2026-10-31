@@ -47,8 +47,8 @@ export const DEVICE_NAMES: Record<string, string> = { "validating-stub": "laptop
 export const REASONS: Record<string, string> = {
   AUTHORIZED: "verified",
   EXTERNAL_TOKEN_MATCH: "verified via Quad9",
-  DNSSEC_BOGUS: "forged, rejected",
-  RECORD_MISSING: "not authorised, rejected",
+  DNSSEC_BOGUS: "DNSSEC validation failed, rejected",
+  RECORD_MISSING: "no verification record, rejected",
   TOKEN_MISMATCH: "wrong record, rejected",
   TLS_IDENTITY_FAILED: "wrong certificate, rejected",
   EXTERNAL_TIMEOUT: "cannot reach Quad9",
