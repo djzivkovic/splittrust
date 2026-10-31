@@ -6,6 +6,7 @@ package verify
 
 import (
 	"context"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"os"
@@ -56,6 +57,12 @@ type PublicFactory func(fwd *validate.Forwarder) (validate.PublicResolver, error
 type DoTConn interface {
 	Query(ctx context.Context, qname string, qtype uint16) (*dns.Msg, error)
 	Close() error
+}
+
+// PeerCertifier is implemented by connections that can report the server
+// certificate they authenticated (evidence for the resolver_tls stage).
+type PeerCertifier interface {
+	PeerCertificate() *x509.Certificate
 }
 
 // DoTDialer dials and authenticates DoT endpoints by name.
@@ -181,7 +188,7 @@ func (v *Verifier) Verify(ctx context.Context, p lab.Profile, inline *claim.RawC
 		}
 		pvdExpires = doc.Expires
 		pvdStage = Stage{ID: "pvd", Status: "pass", Code: "PVD_OK", Message: fmt.Sprintf("%s: %d claim(s), expires %s", p.PvDID, len(doc.Claims), doc.Expires.Format(time.RFC3339)),
-			Evidence: map[string]any{"url": p.PvDURL, "identifier": doc.Identifier, "expires": doc.Expires, "prefixes": doc.Prefixes, "claims": len(doc.Claims)}}
+			Evidence: map[string]any{"url": p.PvDURL, "identifier": doc.Identifier, "expires": doc.Expires, "prefixes": doc.Prefixes, "claims": len(doc.Claims), "document": doc}}
 		claims = doc.Claims
 		if len(claims) == 0 {
 			run.Claims = []ClaimReport{failedClaim(0, "", pvdStage, Stage{ID: "claim", Status: "fail", Code: "PVD_INVALID", Message: "splitDnsClaims is empty"}, "rejected", "PVD_INVALID")}
@@ -314,12 +321,16 @@ func (v *Verifier) verifyClaim(ctx context.Context, p lab.Profile, i int, raw cl
 	if err != nil {
 		var ie *IdentityError
 		if errors.As(err, &ie) {
-			return reject("resolver_tls", "TLS_IDENTITY_FAILED", fmt.Sprintf("the resolver at %s does not hold a certificate for %s: %v — the claim's expected token %s was never looked up", announced.Addr, c.Resolver, ie.Err, ins.Token), map[string]any{"addr": announced.Addr, "server_name": c.Resolver, "expected_token": ins.Token})
+			return reject("resolver_tls", "TLS_IDENTITY_FAILED", fmt.Sprintf("the resolver at %s does not hold a certificate for %s: %v; the claim's expected token %s was never looked up", announced.Addr, c.Resolver, ie.Err, ins.Token), map[string]any{"addr": announced.Addr, "server_name": strings.TrimSuffix(c.Resolver, "."), "expected_token": ins.Token, "certificate": dot.CertSummary(ie.Peer)})
 		}
 		return indeterminate("resolver_tls", "RESOLVER_UNREACHABLE", fmt.Sprintf("cannot reach the resolver at %s: %v", announced.Addr, err), map[string]any{"addr": announced.Addr})
 	}
 	defer conn.Close()
-	tr.add(Stage{ID: "resolver_tls", Status: "pass", Code: "TLS_IDENTITY_OK", Message: fmt.Sprintf("%s authenticated as %s over DoT", announced.Addr, c.Resolver), Evidence: map[string]any{"addr": announced.Addr, "server_name": c.Resolver}})
+	tlsEv := map[string]any{"addr": announced.Addr, "server_name": strings.TrimSuffix(c.Resolver, ".")}
+	if pc, ok := conn.(PeerCertifier); ok {
+		tlsEv["certificate"] = dot.CertSummary(pc.PeerCertificate())
+	}
+	tr.add(Stage{ID: "resolver_tls", Status: "pass", Code: "TLS_IDENTITY_OK", Message: fmt.Sprintf("%s authenticated as %s over DoT", announced.Addr, c.Resolver), Evidence: tlsEv})
 
 	// --- public_dnssec (section 6.2) / external_resolver (section 6.1) ------
 	var records []dns.RR
@@ -375,7 +386,7 @@ func (v *Verifier) verifyClaim(ctx context.Context, p lab.Profile, i int, raw cl
 		path = "external"
 		conn, err := v.Deps.DoT.Dial(ctx, p.External.Addr, strings.TrimSuffix(p.External.ADN, "."))
 		if err != nil {
-			return reject("external_resolver", "EXTERNAL_TIMEOUT", fmt.Sprintf("no response from the external resolver %s (%s): %v — RFC 9704 section 6.1: verification MUST be considered failed", p.External.ADN, p.External.Addr, err), map[string]any{"external": p.External})
+			return reject("external_resolver", "EXTERNAL_TIMEOUT", fmt.Sprintf("no response from the external resolver %s (%s): %v; RFC 9704 section 6.1: verification MUST be considered failed", p.External.ADN, p.External.Addr, err), map[string]any{"external": p.External})
 		}
 		msg, err := conn.Query(ctx, ins.RecordOwner, dns.TypeTXT)
 		conn.Close()

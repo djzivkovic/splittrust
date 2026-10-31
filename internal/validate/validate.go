@@ -1,7 +1,7 @@
 // Package validate obtains DNSSEC-validated answers for the client. The device
 // performs "full DNSSEC validation locally" (RFC 9704 section 6.2) with unbound's
-// validator: in-process through libunbound (build tag "libunbound") or, as a
-// decided fallback, through a localhost unbound daemon speaking Extended DNS Errors.
+// validator in-process through libunbound (build tag "libunbound"); without the
+// tag a stub keeps the pure packages buildable and refuses to validate.
 package validate
 
 import (
@@ -69,7 +69,6 @@ type Config struct {
 	RootHintsFile string
 	CAFile        string
 	Forward       *Forwarder
-	DaemonAddr    string // fallback build only
 	Timeout       time.Duration
 }
 

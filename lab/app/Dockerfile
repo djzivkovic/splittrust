@@ -1,5 +1,6 @@
-# SplitTrust engine: CLI + API + console. LIBUNBOUND=1 (default) compiles the
-# in-process libunbound validator (cgo); LIBUNBOUND=0 is the decided fallback.
+# SplitTrust engine: CLI + API + console (React, built in the first stage and
+# embedded into the Go binary). Always compiled with the in-process libunbound
+# validator (cgo, -tags libunbound).
 #
 # Why libunbound is built from source here:
 #   * Debian's libunbound is linked against nettle and has no TLS, so a
@@ -8,6 +9,13 @@
 #   * Alpine's is OpenSSL-backed, but musl's 128 KiB default thread stacks
 #     overflow inside ub_resolve() with TLS (SIGSEGV during cgo execution).
 #   glibc + OpenSSL-backed unbound (pinned release, checksum verified) works.
+FROM node:22-alpine AS webbuild
+WORKDIR /src/web
+COPY web/package.json web/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY web/ ./
+RUN npm run build
+
 FROM golang:1.26-bookworm AS builder
 ARG UNBOUND_VERSION=1.26.1
 ARG UNBOUND_SHA256=35a6dc0e425a9282c3426d9a3043144011bf0534aed4b73ab62c52aee0af1503
@@ -27,12 +35,8 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-ARG LIBUNBOUND=1
-RUN if [ "$LIBUNBOUND" = "1" ]; then \
-  go build -tags libunbound -o /out/splittrust ./cmd/splittrust; \
-  else \
-  CGO_ENABLED=0 go build -o /out/splittrust ./cmd/splittrust; \
-  fi
+COPY --from=webbuild /src/internal/api/web/dist internal/api/web/dist
+RUN go build -tags libunbound -o /out/splittrust ./cmd/splittrust
 
 FROM debian:bookworm-slim AS runtime
 # dns-root-data provides /usr/share/dns/root.key, the IANA root trust anchor used

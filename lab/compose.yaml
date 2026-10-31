@@ -84,11 +84,11 @@ services:
     build:
       context: ..
       dockerfile: lab/app/Dockerfile
-      args:
-        LIBUNBOUND: "1"
     command: ["serve", "--addr", "0.0.0.0:8000"]
     environment:
       SPLITTRUST_PROXY: http://172.30.97.60:8001
+      SPLITTRUST_PROXY_DNS: 172.30.97.60:53
+      SPLITTRUST_NAIVE_DNS: 172.30.97.21:53
     <<: *labgen
     ports:
       - "127.0.0.1:8000:8000"
@@ -124,8 +124,6 @@ services:
     build:
       context: ..
       dockerfile: lab/app/Dockerfile
-      args:
-        LIBUNBOUND: "1"
     command: ["proxy", "--scenario", "legit", "--listen", "0.0.0.0:53", "--control", "0.0.0.0:8001"]
     <<: *labgen
     extra_hosts: *pvdhosts
@@ -176,7 +174,7 @@ services:
     build:
       context: ./web
     environment:
-      SITE_BANNER: "Hello from host.internal.corp.lab - the company intranet (172.30.97.70). You reached me through a resolver the domain owner authorised."
+      SITE_BANNER: "host.internal.corp.lab (172.30.97.70): the company intranet. Reached through the resolver the domain owner authorised."
     networks:
       splitlab:
         ipv4_address: 172.30.97.70
@@ -185,7 +183,7 @@ services:
     build:
       context: ./web
     environment:
-      SITE_BANNER: "REAL www.banka.lab (172.30.97.80). Your money is where you left it."
+      SITE_BANNER: "www.banka.lab (172.30.97.80): the real bank."
     networks:
       splitlab:
         ipv4_address: 172.30.97.80
@@ -194,7 +192,7 @@ services:
     build:
       context: ./web
     environment:
-      SITE_BANNER: "FAKE www.banka.lab served by the hotel (172.30.97.66). Please enter your password :)"
+      SITE_BANNER: "FAKE www.banka.lab (172.30.97.66): a copy of the bank served by the hotel resolver. A real attacker would collect your login here."
     networks:
       splitlab:
         ipv4_address: 172.30.97.66
@@ -208,8 +206,6 @@ services:
     build:
       context: ..
       dockerfile: lab/app/Dockerfile
-      args:
-        LIBUNBOUND: "1"
     <<: *labgen
     depends_on:
       bootstrap:

@@ -6,7 +6,7 @@ drift from the engine. Every expected value was first produced independently wit
 
 | File | Contents |
 |---|---|
-| `encoding.json` | Verification Token vectors: the RFC §5.1 claim with the printed salt and with the draft-07 salt, canonical vs alphabetical order, case folding, the `*` whole-zone marker, IDN A-labels, SHA-512, empty salt — plus the forensic reconstruction of the token printed in the RFC |
+| `encoding.json` | Verification Token vectors: the RFC §5.1 claim with the printed salt and with the draft-07 salt, canonical vs alphabetical order, case folding, the `*` whole-zone marker, IDN A-labels, SHA-512, empty salt, plus the forensic reconstruction of the token printed in the RFC |
 | `txt.json` | Verification Record TXT parsing: character-string concatenation within one RR, duplicate token, 47-octet token, missing token |
 | `dhcp.json` | RFC 9704 §5.2.1 DHCP Authentication option payloads (protocol 4), including a claim that needs RFC 3396 splitting |
 | `pvd.json` | RFC 8801 documents carrying `splitDnsClaims`: valid, two claims, missing mandatory key, expired, wrong identifier |

@@ -75,7 +75,7 @@ func Make(req Request) (Build, error) {
 	published.Algorithm = c.Algorithm
 	published.Salt = base64.RawURLEncoding.EncodeToString(c.Salt)
 	warnings := append([]string{}, ins.Warnings...)
-	warnings = append(warnings, "signing_state=not_checked: this tool did not look up whether "+c.Parent+" is DNSSEC-signed; an unsigned zone can only be verified through a device's external encrypted resolver (RFC 9704 section 6.1) — sign the zone")
+	warnings = append(warnings, "signing_state=not_checked: this tool did not look up whether "+c.Parent+" is DNSSEC-signed; an unsigned zone can only be verified through a device's external encrypted resolver (RFC 9704 section 6.1); sign the zone")
 	txt := txtrec.Format(ins.Token, req.DS)
 	return Build{
 		Claim:        published,

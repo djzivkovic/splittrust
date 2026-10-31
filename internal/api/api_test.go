@@ -108,16 +108,20 @@ func TestInspectAndBuild(t *testing.T) {
 	if rec.Code != http.StatusOK || !bytes.Contains(rec.Body.Bytes(), []byte(`"signing_state": "not_checked"`)) {
 		t.Fatalf("build: %d %s", rec.Code, rec.Body)
 	}
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	w := httptest.NewRecorder()
-	h.ServeHTTP(w, req)
-	if w.Code != http.StatusOK || !bytes.Contains(w.Body.Bytes(), []byte("LAB TRUST CONTEXT")) {
-		t.Fatalf("console page: %d", w.Code)
+	for _, p := range []string{"/", "/live", "/about/anything"} { // SPA routes fall back to index.html
+		req := httptest.NewRequest(http.MethodGet, p, nil)
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, req)
+		if w.Code != http.StatusOK || !bytes.Contains(w.Body.Bytes(), []byte("SplitTrust")) {
+			t.Fatalf("console page %s: %d", p, w.Code)
+		}
 	}
-	req = httptest.NewRequest(http.MethodGet, "/api/nothing", nil)
-	w = httptest.NewRecorder()
-	h.ServeHTTP(w, req)
-	if w.Code != http.StatusNotFound || bytes.Contains(w.Body.Bytes(), []byte("<html")) {
-		t.Fatalf("api 404 must not return the console: %d", w.Code)
+	for _, p := range []string{"/api/nothing", "/missing.js"} {
+		req := httptest.NewRequest(http.MethodGet, p, nil)
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, req)
+		if w.Code != http.StatusNotFound || bytes.Contains(w.Body.Bytes(), []byte("<html")) {
+			t.Fatalf("%s must be a plain 404, got %d", p, w.Code)
+		}
 	}
 }

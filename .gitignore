@@ -6,3 +6,5 @@
 *.private
 *.test
 *.out
+/web/node_modules/
+/web/tsconfig.tsbuildinfo

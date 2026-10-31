@@ -12,6 +12,7 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"path"
 	"strings"
 	"time"
 
@@ -23,7 +24,7 @@ import (
 	"github.com/djzivkovic/splittrust/internal/verify"
 )
 
-//go:embed web
+//go:embed web/dist
 var webFS embed.FS
 
 // MaxBody is the request body limit.
@@ -39,19 +40,22 @@ type Service interface {
 
 type handler struct {
 	svc      Service
-	proxyURL string // control endpoint of the lab's DNS proxy, "" when absent
+	proxyURL string   // control endpoint of the lab's DNS proxy, "" when absent
+	browser  *Browser // in-lab page fetcher for the "now browse" panel, nil when absent
 }
 
 // NewHandler builds the HTTP handler: /api/* plus the console at /.
-func NewHandler(svc Service) http.Handler { return NewHandlerWithProxy(svc, "") }
+func NewHandler(svc Service) http.Handler { return NewHandlerWithProxy(svc, "", nil) }
 
 // NewHandlerWithProxy also exposes the lab DNS proxy's control API under
-// /api/client/* so the console can move the simulated client between networks.
-func NewHandlerWithProxy(svc Service, proxyURL string) http.Handler {
-	h := &handler{svc: svc, proxyURL: strings.TrimSuffix(proxyURL, "/")}
+// /api/client/* (so the console can move the simulated client between
+// networks) and, with a Browser, POST /api/browse.
+func NewHandlerWithProxy(svc Service, proxyURL string, browser *Browser) http.Handler {
+	h := &handler{svc: svc, proxyURL: strings.TrimSuffix(proxyURL, "/"), browser: browser}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/client/status", h.clientStatus)
 	mux.HandleFunc("POST /api/client/join", h.clientJoin)
+	mux.HandleFunc("POST /api/browse", h.browse)
 	mux.HandleFunc("GET /api/health", h.health)
 	mux.HandleFunc("GET /api/capabilities", h.capabilities)
 	mux.HandleFunc("GET /api/scenarios", h.scenarios)
@@ -60,9 +64,33 @@ func NewHandlerWithProxy(svc Service, proxyURL string) http.Handler {
 	mux.HandleFunc("POST /api/resolve", h.resolve)
 	mux.HandleFunc("POST /api/records/build", h.build)
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) { writeError(w, http.StatusNotFound, "no such API route") })
-	sub, _ := fs.Sub(webFS, "web")
-	mux.Handle("/", http.FileServer(http.FS(sub)))
+	sub, _ := fs.Sub(webFS, "web/dist")
+	mux.Handle("/", spaHandler(sub))
 	return mux
+}
+
+// spaHandler serves the built console; unknown paths without a file extension
+// fall back to index.html so the client-side router owns them.
+func spaHandler(files fs.FS) http.Handler {
+	static := http.FileServer(http.FS(files))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p := strings.TrimPrefix(r.URL.Path, "/")
+		if p == "" {
+			p = "index.html"
+		}
+		if f, err := files.Open(p); err == nil {
+			f.Close()
+			static.ServeHTTP(w, r)
+			return
+		}
+		if strings.Contains(path.Base(p), ".") {
+			http.NotFound(w, r)
+			return
+		}
+		r2 := r.Clone(r.Context())
+		r2.URL.Path = "/"
+		static.ServeHTTP(w, r2)
+	})
 }
 
 type apiError struct {
