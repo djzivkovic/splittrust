@@ -25,12 +25,20 @@ type Browser struct {
 	Namespaces []string
 }
 
-// BrowserFromEnv reads SPLITTRUST_PROXY_DNS / SPLITTRUST_NAIVE_DNS.
-func BrowserFromEnv() *Browser {
-	b := &Browser{ProxyDNS: os.Getenv("SPLITTRUST_PROXY_DNS"), NaiveDNS: os.Getenv("SPLITTRUST_NAIVE_DNS"), Namespaces: []string{"lab.", "arpa."}}
+// BrowserFromEnv reads SPLITTRUST_PROXY_DNS / SPLITTRUST_NAIVE_DNS; namespaces
+// are the union of the manifest's permitted namespaces.
+func BrowserFromEnv(namespaces []string) *Browser {
+	b := &Browser{ProxyDNS: os.Getenv("SPLITTRUST_PROXY_DNS"), NaiveDNS: os.Getenv("SPLITTRUST_NAIVE_DNS"), Namespaces: namespaces}
 	if b.ProxyDNS == "" && b.NaiveDNS == "" {
 		return nil
 	}
+	if len(b.Namespaces) == 0 {
+		b.Namespaces = []string{"lab.", "arpa."}
+	}
+	// Company Beta (the company that did not adopt RFC 9704) lives under the
+	// reserved documentation TLD "example." (RFC 2606); it has no scenario of its
+	// own because it never verifies anything.
+	b.Namespaces = append(b.Namespaces, "example.")
 	return b
 }
 
@@ -42,6 +50,7 @@ type Lookup struct {
 	Answers   []string `json:"answers"`
 	EDE       string   `json:"ede,omitempty"`
 	Page      string   `json:"page,omitempty"`
+	PageURL   string   `json:"page_url,omitempty"`
 	PageError string   `json:"page_error,omitempty"`
 	Error     string   `json:"error,omitempty"`
 	Millis    int64    `json:"millis"`
@@ -54,8 +63,11 @@ type BrowseResult struct {
 	Naive  *Lookup `json:"naive,omitempty"`
 }
 
-// Browse resolves and fetches name through both paths.
-func (b *Browser) Browse(ctx context.Context, name string, withNaive bool) (BrowseResult, error) {
+// Browse resolves and fetches name through both paths. naiveDNS overrides the
+// resolver of the device without SplitTrust (a lab address on port 53), so the
+// comparison can use the office resolver on the office scene and the hotel's on
+// the hotel scene.
+func (b *Browser) Browse(ctx context.Context, name string, withNaive bool, naiveDNS string) (BrowseResult, error) {
 	qname := dns.Fqdn(strings.ToLower(strings.TrimSpace(name)))
 	if _, ok := dns.IsDomainName(qname); !ok {
 		return BrowseResult{}, fmt.Errorf("not a domain name")
@@ -65,8 +77,16 @@ func (b *Browser) Browse(ctx context.Context, name string, withNaive bool) (Brow
 	}
 	res := BrowseResult{Name: strings.TrimSuffix(qname, ".")}
 	res.Device = b.lookupAndFetch(ctx, b.ProxyDNS, "SplitTrust proxy "+b.ProxyDNS, qname)
-	if withNaive && b.NaiveDNS != "" {
-		n := b.lookupAndFetch(ctx, b.NaiveDNS, "the network's plain DNS "+b.NaiveDNS, qname)
+	naive := b.NaiveDNS
+	if naiveDNS != "" {
+		host, port, err := net.SplitHostPort(naiveDNS)
+		if err != nil || port != "53" || !labIP(host) {
+			return BrowseResult{}, fmt.Errorf("naive_dns must be a lab resolver address on port 53")
+		}
+		naive = naiveDNS
+	}
+	if withNaive && naive != "" {
+		n := b.lookupAndFetch(ctx, naive, "the network's plain DNS "+naive, qname)
 		res.Naive = &n
 	}
 	return res, nil
@@ -106,13 +126,65 @@ func (b *Browser) lookupAndFetch(ctx context.Context, server, via, qname string)
 	if len(l.Answers) == 0 {
 		return l
 	}
-	l.Page, l.PageError = fetchPage(ctx, l.Answers[0], strings.TrimSuffix(qname, "."))
+	l.Page, l.PageURL, l.PageError = fetchPage(ctx, l.Answers[0], strings.TrimSuffix(qname, "."))
 	return l
 }
 
-// fetchPage GETs http://ip/ with the Host header set to name and returns the
-// body (lab pages are one line of text), capped.
-func fetchPage(ctx context.Context, ip, host string) (string, string) {
+// labIP reports whether an address belongs to the lab (172.30.97.0/24).
+func labIP(ip string) bool { return strings.HasPrefix(ip, "172.30.97.") }
+
+// fetchPage follows the answer: a lab address serves one line of text over
+// plain HTTP (fetched by IP with the Host header); a real address is fetched
+// over HTTPS by name and summarised as status, server header and title, so the
+// screen shows that the device reached the real site.
+func fetchPage(ctx context.Context, ip, host string) (page, url, errText string) {
+	if !labIP(ip) {
+		return fetchReal(ctx, host)
+	}
+	page, errText = fetchLab(ctx, ip, host)
+	return page, "http://" + host + "/", errText
+}
+
+func fetchReal(ctx context.Context, host string) (string, string, string) {
+	url := "https://" + host + "/"
+	client := &http.Client{Timeout: 8 * time.Second, CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		if len(via) >= 3 {
+			return fmt.Errorf("too many redirects")
+		}
+		return nil
+	}}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", url, err.Error()
+	}
+	req.Header.Set("User-Agent", "SplitTrust-lab/0.2")
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", url, err.Error()
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
+	title := ""
+	if i := strings.Index(strings.ToLower(string(body)), "<title>"); i >= 0 {
+		rest := string(body)[i+7:]
+		if j := strings.Index(strings.ToLower(rest), "</title>"); j >= 0 {
+			title = strings.TrimSpace(rest[:j])
+		}
+	}
+	parts := []string{fmt.Sprintf("HTTP %d", resp.StatusCode)}
+	if srv := resp.Header.Get("Server"); srv != "" {
+		parts = append(parts, "server: "+srv)
+	}
+	if title != "" {
+		parts = append(parts, "title: "+title)
+	}
+	if resp.Request != nil && resp.Request.URL.String() != url {
+		parts = append(parts, "final URL: "+resp.Request.URL.String())
+	}
+	return strings.Join(parts, "; "), url, ""
+}
+
+func fetchLab(ctx context.Context, ip, host string) (string, string) {
 	client := &http.Client{Timeout: 5 * time.Second, Transport: &http.Transport{
 		DialContext:       (&net.Dialer{Timeout: 3 * time.Second}).DialContext,
 		DisableKeepAlives: true,
@@ -142,6 +214,7 @@ func (h *handler) browse(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Name      string `json:"name"`
 		WithNaive *bool  `json:"with_naive"`
+		NaiveDNS  string `json:"naive_dns"`
 	}
 	if !decode(w, r, &req) {
 		return
@@ -153,7 +226,7 @@ func (h *handler) browse(w http.ResponseWriter, r *http.Request) {
 	withNaive := req.WithNaive == nil || *req.WithNaive
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
-	res, err := h.browser.Browse(ctx, req.Name, withNaive)
+	res, err := h.browser.Browse(ctx, req.Name, withNaive, req.NaiveDNS)
 	if err != nil {
 		writeError(w, http.StatusUnprocessableEntity, err.Error())
 		return

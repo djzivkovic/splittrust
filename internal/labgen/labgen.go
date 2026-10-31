@@ -75,6 +75,7 @@ func Generate(outDir string, now time.Time) error {
 	gens := map[string][]generated{}  // scenario id -> claims
 	txtLines := map[string][]string{} // parent zone -> TXT RR lines (relative owner)
 	localZones := map[string]bool{}
+	hotelViews := map[string]bool{}
 	summary := &strings.Builder{}
 	fmt.Fprintf(summary, "SplitTrust lab generated %s\nlocal KSK tag %d  DS(resolver.arpa.) %s\nwrong DS %s\n\n", now.Format(time.RFC3339), ksk.KeyTag(), localDS, wrongDS)
 
@@ -105,7 +106,7 @@ func Generate(outDir string, now time.Time) error {
 				g.raw.Subdomains = g.canon.Relative // PvD form: relative, canonical order
 				g.token, _, _ = claim.Token(g.canon)
 
-				if !g.canon.SpecialUse && sc.TrustContext != "global" {
+				if !g.canon.SpecialUse {
 					recordToken := g.token
 					if spec.RecordSalt == "other" {
 						other := g.canon
@@ -120,12 +121,15 @@ func Generate(outDir string, now time.Time) error {
 					case "wrong":
 						ds = []string{wrongDS}
 					}
-					if sc.ID != "hotel" && sc.ID != "hotel-forged" && sc.ID != "hotel-blocks-external" {
+					// Verification Records go into the lab's parent zones, except for the
+					// hotel (never authorised) and real zones (the record lives at the registrar).
+					hostile := strings.HasPrefix(spec.Resolver, "dns.hotel.")
+					if !hostile && sc.TrustContext != "global" {
 						owner := strings.TrimSuffix(claim.RecordOwner(g.canon.Resolver, g.canon.Parent), "."+g.canon.Parent)
 						txtLines[g.canon.Parent] = append(txtLines[g.canon.Parent], fmt.Sprintf("%s %d IN TXT \"%s\"", owner, TTL, txtrec.Format(recordToken, ds)))
 					}
-					// Split-view child zones served by the local resolver.
-					if !g.canon.WholeZone {
+					// Split-view child zones served by the local resolver (not for the hotel's claims).
+					if !g.canon.WholeZone && !hostile {
 						for _, scope := range g.canon.Scopes {
 							if !localZones[scope] {
 								localZones[scope] = true
@@ -219,19 +223,59 @@ func Generate(outDir string, now time.Time) error {
 		return err
 	}
 
-	// Hotel views: honest (hosts override) and forging (fake banka.lab with the correct token).
-	hotelToken := gens["hotel"][0].token
+	// Hotel views: an honest hosts override, and a forged copy of every zone the
+	// hotel claims (banka.lab in the lab, zivkovic.me on the real Internet) plus
+	// the zones of companies that never verify (forged_zones). A forged zone
+	// answers every name with the hotel's address and, where the hotel made a
+	// claim, carries a Verification Record with the correct token for it.
 	hijack := cat.Addresses["hijack_target"]
-	if err := os.WriteFile(filepath.Join(outDir, "hotel-dot", "hosts"), []byte(hijack+" www.banka.lab\n"), 0o644); err != nil {
+	var hosts strings.Builder
+	forged := func(parent string, token string, resolver string) error {
+		if hotelViews[parent] {
+			return nil
+		}
+		hotelViews[parent] = true
+		fmt.Fprintf(&hosts, "%s www.%s\n", hijack, strings.TrimSuffix(parent, ".")) // only www: a hosts entry for the apex would also swallow its DS query
+		fake := []dns.RR{
+			soa(parent, "dns.hotel.lab."),
+			&dns.NS{Hdr: hdr(parent, dns.TypeNS), Ns: "dns.hotel.lab."},
+			&dns.A{Hdr: hdr(parent, dns.TypeA), A: parseIP(hijack)},
+			&dns.A{Hdr: hdr("*."+parent, dns.TypeA), A: parseIP(hijack)},
+		}
+		if token != "" {
+			fake = append(fake, &dns.TXT{Hdr: hdr(claim.RecordOwner(resolver, parent), dns.TypeTXT), Txt: []string{txtrec.Format(token, nil)}})
+		}
+		return writeZone(filepath.Join(outDir, "hotel-dot", strings.TrimSuffix(parent, ".")+".fake"), fake)
+	}
+	for _, sc := range cat.Scenarios {
+		for i, spec := range sc.Claims {
+			if !strings.HasPrefix(spec.Resolver, "dns.hotel.") || i >= len(gens[sc.ID]) {
+				continue
+			}
+			g := gens[sc.ID][i]
+			if err := forged(g.canon.Parent, g.token, g.canon.Resolver); err != nil {
+				return err
+			}
+		}
+	}
+	for _, z := range cat.ForgedZones {
+		if err := forged(dns.Fqdn(strings.ToLower(z)), "", ""); err != nil {
+			return err
+		}
+	}
+	if err := os.WriteFile(filepath.Join(outDir, "hotel-dot", "hosts"), []byte(hosts.String()), 0o644); err != nil {
 		return err
 	}
-	fake := []dns.RR{
-		soa("banka.lab.", "dns.hotel.lab."),
-		&dns.NS{Hdr: hdr("banka.lab.", dns.TypeNS), Ns: "dns.hotel.lab."},
-		&dns.A{Hdr: hdr("www.banka.lab.", dns.TypeA), A: parseIP(hijack)},
-		&dns.TXT{Hdr: hdr("dns.hotel.lab._splitdns-challenge.banka.lab.", dns.TypeTXT), Txt: []string{txtrec.Format(hotelToken, nil)}},
+
+	// Company Beta never adopted RFC 9704: an ordinary unsigned internal zone,
+	// served by its office resolver over plain DNS, for the comparison scenes.
+	beta := []dns.RR{
+		soa("beta.example.", "dns.beta.example."),
+		&dns.NS{Hdr: hdr("beta.example.", dns.TypeNS), Ns: "dns.beta.example."},
+		&dns.A{Hdr: hdr("intranet.beta.example.", dns.TypeA), A: parseIP(cat.Addresses["beta_intranet"])},
+		&dns.A{Hdr: hdr("dns.beta.example.", dns.TypeA), A: parseIP(cat.Addresses["local_dot"])},
 	}
-	if err := writeZone(filepath.Join(outDir, "hotel-dot", "banka.lab.fake"), fake); err != nil {
+	if err := writeZone(filepath.Join(outDir, "local-dot", "beta.example.zone"), beta); err != nil {
 		return err
 	}
 

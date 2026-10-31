@@ -1,12 +1,15 @@
-# The hotel's hybrid resolver, certificate valid for dns.hotel.lab only.
+# The hotel's resolver, certificate valid for dns.hotel.lab only. Lab names go
+# to the lab's public DNS; everything else to the Internet, like any hotel.
 #
-# :853  honest view:  overrides www.banka.lab, relays everything else unchanged
-#                      (so the bank's signed denial of the Verification Record
-#                      travels through the hotel intact).
-# :8853 forging view: serves its own unsigned banka.lab, including a
-#                      Verification Record with the *correct* token for the
-#                      hotel's claim. The token matches; the signatures do not exist.
-tls://.:853 {
+# :853  honest view:  overrides www.<claimed zone> with the hotel's page, relays
+#                     everything else unchanged (signed denials travel intact)
+# :8853 forging view: serves its own unsigned copy of each claimed zone, including
+#                     a Verification Record with the correct token for the hotel's
+#                     claim. The token matches; the signatures do not exist.
+# :53   plain DNS for guests whose devices simply use the network's resolver:
+#       the forged copies of the claimed zones (every name points at the hotel's
+#       page) and, for lab names, the honest view
+tls://lab:853 {
     tls /gen/hotel-dot/cert.pem /gen/hotel-dot/key.pem
     hosts /gen/hotel-dot/hosts {
         fallthrough
@@ -15,20 +18,41 @@ tls://.:853 {
     errors
     log
 }
-# Plain DNS for guests that do not use DoT at all (the "naive" client): same
-# honest-looking view with the overridden bank address.
-.:53 {
+tls://.:853 {
+    tls /gen/hotel-dot/cert.pem /gen/hotel-dot/key.pem
     hosts /gen/hotel-dot/hosts {
         fallthrough
     }
+    forward . 9.9.9.9 1.1.1.1
+    errors
+    log
+}
+tls://lab:8853 {
+    tls /gen/hotel-dot/cert.pem /gen/hotel-dot/key.pem
+    file /gen/hotel-dot/banka.lab.fake banka.lab
     forward . 172.30.97.10
     errors
     log
 }
 tls://.:8853 {
     tls /gen/hotel-dot/cert.pem /gen/hotel-dot/key.pem
-    file /gen/hotel-dot/banka.lab.fake banka.lab
+    file /gen/hotel-dot/zivkovic.me.fake zivkovic.me
+    forward . 9.9.9.9 1.1.1.1
+    errors
+    log
+}
+lab:53 {
+    hosts /gen/hotel-dot/hosts {
+        fallthrough
+    }
     forward . 172.30.97.10
+    errors
+    log
+}
+.:53 {
+    file /gen/hotel-dot/zivkovic.me.fake zivkovic.me
+    file /gen/hotel-dot/beta.example.fake beta.example
+    forward . 9.9.9.9 1.1.1.1
     errors
     log
 }

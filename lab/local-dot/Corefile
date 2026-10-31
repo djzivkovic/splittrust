@@ -1,8 +1,8 @@
-# Hybrid resolver of the legitimate networks (RFC 9704 section 1): authoritative
-# for the split-view zones it was authorised for, forwarding everything else to
-# the lab's public DNS. Reached only over DNS-over-TLS; the certificate carries
-# every legitimate ADN as a SAN.
-tls://.:853 {
+# The company's hybrid resolver (RFC 9704 section 1): authoritative for the
+# split-horizon zones it was authorised for, forwarding lab names to the lab's
+# public DNS and everything else to the Internet, like a real office resolver.
+# Reached only over DNS-over-TLS; the certificate carries every ADN as a SAN.
+tls://lab:853 {
     tls /gen/local-dot/cert.pem /gen/local-dot/key.pem
     file /gen/local-dot/internal.corp.lab.zone internal.corp.lab
     file /gen/local-dot/mail.corp.lab.zone mail.corp.lab
@@ -10,8 +10,35 @@ tls://.:853 {
     file /gen/local-dot/internal.expired.lab.zone internal.expired.lab
     file /gen/local-dot/internal.unsigned.lab.zone internal.unsigned.lab
     file /gen/local-dot/internal.wrongds.lab.zone internal.wrongds.lab
+    forward . 172.30.97.10
+    errors
+    log
+}
+tls://arpa:853 {
+    tls /gen/local-dot/cert.pem /gen/local-dot/key.pem
     file /gen/local-dot/resolver.arpa.zone resolver.arpa
     forward . 172.30.97.10
+    errors
+    log
+}
+tls://.:853 {
+    tls /gen/local-dot/cert.pem /gen/local-dot/key.pem
+    file /gen/local-dot/internal.splittrust.zivkovic.me.zone internal.splittrust.zivkovic.me
+    forward . 9.9.9.9 1.1.1.1
+    errors
+    log
+}
+# Company Beta's office resolver: plain DNS, no DNSSEC, no claims, nothing to
+# verify. Serves Beta's internal zone and relays everything else, like most
+# office resolvers today.
+lab:53 {
+    forward . 172.30.97.10
+    errors
+    log
+}
+.:53 {
+    file /gen/local-dot/beta.example.zone beta.example
+    forward . 9.9.9.9 1.1.1.1
     errors
     log
 }

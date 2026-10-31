@@ -7,8 +7,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -31,10 +33,22 @@ func loadEngine(t *testing.T) *engine.Engine {
 	return e
 }
 
+// hasInternet reports whether the real-DNS scenarios can run from here.
+func hasInternet() bool {
+	c, err := net.DialTimeout("tcp", "9.9.9.9:853", 3*time.Second)
+	if err != nil {
+		return false
+	}
+	c.Close()
+	return true
+}
+
 // Every scenario, for every device the demo lists, in catalogue order and in
 // reverse: verdicts must equal the expected table and never depend on order.
+// The real-DNS scenarios run when the test container has Internet access.
 func TestAllScenariosForwardAndReverse(t *testing.T) {
 	e := loadEngine(t)
+	online := hasInternet()
 	order := e.Manifest.Order
 	reverse := make([]string, len(order))
 	for i, id := range order {
@@ -43,8 +57,9 @@ func TestAllScenariosForwardAndReverse(t *testing.T) {
 	for pass, ids := range [][]string{order, reverse} {
 		for _, id := range ids {
 			p := e.Manifest.Profiles[id]
-			if p.RequiresInternet {
-				continue // real-DNS scenario: runs only in the egress-enabled "real" service
+			if p.RequiresInternet && !online {
+				t.Logf("skipping %s: no Internet access from the test container", id)
+				continue
 			}
 			for _, exp := range p.Expected {
 				name := fmt.Sprintf("pass%d/%s/%s", pass, id, exp.Device)
@@ -84,9 +99,10 @@ func TestAPIParity(t *testing.T) {
 	if _, err := client.Get(base + "/api/health"); err != nil {
 		t.Skipf("app not reachable at %s: %v", base, err)
 	}
+	online := hasInternet()
 	for _, id := range e.Manifest.Order {
 		p := e.Manifest.Profiles[id]
-		if p.RequiresInternet {
+		if p.RequiresInternet && !online {
 			continue
 		}
 		want, err := e.Verify(context.Background(), id, nil, verify.Options{Device: verify.Device(p.DefaultDevice)})
@@ -103,7 +119,7 @@ func TestAPIParity(t *testing.T) {
 			t.Fatal(err)
 		}
 		resp.Body.Close()
-		if resp.StatusCode != 200 || got.Decision != want.Decision || got.TrustContext != "lab" || len(got.Claims) != len(want.Claims) {
+		if resp.StatusCode != 200 || got.Decision != want.Decision || got.TrustContext != want.TrustContext || len(got.Claims) != len(want.Claims) {
 			t.Errorf("%s: api %d %s vs engine %s", id, resp.StatusCode, got.Decision, want.Decision)
 			continue
 		}
@@ -226,5 +242,34 @@ func TestProxyFrontDoor(t *testing.T) {
 	}
 	if a, ok := r.Answer[0].(*dns.A); !ok || a.A.String() != "172.30.97.80" {
 		t.Errorf("private-dns device must get the real bank, got %v", r.Answer)
+	}
+
+	if !hasInternet() {
+		t.Log("no Internet access: skipping the real-domain front door checks")
+		return
+	}
+	// The real domain: the office claim is authorised by the real zivkovic.me zone;
+	// the hotel's forged copy of it is Bogus for a validating device.
+	join("real-office", "validating-stub")
+	r = ask("host.internal.splittrust.zivkovic.me")
+	if r.Rcode != dns.RcodeSuccess || len(r.Answer) == 0 {
+		t.Fatalf("office intranet host via proxy: rcode=%s", dns.RcodeToString[r.Rcode])
+	}
+	if a, ok := r.Answer[0].(*dns.A); !ok || a.A.String() != "172.30.97.70" {
+		t.Errorf("office intranet host = %v", r.Answer)
+	}
+	join("real-hotel-forged", "validating-stub")
+	if r = ask("www.zivkovic.me"); r.Rcode != dns.RcodeServerFailure {
+		t.Errorf("forged real domain must be SERVFAIL for a validating device, got %s %v", dns.RcodeToString[r.Rcode], r.Answer)
+	}
+	join("real-hotel-forged", "private-dns")
+	r = ask("zivkovic.me") // the apex has A records in the real zone; www does not
+	if r.Rcode != dns.RcodeSuccess || len(r.Answer) == 0 {
+		t.Fatalf("phone via Quad9 on the forging hotel: rcode=%s", dns.RcodeToString[r.Rcode])
+	}
+	for _, rr := range r.Answer {
+		if a, ok := rr.(*dns.A); ok && strings.HasPrefix(a.A.String(), "172.30.97.") {
+			t.Errorf("phone must not get the hotel's address, got %v", r.Answer)
+		}
 	}
 }

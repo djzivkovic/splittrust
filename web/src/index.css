@@ -8,18 +8,7 @@
 html, body, #root { height: 100%; }
 body { @apply bg-slate-100 text-slate-900 antialiased; }
 
-.card { @apply rounded-xl border border-slate-200 bg-white p-5 shadow-sm; }
 .chip { @apply inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold; }
-.chip-green { @apply bg-green-100 text-green-800 ring-1 ring-green-200; }
-.chip-yellow { @apply bg-amber-100 text-amber-800 ring-1 ring-amber-200; }
-.chip-red { @apply bg-red-100 text-red-800 ring-1 ring-red-200; }
-.chip-grey { @apply bg-slate-100 text-slate-700 ring-1 ring-slate-200; }
-.btn { @apply rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50; }
-.btn-primary { @apply bg-blue-700 text-white hover:bg-blue-800; }
-.btn-ghost { @apply border border-slate-300 bg-white text-slate-800 hover:bg-slate-50; }
-.input { @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100; }
+.chip-blue { @apply bg-blue-100 text-blue-800; }
+.chip-grey { @apply bg-slate-200 text-slate-700; }
 .kbd { @apply rounded border border-slate-300 bg-slate-50 px-1.5 font-mono text-[11px] text-slate-600; }
-.step { @apply mb-3 flex items-baseline gap-3; }
-.step-no { @apply rounded-md bg-slate-900 px-2 py-0.5 text-xs font-bold text-white; }
-.step-title { @apply text-lg font-semibold text-slate-900; }
-.step-hint { @apply text-sm text-slate-500; }

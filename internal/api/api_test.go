@@ -36,6 +36,13 @@ func (f *fakeService) Verify(_ context.Context, id string, _ *claim.RawClaim, op
 			Stages: []verify.Stage{{ID: "ds", Status: "fail", Code: "DS_MISMATCH"}}}}}, nil
 }
 
+func (f *fakeService) Live(_ context.Context, id string) (engine.LiveRecord, error) {
+	if id != "wrong-ds" {
+		return engine.LiveRecord{}, engine.ErrUnknownScenario
+	}
+	return engine.LiveRecord{Parent: "wrongds.lab.", Trust: "lab"}, nil
+}
+
 func (f *fakeService) Resolve(_ context.Context, id, qname string, opt verify.Options) (route.Report, error) {
 	f.calls++
 	if id != "wrong-ds" {

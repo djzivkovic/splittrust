@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/miekg/dns"
+
 	"github.com/djzivkovic/splittrust/internal/claim"
 	"github.com/djzivkovic/splittrust/internal/dot"
 	"github.com/djzivkovic/splittrust/internal/lab"
@@ -116,6 +118,68 @@ func (e *Engine) Resolve(ctx context.Context, scenarioID, qname string, opt veri
 	ctx, cancel := context.WithTimeout(ctx, 25*time.Second)
 	defer cancel()
 	return (&route.Resolver{V: v}).Resolve(ctx, p, qname, opt), nil
+}
+
+// LiveRecord is what the public DNS says right now about a scenario's claim:
+// the Verification Record and the parent's DS, resolved iteratively from the
+// profile's trust anchor (the IANA root for real zones). It is the "check it
+// yourself" view: the same data `dig` would show.
+type LiveRecord struct {
+	Parent      string            `json:"parent"`
+	RecordOwner string            `json:"record_owner"`
+	Token       string            `json:"expected_token"`
+	TXT         validate.Evidence `json:"txt"`
+	DS          validate.Evidence `json:"ds"`
+	CheckedAt   time.Time         `json:"checked_at"`
+	Trust       string            `json:"trust_context"`
+}
+
+// Live resolves the scenario's first claim against the public DNS.
+func (e *Engine) Live(ctx context.Context, scenarioID string) (LiveRecord, error) {
+	p, err := e.Profile(scenarioID)
+	if err != nil {
+		return LiveRecord{}, err
+	}
+	v, err := e.Verifier(p)
+	if err != nil {
+		return LiveRecord{}, err
+	}
+	raws, err := v.LoadClaims(ctx, p, nil)
+	if err != nil || len(raws) == 0 {
+		return LiveRecord{}, fmt.Errorf("no claim to look up: %v", err)
+	}
+	ins, err := claim.Inspect(raws[0])
+	if err != nil {
+		return LiveRecord{}, err
+	}
+	pub, err := v.Deps.Public(nil)
+	if err != nil {
+		return LiveRecord{}, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	lr := LiveRecord{Parent: ins.CanonicalParent, RecordOwner: ins.RecordOwner, Token: ins.Token, CheckedAt: time.Now().UTC(), Trust: "lab"}
+	if p.TrustContext != "" {
+		lr.Trust = p.TrustContext
+	}
+	lr.TXT, _ = pub.Resolve(ctx, ins.RecordOwner, dns.TypeTXT)
+	lr.DS, _ = pub.Resolve(ctx, ins.CanonicalParent, dns.TypeDS)
+	return lr, nil
+}
+
+// Namespaces is the union of the profiles' permitted namespaces.
+func (e *Engine) Namespaces() []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, id := range e.Manifest.Order {
+		for _, ns := range e.Manifest.Profiles[id].PermittedNamespaces {
+			if !seen[ns] {
+				seen[ns] = true
+				out = append(out, ns)
+			}
+		}
+	}
+	return out
 }
 
 // Summaries lists the scenarios.

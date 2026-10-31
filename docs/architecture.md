@@ -66,47 +66,50 @@ claim into the TXT line to publish and the canonical claim to announce. Nothing 
 tool. A DHCP codec (`internal/dhcp`) encodes and decodes the RFC 9704 section 5.2.1 Authentication option
 payload; the lab does not send DHCP.
 
-What it is not: it does not intercept the host's DNS, it does not listen for DHCP or Router
-Advertisements (discovery is pre-configured per scenario), and inside the lab every verdict is about a
-private root (`trust_context: "lab"`) except the `real-zivkovic` scenario, which validates our own
-Cloudflare-hosted zone under the IANA root (`trust_context: "global"`).
+What it is not: it does not intercept the host's DNS, and it does not listen for DHCP or Router
+Advertisements (discovery is pre-configured per scenario). Verdicts about the lab's private root carry
+`trust_context: "lab"`; the demo scenes validate our own Cloudflare-hosted zone `zivkovic.me` under the
+IANA root and carry `trust_context: "global"`.
 
 ---
 
 ## 2. The Docker lab
 
-`lab/compose.yaml` starts fifteen services on the isolated bridge network `splitlab` (172.30.97.0/24,
-`internal: true`, no route to the Internet). Two more bridges exist for specific reasons: `console`
-(no NAT) only so the app's port can be published on `127.0.0.1:8000`, and `egress` (ordinary NAT) attached
-only to the `real` profile service.
+`lab/compose.yaml` starts fourteen services. The lab's own DNS lives on the isolated bridge `splitlab`
+(172.30.97.0/24, `internal: true`). The parts that have Internet access in real life also join the
+ordinary bridge `egress`: the office and hotel resolvers, the devices (app, proxy) and the test runner.
+That is what lets the demo validate Alfa's real zone against the real root.
 
 ```
-                                  splitlab 172.30.97.0/24  (internal, no Internet)
+                                  splitlab 172.30.97.0/24 (internal)          egress (Internet)
 
   bootstrap  (one-shot)  writes the shared volume /gen: keys, signed zones, certificates, manifest
       |
       v
   public-dns   .10  BIND 9        the private DNS root "." and TLD "lab", seven parent zones, all signed
                                   except unsigned.lab; expired.lab signed with signatures already expired
-  local-dot    .20  CoreDNS, DoT  the company's hybrid resolver dns.corp.lab (also dns.stale.lab, dns.expired.lab,
-                                  dns.unsigned.lab, dns.wrongds.lab, dns.splittrust.zivkovic.me): authoritative for
-                                  the split-horizon zones internal.*.lab and mail.corp.lab, forwards everything else
-                                  to public-dns; serves DNSKEY resolver.arpa.
-  hotel-dot    .21  CoreDNS       the hotel's resolver dns.hotel.lab, three listeners:
-                                    :853 DoT honest view (overrides www.banka.lab, relays the rest)
-                                    :8853 DoT forging view (its own unsigned banka.lab with a correct-token record)
-                                    :53 plain DNS for guests without SplitTrust
-  pvd          .30  nginx, HTTPS  PvD Additional Information documents, one per network (pvd.corp.lab, pvd.hotel.lab, ...)
+  local-dot    .20  CoreDNS       the office resolvers:                                              yes
+                                    :853 DoT, cert for dns.corp.lab, dns.*.lab and dns.splittrust.zivkovic.me;
+                                         authoritative for internal.*.lab, mail.corp.lab,
+                                         internal.splittrust.zivkovic.me and resolver.arpa.;
+                                         forwards lab. to public-dns, everything else to the Internet
+                                    :53  plain DNS: company Beta's office resolver (beta.example, no DNSSEC)
+  hotel-dot    .21  CoreDNS       the hotel's resolver dns.hotel.lab:                                yes
+                                    :853  DoT honest view (overrides www.<claimed zone>, relays the rest)
+                                    :8853 DoT forging view (own copies of banka.lab and zivkovic.me with a
+                                          correct-token Verification Record; every name -> the hotel's page)
+                                    :53   plain DNS: the forged copies, for guests without SplitTrust
+  pvd          .30  nginx, HTTPS  PvD Additional Information documents, one per network
   external     .40  unbound, DoT  "quad9.lab": a validating recursive resolver over the lab root
-  app          .50  splittrust    `serve`: HTTP API + console on 127.0.0.1:8000 (via the no-NAT "console" bridge)
-  proxy        .60  splittrust    `proxy`: the plain-DNS front door; control API on :8001
-  client       .61  alpine+curl   a plain client; Docker hands it 172.30.97.60 (the proxy) as its DNS server
-  naive        .62  alpine+curl   the same client with the hotel's DNS (172.30.97.21) instead
-  intranet     .70  nginx         the page behind host.internal.corp.lab
-  bank         .80  nginx         the real www.banka.lab
-  fake-bank    .66  nginx         what the hotel points www.banka.lab at
-  test         .51  (profile tools) runs the integration suite against the running lab
-  real         .52  (profile real)  same image as app, also on the "egress" bridge: the only container with Internet
+  app          .50  splittrust    `serve`: HTTP API + console, published on 127.0.0.1:8000            yes
+  proxy        .60  splittrust    `proxy`: the plain-DNS front door; control API on :8001             yes
+  client       .61  alpine+curl   a plain client; Docker hands it the proxy (172.30.97.60) as DNS server
+  naive        .62  alpine+curl   the same client with the hotel's DNS (172.30.97.21)
+  intranet     .70  nginx         Alfa's internal host (host.internal.splittrust.zivkovic.me, host.internal.corp.lab)
+  beta-intranet .71 nginx         Beta's internal host (intranet.beta.example)
+  bank         .80  nginx         the real www.banka.lab of the lab scenarios
+  fake-bank    .66  nginx         the hotel's page: where every forged name points
+  test         .51  (profile tools) runs the integration suite against the running lab              yes
 ```
 
 ### Trust material and how it is generated
@@ -117,23 +120,28 @@ than 20 hours and regenerates when it is missing, stale or `FORCE=1` is set (`do
 starts from scratch). It produces:
 
 - a lab certificate authority and DoT/HTTPS certificates for local-dot, hotel-dot, pvd and external;
-  the client gets `ca.pem`, and `ca-real.pem` (lab CA plus the system bundle) for the real scenario;
-- the DNSSEC hierarchy with BIND tools (`dnssec-keygen`, `dnssec-signzone`): a root KSK that is the
-  client's trust anchor (`trust-anchor.key`), the `lab` zone with DS records for its signed children, and
-  the parent zones; `expired.lab` is signed with `-s now-7200 -e now-3600`; `unsigned.lab` is not signed
-  and has no DS;
+  the client gets `ca.pem`, and `ca-real.pem` (lab CA plus the system bundle) for the real-domain scenes;
+- the DNSSEC hierarchy with BIND tools (`dnssec-keygen`, `dnssec-signzone`): a private root, the `lab`
+  zone with DS records for its signed children, and the parent zones; `expired.lab` is signed with
+  `-s now-7200 -e now-3600`; `unsigned.lab` is not signed and has no DS. The lab device's trust anchor is
+  the `lab.` KSK (not the private root's): the resolvers forward everything outside `lab.` to the real
+  Internet, so a device anchored at the private root would meet the real root's keys and go Bogus. The
+  external resolver `quad9.lab` recurses over the private root and keeps the root KSK;
 - everything the engine itself must produce, via `splittrust lab-init` (`internal/labgen`): a random
   16-octet salt per claim (fixed for the real scenario), the claims, the Verification Record TXT lines
   spliced into the parent zones (`stale-salt` gets a record for a different salt; `wrong-ds` a DS of a
   throw-away key), the PvD documents, the split-horizon child zones signed with one local KSK/ZSK pair
   whose DS is published as `ds=` where the catalogue says so, the `resolver.arpa.` DNSKEY zone, the hotel's
-  forged `banka.lab` view and `hosts` override, and `client/manifest.json`;
+  forged copies of every claimed zone (and of `beta.example`, listed in `forged_zones`), its `hosts`
+  override, Beta's plain `beta.example` zone, and `client/manifest.json`. Real zones get no TXT line: Alfa's
+  record lives at Cloudflare and the claim's salt is fixed in the catalogue so it stays valid;
 - `named.conf`, the CoreDNS Corefiles, the nginx and unbound configurations, copied into the volume so no
   service needs a bind mount (Docker Desktop and Rancher Desktop differ in what they allow).
 
-The scenario catalogue is `internal/lab/scenarios.json`, embedded in the binary: eleven scenarios, each
+The scenario catalogue is `internal/lab/scenarios.json`, embedded in the binary: thirteen scenarios, each
 a network with its announced resolver(s), claim(s), PvD identifier or inline claim file, default device
-and the expected verdict per device. The manifest the app loads is the catalogue plus generated paths.
+and the expected verdict per device. The three `real-*` scenarios carry `trust_context: global` and
+`anchor: iana`; they are the demo. The manifest the app loads is the catalogue plus generated paths.
 
 ### Why the pieces are what they are
 
@@ -144,18 +152,18 @@ and the expected verdict per device. The manifest the app loads is the catalogue
 - libunbound is built from source in the app image (`lab/app/Dockerfile`): Debian's package is linked
   against nettle and cannot do TLS to a forwarder, and Alpine's musl thread stacks overflow inside
   `ub_resolve` with TLS. The pinned release is checksum-verified.
-- The app has no Internet: a published port needs a non-internal network, so it sits on a second bridge
-  with NAT disabled; the `real` service is the one place with egress, and only the `real-zivkovic`
-  scenario uses it.
+- The office and hotel resolvers, the devices and the test runner have Internet because their real
+  counterparts do; the lab's private DNS stays on the internal network. Company Beta needs no scenario:
+  it never verifies anything, so its devices are represented by the `naive` client and the browse API's
+  `naive_dns` parameter (a lab resolver on port 53).
 
 ### Lifecycle commands
 
 ```bash
 docker compose -f lab/compose.yaml up --build -d                          # build images, generate the lab, start
-docker compose -f lab/compose.yaml exec app splittrust verify --scenario hotel-forged
-docker compose -f lab/compose.yaml exec client curl -s http://www.banka.lab    # through the proxy
-docker compose -f lab/compose.yaml exec naive  curl -s http://www.banka.lab    # hotel DNS directly
-docker compose -f lab/compose.yaml --profile real  run --rm real verify --scenario real-zivkovic
+docker compose -f lab/compose.yaml exec app splittrust verify --scenario real-hotel-forged
+docker compose -f lab/compose.yaml exec client curl -s http://host.internal.splittrust.zivkovic.me   # through the proxy
+docker compose -f lab/compose.yaml exec naive  curl -s http://intranet.beta.example                   # hotel DNS directly
 docker compose -f lab/compose.yaml --profile tools run --rm test              # integration suite
 docker compose -f lab/compose.yaml down -v                                    # remove everything, keys included
 ```
@@ -178,7 +186,7 @@ internal/engine       wiring: manifest -> verifier with real dependencies; used 
 internal/api          HTTP API, /api/browse, embedded console    internal/lab      catalogue (scenarios.json) and manifest
 internal/labgen       lab artefacts the engine must generate    internal/owner    the owner's record builder
 internal/vectors      published test vectors and the RFC 5.1 forensics
-web/                  the console (React, Vite, Tailwind, framer-motion), built into internal/api/web/dist
+web/                  the demo deck (React, Vite, Tailwind, framer-motion), built into internal/api/web/dist
 tests/integration     runs inside the lab (compose service "test")
 ```
 
@@ -240,13 +248,18 @@ reports grants and the query count. The `client` container only knows the proxy 
 
 ### Path D: the console and API
 
-`splittrust serve` mounts the API and the built console from the same binary. The API is a thin layer
+`splittrust serve` mounts the API and the built demo deck from the same binary. The deck is deliberately
+small: a title and three scenes, each a drawing that animates the real verification stages (built from the
+report's ordered stages) and two browser frames fed by `/api/browse`. Everything else is CLI and API. The API is a thin layer
 over the engine: strict JSON envelopes (unknown fields are 422, bodies over 16 KiB are 413, unknown
-scenarios 404, rejections are ordinary 200 reports). `POST /api/browse` is the proof endpoint: inside the
-lab it resolves a name through the proxy and, on hotel networks, through the hotel's plain DNS, then
-fetches `http://<ip>/` with the right Host header and returns both results. `/api/client/*` relays to the
-proxy's control API so the console can move the client between networks. The console renders the
-engine's reports and never computes a verdict; its sentences are keyed by the stable reason codes.
+scenarios 404, rejections are ordinary 200 reports). `POST /api/browse` is the proof endpoint: it resolves
+a name through the proxy (Alfa's device) and through a chosen lab resolver on port 53 (`naive_dns`, Beta's
+device), then fetches the page: a lab address over plain HTTP by IP with the Host header, a real address
+over HTTPS by name, summarised as status, server header and title. `POST /api/live` resolves a scenario's
+Verification Record and the parent's DS iteratively from the trust anchor, the "check it yourself" view.
+`/api/client/*` relays to the proxy's control API so the console can move the client between networks.
+The console renders the engine's reports and never computes a verdict; its sentences are keyed by the
+stable reason codes.
 
 ### Tests and what they prove
 
@@ -257,10 +270,11 @@ engine's reports and never computes a verdict; its sentences are keyed by the st
   expiry from RRSIG), scoped routing (label-wise suffix, no calls out of lab), the proxy's decisions, the
   API's envelopes, concurrency of the engine's CA cache, and that `vectors/*.json` are exactly what the
   engine generates.
-- Integration suite (inside the lab, 43 subtests): every scenario and device against the expected
-  table, forward and in reverse; API parity with the running app; resolve paths; the DNSSEC states are
-  real and survive the network's own resolver; the hotel cannot pass as `dns.corp.lab`; a black-holed
-  forwarder times out cleanly; the proxy front door end to end.
+- Integration suite (inside the lab): every scenario and device against the expected table, forward and
+  in reverse, including the real-domain scenes when the test container has Internet; API parity with the
+  running app; resolve paths; the DNSSEC states are real and survive the network's own resolver; the
+  hotel cannot pass as `dns.corp.lab`; a black-holed forwarder times out cleanly; the proxy front door end
+  to end, including Alfa's intranet, the forged real domain and the phone reaching the real site.
 
 ---
 

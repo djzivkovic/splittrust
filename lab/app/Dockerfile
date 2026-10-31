@@ -20,7 +20,7 @@ FROM golang:1.26-bookworm AS builder
 ARG UNBOUND_VERSION=1.26.1
 ARG UNBOUND_SHA256=35a6dc0e425a9282c3426d9a3043144011bf0534aed4b73ab62c52aee0af1503
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends build-essential libssl-dev libexpat1-dev libevent-dev curl ca-certificates \
+  && apt-get install -y --no-install-recommends build-essential libssl-dev libexpat1-dev libevent-dev curl ca-certificates dns-root-data \
   && rm -rf /var/lib/apt/lists/*
 RUN curl -fsSLo /tmp/unbound.tar.gz "https://nlnetlabs.nl/downloads/unbound/unbound-${UNBOUND_VERSION}.tar.gz" \
   && echo "${UNBOUND_SHA256}  /tmp/unbound.tar.gz" | sha256sum -c - \

@@ -63,9 +63,10 @@ type Scenario struct {
 
 // Catalogue is the static part of the lab.
 type Catalogue struct {
-	Network   string            `json:"network"`
-	Addresses map[string]string `json:"addresses"`
-	Scenarios []Scenario        `json:"scenarios"`
+	Network     string            `json:"network"`
+	Addresses   map[string]string `json:"addresses"`
+	ForgedZones []string          `json:"forged_zones,omitempty"` // zones the hotel forges for companies that do not verify (no scenario needed)
+	Scenarios   []Scenario        `json:"scenarios"`
 }
 
 // LoadCatalogue parses the embedded scenarios.json.

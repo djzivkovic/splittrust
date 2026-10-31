@@ -9,9 +9,142 @@
     "blackhole": "172.30.97.99",
     "hijack_target": "172.30.97.66",
     "bank_www": "172.30.97.80",
-    "internal_host": "172.30.97.70"
+    "internal_host": "172.30.97.70",
+    "real_hijack": "172.30.97.66",
+    "beta_intranet": "172.30.97.71"
   },
   "scenarios": [
+    {
+      "trust_context": "global",
+      "anchor": "iana",
+      "external": {
+        "adn": "dns.quad9.net",
+        "addr": "9.9.9.9:853"
+      },
+      "id": "real-office",
+      "title": "Alfa's office Wi-Fi",
+      "explanation": "Company Alfa adopted RFC 9704: its zone zivkovic.me is DNSSEC-signed at Cloudflare and publishes a Verification Record authorising dns.splittrust.zivkovic.me for internal.splittrust.zivkovic.me. Alfa's devices verify the office network's claim against the real DNS before using the office resolver for those names.",
+      "discovery": "dnr",
+      "parent": "zivkovic.me",
+      "network_resolvers": [
+        {
+          "adn": "dns.splittrust.zivkovic.me",
+          "addr": "172.30.97.20:853"
+        }
+      ],
+      "claims": [
+        {
+          "resolver": "dns.splittrust.zivkovic.me",
+          "subdomains": [
+            "internal.splittrust"
+          ],
+          "ds": "none",
+          "salt": "ef3XgSkZTxuXMH18506K5Q"
+        }
+      ],
+      "pvd_id": "pvd.splittrust.zivkovic.me",
+      "default_device": "validating-stub",
+      "example_qname": "host.internal.splittrust.zivkovic.me",
+      "expected": [
+        {
+          "device": "validating-stub",
+          "decision": "accepted",
+          "reason": "AUTHORIZED"
+        },
+        {
+          "device": "private-dns",
+          "decision": "accepted",
+          "reason": "EXTERNAL_TOKEN_MATCH"
+        },
+        {
+          "device": "hybrid",
+          "decision": "accepted",
+          "reason": "AUTHORIZED"
+        }
+      ]
+    },
+    {
+      "trust_context": "global",
+      "anchor": "iana",
+      "external": {
+        "adn": "dns.quad9.net",
+        "addr": "9.9.9.9:853"
+      },
+      "id": "real-hotel-forged",
+      "title": "Hotel Wi-Fi claims Alfa's domain",
+      "explanation": "A hotel network claims all of zivkovic.me and its resolver serves a forged copy of the zone: every name points at the hotel's page and the Verification Record carries the correct token for the hotel's claim. Alfa's device validates against the real DNSSEC chain (root, .me, Cloudflare) and rejects the claim; the hotel cannot produce Cloudflare's signatures.",
+      "discovery": "dnr",
+      "parent": "zivkovic.me",
+      "network_resolvers": [
+        {
+          "adn": "dns.hotel.lab",
+          "addr": "172.30.97.21:8853"
+        }
+      ],
+      "claims": [
+        {
+          "resolver": "dns.hotel.lab",
+          "subdomains": [
+            "*"
+          ],
+          "ds": "none"
+        }
+      ],
+      "pvd_id": "wifi.hotel.lab",
+      "default_device": "validating-stub",
+      "example_qname": "www.zivkovic.me",
+      "expected": [
+        {
+          "device": "validating-stub",
+          "decision": "rejected",
+          "reason": "DNSSEC_BOGUS"
+        },
+        {
+          "device": "private-dns",
+          "decision": "rejected",
+          "reason": "RECORD_MISSING"
+        }
+      ]
+    },
+    {
+      "trust_context": "global",
+      "anchor": "iana",
+      "external": {
+        "adn": "dns.quad9.net",
+        "addr": "9.9.9.9:853"
+      },
+      "id": "real-replay",
+      "title": "Hotel replays Alfa's claim",
+      "explanation": "The hotel copies Alfa's real claim word for word and announces its own resolver under Alfa's resolver name. The certificate is for dns.hotel.lab, so TLS identity fails before any DNS query.",
+      "discovery": "dnr",
+      "parent": "zivkovic.me",
+      "network_resolvers": [
+        {
+          "adn": "dns.splittrust.zivkovic.me",
+          "addr": "172.30.97.21:853"
+        }
+      ],
+      "claims": [
+        {
+          "resolver": "dns.splittrust.zivkovic.me",
+          "subdomains": [
+            "internal.splittrust"
+          ],
+          "ds": "none",
+          "salt": "ef3XgSkZTxuXMH18506K5Q"
+        }
+      ],
+      "pvd_id": "wifi-replay.hotel.lab",
+      "default_device": "validating-stub",
+      "example_qname": "host.internal.splittrust.zivkovic.me",
+      "expected": [
+        {
+          "device": "validating-stub",
+          "decision": "rejected",
+          "reason": "TLS_IDENTITY_FAILED"
+        }
+      ]
+    },
     {
       "id": "legit",
       "title": "Company network, authorised claims",
@@ -367,51 +500,9 @@
           "reason": "SPECIAL_USE_NAME"
         }
       ]
-    },
-    {
-      "id": "real-zivkovic",
-      "title": "Real DNS: zivkovic.me authorises the lab resolver",
-      "explanation": "The only scenario that leaves the lab. The real zone zivkovic.me (Cloudflare) publishes dns.splittrust.zivkovic.me._splitdns-challenge.zivkovic.me; the device validates it under the IANA root trust anchor and, for the private-dns device, through the real dns.quad9.net. The lab's resolver has no Internet access, so this device resolves iteratively from the IANA root. Runs only in the egress-enabled `real` service: docker compose --profile real run --rm real verify --scenario real-zivkovic",
-      "discovery": "dnr",
-      "parent": "zivkovic.me",
-      "network_resolvers": [
-        {
-          "adn": "dns.splittrust.zivkovic.me",
-          "addr": "172.30.97.20:853"
-        }
-      ],
-      "claims": [
-        {
-          "resolver": "dns.splittrust.zivkovic.me",
-          "subdomains": [
-            "internal.splittrust"
-          ],
-          "ds": "none",
-          "salt": "ef3XgSkZTxuXMH18506K5Q"
-        }
-      ],
-      "claim_source": "inline",
-      "external": {
-        "adn": "dns.quad9.net",
-        "addr": "9.9.9.9:853"
-      },
-      "trust_context": "global",
-      "anchor": "iana",
-      "default_device": "validating-stub",
-      "example_qname": "host.internal.splittrust.zivkovic.me",
-      "expected": [
-        {
-          "device": "validating-stub",
-          "decision": "accepted",
-          "reason": "AUTHORIZED"
-        },
-        {
-          "device": "private-dns",
-          "decision": "accepted",
-          "reason": "EXTERNAL_TOKEN_MATCH"
-        }
-      ],
-      "default_resolution": "iterative"
     }
+  ],
+  "forged_zones": [
+    "beta.example"
   ]
 }
