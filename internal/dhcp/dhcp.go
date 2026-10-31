@@ -29,8 +29,8 @@ const headerLen = 1 + 1 + 1 + 8 // protocol, algorithm, RDM, replay detection
 type Decoded struct {
 	Algorithm uint8
 	Replay    uint64
-	ADN       string   // canonical FQDN
-	Parent    string   // canonical FQDN
+	ADN       string // canonical FQDN
+	Parent    string // canonical FQDN
 	Salt      []byte
 	Relative  []string // claimed names relative to Parent, as carried in $X
 }
