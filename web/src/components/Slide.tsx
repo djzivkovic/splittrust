@@ -21,7 +21,7 @@ export function Slide({ section, title, sub, right, children, takeaway }: {
 export function Canvas({ viewBox, label, children }: { viewBox: string; label: string; children: React.ReactNode }) {
   return (
     <div className="flex min-h-0 flex-1 items-center justify-center">
-      <svg viewBox={viewBox} className="h-full w-full select-none" role="img" aria-label={label}>{children}</svg>
+      <svg viewBox={viewBox} className="h-full w-full min-w-0 max-w-full select-none" role="img" aria-label={label}>{children}</svg>
     </div>
   );
 }

@@ -124,7 +124,7 @@ export function TryItSlide() {
     </label>
   );
   return (
-    <Slide section="Try it" title="What Pangolin's IT typed" sub="The owner tool, live. Change anything and watch the token change."
+    <Slide section="Try it" title="What SecureCompany's IT typed" sub="The owner tool, live. Change anything and watch the token change."
       takeaway="One record, computed from the exact claim. Change a letter of the claim and the record no longer fits.">
       <div className="grid flex-1 gap-5 lg:grid-cols-[2fr_3fr]">
         <div className="space-y-3 rounded-2xl border-2 border-slate-200 bg-white p-5 shadow-sm">
@@ -167,8 +167,8 @@ export function ImpactSlide() {
     </div>
   );
   return (
-    <Slide section="Why adopt it" title="What changes for a company like Pangolin" sub="Security outcome, operational cost, user experience."
-      takeaway="The attack that works on Dodo does not work on Pangolin. Pangolin changed its DNS and its devices' resolver, not a single application.">
+    <Slide section="Why adopt it" title="What changes for a company like SecureCompany" sub="Security outcome, operational cost, user experience."
+      takeaway="The attack that works on UnsecureCompany does not work on SecureCompany. SecureCompany changed its DNS and its devices' resolver, not a single application.">
       <div className="grid flex-1 content-center gap-5 lg:grid-cols-3">
         {col("Security", "border-green-200", [
           ["Hostile networks cannot impersonate internal services", "A forged record or a hijacked name fails DNSSEC validation; the resolver is never used for the company's names."],

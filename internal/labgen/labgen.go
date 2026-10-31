@@ -267,15 +267,15 @@ func Generate(outDir string, now time.Time) error {
 		return err
 	}
 
-	// Company Dodo never adopted RFC 9704: an ordinary unsigned internal zone,
+	// Company UnsecureCompany never adopted RFC 9704: an ordinary unsigned internal zone,
 	// served by its office resolver over plain DNS, for the comparison scenes.
 	beta := []dns.RR{
-		soa("dodo.example.", "dns.dodo.example."),
-		&dns.NS{Hdr: hdr("dodo.example.", dns.TypeNS), Ns: "dns.dodo.example."},
-		&dns.A{Hdr: hdr("intranet.dodo.example.", dns.TypeA), A: parseIP(cat.Addresses["beta_intranet"])},
-		&dns.A{Hdr: hdr("dns.dodo.example.", dns.TypeA), A: parseIP(cat.Addresses["local_dot"])},
+		soa("unsecure.example.", "dns.unsecure.example."),
+		&dns.NS{Hdr: hdr("unsecure.example.", dns.TypeNS), Ns: "dns.unsecure.example."},
+		&dns.A{Hdr: hdr("intranet.unsecure.example.", dns.TypeA), A: parseIP(cat.Addresses["beta_intranet"])},
+		&dns.A{Hdr: hdr("dns.unsecure.example.", dns.TypeA), A: parseIP(cat.Addresses["local_dot"])},
 	}
-	if err := writeZone(filepath.Join(outDir, "local-dot", "dodo.example.zone"), beta); err != nil {
+	if err := writeZone(filepath.Join(outDir, "local-dot", "unsecure.example.zone"), beta); err != nil {
 		return err
 	}
 

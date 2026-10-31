@@ -182,16 +182,16 @@ services:
     build:
       context: ./web
     environment:
-      SITE_BANNER: "INTRANET (172.30.97.70): company Pangolin's internal host. Reached through the resolver the domain owner authorised."
+      SITE_BANNER: "INTRANET (172.30.97.70): company SecureCompany's internal host. Reached through the resolver the domain owner authorised."
     networks:
       splitlab:
         ipv4_address: 172.30.97.70
 
-  dodo-intranet:
+  unsecure-intranet:
     build:
       context: ./web
     environment:
-      SITE_BANNER: "intranet.dodo.example (172.30.97.71): company Dodo's intranet. Dodo never adopted RFC 9704; its devices trust whatever resolver the network hands them."
+      SITE_BANNER: "intranet.unsecure.example (172.30.97.71): company UnsecureCompany's intranet. UnsecureCompany never adopted RFC 9704; its devices trust whatever resolver the network hands them."
     networks:
       splitlab:
         ipv4_address: 172.30.97.71

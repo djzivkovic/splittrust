@@ -78,7 +78,7 @@ IANA root and carry `trust_context: "global"`.
 `lab/compose.yaml` starts fourteen services. The lab's own DNS lives on the isolated bridge `splitlab`
 (172.30.97.0/24, `internal: true`). The parts that have Internet access in real life also join the
 ordinary bridge `egress`: the office and hotel resolvers, the devices (app, proxy) and the test runner.
-That is what lets the demo validate Pangolin's real zone against the real root.
+That is what lets the demo validate SecureCompany's real zone against the real root.
 
 ```
                                   splitlab 172.30.97.0/24 (internal)          egress (Internet)
@@ -93,7 +93,7 @@ That is what lets the demo validate Pangolin's real zone against the real root.
                                          authoritative for internal.*.lab, mail.corp.lab,
                                          internal.splittrust.zivkovic.me and resolver.arpa.;
                                          forwards lab. to public-dns, everything else to the Internet
-                                    :53  plain DNS: company Dodo's office resolver (dodo.example, no DNSSEC)
+                                    :53  plain DNS: company UnsecureCompany's office resolver (unsecure.example, no DNSSEC)
   hotel-dot    .21  CoreDNS       the hotel's resolver dns.hotel.lab:                                yes
                                     :853  DoT honest view (overrides www.<claimed zone>, relays the rest)
                                     :8853 DoT forging view (own copies of banka.lab and zivkovic.me with a
@@ -105,8 +105,8 @@ That is what lets the demo validate Pangolin's real zone against the real root.
   proxy        .60  splittrust    `proxy`: the plain-DNS front door; control API on :8001             yes
   client       .61  alpine+curl   a plain client; Docker hands it the proxy (172.30.97.60) as DNS server
   naive        .62  alpine+curl   the same client with the hotel's DNS (172.30.97.21)
-  intranet     .70  nginx         Pangolin's internal host (host.internal.splittrust.zivkovic.me, host.internal.corp.lab)
-  dodo-intranet .71 nginx         Dodo's internal host (intranet.dodo.example)
+  intranet     .70  nginx         SecureCompany's internal host (host.internal.splittrust.zivkovic.me, host.internal.corp.lab)
+  unsecure-intranet .71 nginx         UnsecureCompany's internal host (intranet.unsecure.example)
   bank         .80  nginx         the real www.banka.lab of the lab scenarios
   fake-bank    .66  nginx         the hotel's page: where every forged name points
   test         .51  (profile tools) runs the integration suite against the running lab              yes
@@ -132,8 +132,8 @@ starts from scratch). It produces:
   spliced into the parent zones (`stale-salt` gets a record for a different salt; `wrong-ds` a DS of a
   throw-away key), the PvD documents, the split-horizon child zones signed with one local KSK/ZSK pair
   whose DS is published as `ds=` where the catalogue says so, the `resolver.arpa.` DNSKEY zone, the hotel's
-  forged copies of every claimed zone (and of `dodo.example`, listed in `forged_zones`), its `hosts`
-  override, Dodo's plain `dodo.example` zone, and `client/manifest.json`. Real zones get no TXT line: Pangolin's
+  forged copies of every claimed zone (and of `unsecure.example`, listed in `forged_zones`), its `hosts`
+  override, UnsecureCompany's plain `unsecure.example` zone, and `client/manifest.json`. Real zones get no TXT line: SecureCompany's
   record lives at Cloudflare and the claim's salt is fixed in the catalogue so it stays valid;
 - `named.conf`, the CoreDNS Corefiles, the nginx and unbound configurations, copied into the volume so no
   service needs a bind mount (Docker Desktop and Rancher Desktop differ in what they allow).
@@ -153,7 +153,7 @@ and the expected verdict per device. The three `real-*` scenarios carry `trust_c
   against nettle and cannot do TLS to a forwarder, and Alpine's musl thread stacks overflow inside
   `ub_resolve` with TLS. The pinned release is checksum-verified.
 - The office and hotel resolvers, the devices and the test runner have Internet because their real
-  counterparts do; the lab's private DNS stays on the internal network. Company Dodo needs no scenario:
+  counterparts do; the lab's private DNS stays on the internal network. Company UnsecureCompany needs no scenario:
   it never verifies anything, so its devices are represented by the `naive` client and the browse API's
   `naive_dns` parameter (a lab resolver on port 53).
 
@@ -163,7 +163,7 @@ and the expected verdict per device. The three `real-*` scenarios carry `trust_c
 docker compose -f lab/compose.yaml up --build -d                          # build images, generate the lab, start
 docker compose -f lab/compose.yaml exec app splittrust verify --scenario real-hotel-forged
 docker compose -f lab/compose.yaml exec client curl -s http://host.internal.splittrust.zivkovic.me   # through the proxy
-docker compose -f lab/compose.yaml exec naive  curl -s http://intranet.dodo.example                   # hotel DNS directly
+docker compose -f lab/compose.yaml exec naive  curl -s http://intranet.unsecure.example                   # hotel DNS directly
 docker compose -f lab/compose.yaml --profile tools run --rm test              # integration suite
 docker compose -f lab/compose.yaml down -v                                    # remove everything, keys included
 ```
@@ -253,7 +253,7 @@ small: a title and three scenes, each a drawing that animates the real verificat
 report's ordered stages) and two browser frames fed by `/api/browse`. Everything else is CLI and API. The API is a thin layer
 over the engine: strict JSON envelopes (unknown fields are 422, bodies over 16 KiB are 413, unknown
 scenarios 404, rejections are ordinary 200 reports). `POST /api/browse` is the proof endpoint: it resolves
-a name through the proxy (Pangolin's device) and through a chosen lab resolver on port 53 (`naive_dns`, Dodo's
+a name through the proxy (SecureCompany's device) and through a chosen lab resolver on port 53 (`naive_dns`, UnsecureCompany's
 device), then fetches the page: a lab address over plain HTTP by IP with the Host header, a real address
 over HTTPS by name, summarised as status, server header and title. `POST /api/live` resolves a scenario's
 Verification Record and the parent's DS iteratively from the trust anchor, the "check it yourself" view.
@@ -274,7 +274,7 @@ stable reason codes.
   in reverse, including the real-domain scenes when the test container has Internet; API parity with the
   running app; resolve paths; the DNSSEC states are real and survive the network's own resolver; the
   hotel cannot pass as `dns.corp.lab`; a black-holed forwarder times out cleanly; the proxy front door end
-  to end, including Pangolin's intranet, the forged real domain and the phone reaching the real site.
+  to end, including SecureCompany's intranet, the forged real domain and the phone reaching the real site.
 
 ---
 

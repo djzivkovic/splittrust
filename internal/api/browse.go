@@ -35,7 +35,7 @@ func BrowserFromEnv(namespaces []string) *Browser {
 	if len(b.Namespaces) == 0 {
 		b.Namespaces = []string{"lab.", "arpa."}
 	}
-	// Company Dodo (the company that did not adopt RFC 9704) lives under the
+	// Company UnsecureCompany (the company that did not adopt RFC 9704) lives under the
 	// reserved documentation TLD "example." (RFC 2606); it has no scenario of its
 	// own because it never verifies anything.
 	b.Namespaces = append(b.Namespaces, "example.")

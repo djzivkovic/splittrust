@@ -121,10 +121,10 @@ export function HowSlide() {
 export function CompaniesSlide() {
   return (
     <Slide section="The demo" title="Two companies, one week" sub="Same employees, same habits, different outcomes."
-      takeaway="Every verdict and every page that follows is computed live: Pangolin's zone is our real, DNSSEC-signed zivkovic.me.">
+      takeaway="Every verdict and every page that follows is computed live: SecureCompany's zone is our real, DNSSEC-signed zivkovic.me.">
       <div className="grid flex-1 content-center gap-8 md:grid-cols-2">
-        <Company name={BETA.name} domain={BETA.domain} adopted={false} line="Trusts whatever resolver the network hands out. Most companies today. Did not adapt." />
-        <Company name={ALFA.name} domain={ALFA.domain} adopted line="Signed its zone, published one record, and its devices check before trusting a resolver. Armoured." />
+        <Company name={BETA.name} domain={BETA.domain} adopted={false} line="Trusts whatever resolver the network hands out. Most companies today." />
+        <Company name={ALFA.name} domain={ALFA.domain} adopted line="Signed its zone, published one record, and its devices check before trusting a resolver." />
       </div>
     </Slide>
   );

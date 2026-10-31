@@ -1,4 +1,4 @@
-/* One drawing per scene: Dodo on the left, Pangolin on the right, the network in the middle, the real
+/* One drawing per scene: UnsecureCompany on the left, SecureCompany on the right, the network in the middle, the real
    DNS above. Packets travel along the lines; marks appear where the real verification said so. */
 
 import { AnimatePresence, motion } from "framer-motion";
@@ -92,7 +92,7 @@ export function SceneArt({ place, device, steps, at, resolverName }: { place: Pl
   );
 
   return (
-    <svg viewBox="0 0 1200 520" className="h-full w-full select-none" role="img" aria-label="Scene">
+    <svg viewBox="0 0 1200 520" className="h-full w-full min-w-0 max-w-full select-none" role="img" aria-label="Scene">
       {/* network area */}
       <rect x={60} y={350} width={1080} height={150} rx={24} fill={hotel ? "#fff7ed" : "#eff6ff"} />
       <text x={600} y={500} textAnchor="middle" fontSize={14} fontWeight={600} fill={hotel ? "#9a3412" : "#1e40af"}>{hotel ? "Hotel Wi-Fi" : "Office Wi-Fi"}</text>

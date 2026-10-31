@@ -1,5 +1,5 @@
 /* The deck: a title, three scenes, a closing slide. Copy is deliberately short; the speaker carries
-   the details. Pangolin's zone is the real, DNSSEC-signed zivkovic.me; Dodo is dodo.example. */
+   the details. SecureCompany's zone is the real, DNSSEC-signed zivkovic.me; UnsecureCompany is unsecure.example. */
 
 export type Place = "office" | "hotel";
 
@@ -9,35 +9,35 @@ export interface Scene {
   day: string;
   headline: string;
   sub: string;
-  alfaName: string;        // what Pangolin's employee opens
-  betaName: string;        // what Dodo's employee opens
-  betaDNS: string;         // the resolver Dodo's laptop is handed on this network
+  alfaName: string;        // what SecureCompany's employee opens
+  betaName: string;        // what UnsecureCompany's employee opens
+  betaDNS: string;         // the resolver UnsecureCompany's laptop is handed on this network
   takeaway: string;        // one line, appears when the animation is done
 }
 
-export const ALFA = { name: "Pangolin", domain: "zivkovic.me", site: "zivkovic.me" };
-export const BETA = { name: "Dodo", domain: "dodo.example" };
+export const ALFA = { name: "SecureCompany", domain: "zivkovic.me", site: "zivkovic.me" };
+export const BETA = { name: "UnsecureCompany", domain: "unsecure.example" };
 
 export const SCENES: Scene[] = [
   {
     id: "real-office", place: "office", day: "Monday",
     headline: "At the office",
     sub: "Both employees open their company intranet.",
-    alfaName: "host.internal.splittrust.zivkovic.me", betaName: "intranet.dodo.example", betaDNS: "172.30.97.20:53",
-    takeaway: "Both work. Only Pangolin's laptop verified the resolver first: DoT identity, DNSSEC-validated TXT, token match.",
+    alfaName: "host.internal.splittrust.zivkovic.me", betaName: "intranet.unsecure.example", betaDNS: "172.30.97.20:53",
+    takeaway: "Both work. Only SecureCompany's laptop verified the resolver first: DoT identity, DNSSEC-validated TXT, token match.",
   },
   {
     id: "real-hotel-forged", place: "hotel", day: "Tuesday",
     headline: "At the hotel",
     sub: "Same employees, same habit, hotel Wi-Fi. The hotel's resolver claims both domains and serves forged copies.",
-    alfaName: "host.internal.splittrust.zivkovic.me", betaName: "intranet.dodo.example", betaDNS: "172.30.97.21:53",
-    takeaway: "Dodo's login goes to the hotel's server. Pangolin's laptop: Bogus record, SERVFAIL with EDE 6, nothing sent. Fails safe.",
+    alfaName: "host.internal.splittrust.zivkovic.me", betaName: "intranet.unsecure.example", betaDNS: "172.30.97.21:53",
+    takeaway: "UnsecureCompany's login goes to the hotel's server. SecureCompany's laptop: Bogus record, SERVFAIL with EDE 6, nothing sent. Fails safe.",
   },
   {
-    id: "real-replay", place: "hotel", day: "What Pangolin did",
+    id: "real-replay", place: "hotel", day: "What SecureCompany did",
     headline: "Three things",
     sub: "Signed the zone. Published one record. Devices that check.",
-    alfaName: "host.internal.splittrust.zivkovic.me", betaName: "intranet.dodo.example", betaDNS: "172.30.97.21:53",
+    alfaName: "host.internal.splittrust.zivkovic.me", betaName: "intranet.unsecure.example", betaDNS: "172.30.97.21:53",
     takeaway: "The record is public and can be copied. A copied claim fails on the resolver's certificate.",
   },
 ];

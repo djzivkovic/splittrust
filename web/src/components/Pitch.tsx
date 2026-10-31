@@ -8,14 +8,14 @@ import { Slide } from "./Slide";
 /* ---------- Why now: the building blocks exist, the check did not ---------- */
 
 const MILESTONES: { year: string; what: string; detail: string; source: string; kind: "block" | "rfc" | "gap" }[] = [
-  { year: "2016", what: "DNS over TLS standardised", detail: "RFC 7858. Encrypted transport to a resolver, with a certificate to check.", source: "rfc-editor.org/rfc/rfc7858", kind: "block" },
+  { year: "2016", what: "DoT standardised", detail: "RFC 7858. Encrypted transport to a resolver, with a certificate to check.", source: "rfc-editor.org/rfc/rfc7858", kind: "block" },
   { year: "2018", what: "Android Private DNS", detail: "Android 9 ships system-wide DoT: off, automatic, or a named provider.", source: "support.google.com/android/answer/9654714", kind: "block" },
-  { year: "2020", what: "Apple system encrypted DNS", detail: "iOS 14 and macOS 11: DoH/DoT via profiles and NetworkExtension, per-domain match rules.", source: "developer.apple.com, WWDC 2020 session 10047", kind: "block" },
-  { year: "2022", what: "DDR on by default at Apple", detail: "iOS 16 and macOS Ventura discover a resolver's encrypted endpoint via _dns.resolver.arpa.", source: "developer.apple.com, WWDC 2022 session 10079", kind: "block" },
-  { year: "2023", what: "DDR and DNR published", detail: "RFC 9462 (designated resolvers) and RFC 9463 (DHCP/RA options for encrypted resolvers). Windows 11 ships DoH; DNR in Insider builds.", source: "rfc-editor.org/rfc/rfc9463", kind: "block" },
-  { year: "2024", what: "systemd 257 parses DNR", detail: "DHCPv4, DHCPv6 and RA options accepted by systemd-networkd; DoT still needs DNSOverTLS=.", source: "github.com/systemd/systemd/pull/30952", kind: "block" },
+  { year: "2020", what: "Apple encrypted DNS", detail: "iOS 14 and macOS 11: DoH/DoT via profiles and NetworkExtension, per-domain match rules.", source: "developer.apple.com, WWDC 2020 session 10047", kind: "block" },
+  { year: "2022", what: "DDR default at Apple", detail: "iOS 16 and macOS Ventura discover a resolver's encrypted endpoint via _dns.resolver.arpa.", source: "developer.apple.com, WWDC 2022 session 10079", kind: "block" },
+  { year: "2023", what: "DDR and DNR RFCs", detail: "RFC 9462 (designated resolvers) and RFC 9463 (DHCP/RA options for encrypted resolvers). Windows 11 ships DoH; DNR in Insider builds.", source: "rfc-editor.org/rfc/rfc9463", kind: "block" },
+  { year: "2024", what: "systemd 257: DNR", detail: "DHCPv4, DHCPv6 and RA options accepted by systemd-networkd; DoT still needs DNSOverTLS=.", source: "github.com/systemd/systemd/pull/30952", kind: "block" },
   { year: "Jan 2025", what: "RFC 9704 published", detail: "Proposed Standard from the ADD working group: the owner publishes a token, the device checks before trusting a local resolver.", source: "rfc-editor.org/rfc/rfc9704", kind: "rfc" },
-  { year: "Feb 2025", what: "Known implementations: zero", detail: "Co-author Benjamin Schwartz at DNS-OARC 44: '0 number of known implementations'.", source: "indico.dns-oarc.net/event/52/contributions/1168", kind: "gap" },
+  { year: "Feb 2025", what: "0 implementations", detail: "Co-author Benjamin Schwartz at DNS-OARC 44: '0 number of known implementations'.", source: "indico.dns-oarc.net/event/52/contributions/1168", kind: "gap" },
 ];
 
 export function WhyNowSlide() {
@@ -25,16 +25,18 @@ export function WhyNowSlide() {
     <Slide section="Why now" title="Every building block ships. The check that ties them together did not." sub="Click a milestone."
       takeaway="Encrypted transport, resolver discovery and per-domain routing exist in the major OSes. RFC 9704 adds the authorisation; SplitTrust is the running code.">
       <div className="flex flex-1 flex-col justify-center gap-6">
-        <svg viewBox="0 0 1200 150" className="h-36 w-full">
+        <svg viewBox="0 0 1200 170" className="h-40 w-full min-w-0 max-w-full">
           <line x1={60} y1={70} x2={1140} y2={70} stroke="#cbd5e1" strokeWidth={4} />
           {MILESTONES.map((ms, k) => {
             const x = 90 + k * (1020 / (MILESTONES.length - 1));
             const fill = ms.kind === "rfc" ? BLUE : ms.kind === "gap" ? "#b91c1c" : GREEN;
+            const row = k % 2 === 0 ? 50 : 76; // alternate rows so neighbouring labels never touch
             return (
               <g key={ms.year} transform={`translate(${x}, 70)`} className="cursor-pointer" onClick={() => setI(k)}>
+                <line x1={0} y1={14} x2={0} y2={row - 16} stroke="#cbd5e1" strokeWidth={1.5} />
                 <circle r={k === i ? 18 : 12} fill={fill} stroke="#fff" strokeWidth={3} />
                 <text y={-30} textAnchor="middle" fontSize={14} fontWeight={700} fill={INK}>{ms.year}</text>
-                <text y={54} textAnchor="middle" fontSize={12} fill={k === i ? INK : MUTED} fontWeight={k === i ? 700 : 500}>{ms.what}</text>
+                <text y={row} textAnchor="middle" fontSize={13} fill={k === i ? INK : MUTED} fontWeight={k === i ? 700 : 500}>{ms.what}</text>
               </g>
             );
           })}

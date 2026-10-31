@@ -22,8 +22,8 @@
         "addr": "9.9.9.9:853"
       },
       "id": "real-office",
-      "title": "Pangolin's office Wi-Fi",
-      "explanation": "Company Pangolin adopted RFC 9704: its zone zivkovic.me is DNSSEC-signed at Cloudflare and publishes a Verification Record authorising dns.splittrust.zivkovic.me for internal.splittrust.zivkovic.me. Pangolin's devices verify the office network's claim against the real DNS before using the office resolver for those names.",
+      "title": "SecureCompany's office Wi-Fi",
+      "explanation": "Company SecureCompany adopted RFC 9704: its zone zivkovic.me is DNSSEC-signed at Cloudflare and publishes a Verification Record authorising dns.splittrust.zivkovic.me for internal.splittrust.zivkovic.me. SecureCompany's devices verify the office network's claim against the real DNS before using the office resolver for those names.",
       "discovery": "dnr",
       "parent": "zivkovic.me",
       "network_resolvers": [
@@ -71,8 +71,8 @@
         "addr": "9.9.9.9:853"
       },
       "id": "real-hotel-forged",
-      "title": "Hotel Wi-Fi claims Pangolin's domain",
-      "explanation": "A hotel network claims all of zivkovic.me and its resolver serves a forged copy of the zone: every name points at the hotel's page and the Verification Record carries the correct token for the hotel's claim. Pangolin's device validates against the real DNSSEC chain (root, .me, Cloudflare) and rejects the claim; the hotel cannot produce Cloudflare's signatures.",
+      "title": "Hotel Wi-Fi claims SecureCompany's domain",
+      "explanation": "A hotel network claims all of zivkovic.me and its resolver serves a forged copy of the zone: every name points at the hotel's page and the Verification Record carries the correct token for the hotel's claim. SecureCompany's device validates against the real DNSSEC chain (root, .me, Cloudflare) and rejects the claim; the hotel cannot produce Cloudflare's signatures.",
       "discovery": "dnr",
       "parent": "zivkovic.me",
       "network_resolvers": [
@@ -114,8 +114,8 @@
         "addr": "9.9.9.9:853"
       },
       "id": "real-replay",
-      "title": "Hotel replays Pangolin's claim",
-      "explanation": "The hotel copies Pangolin's real claim word for word and announces its own resolver under Pangolin's resolver name. The certificate is for dns.hotel.lab, so TLS identity fails before any DNS query.",
+      "title": "Hotel replays SecureCompany's claim",
+      "explanation": "The hotel copies SecureCompany's real claim word for word and announces its own resolver under SecureCompany's resolver name. The certificate is for dns.hotel.lab, so TLS identity fails before any DNS query.",
       "discovery": "dnr",
       "parent": "zivkovic.me",
       "network_resolvers": [
@@ -503,6 +503,6 @@
     }
   ],
   "forged_zones": [
-    "dodo.example"
+    "unsecure.example"
   ]
 }

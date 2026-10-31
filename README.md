@@ -9,8 +9,8 @@ domain owner publish a signed statement of *which resolver may answer for which 
 check it in a way the local network cannot tamper with. We found no public implementation of the standard (its authors reported none known in February 2025), it
 has no test vectors, and its worked example cannot be reproduced. SplitTrust provides all three.
 
-> The demo compares two companies in the same situations. **Pangolin** adopted RFC 9704: its zone is the real,
-> DNSSEC-signed `zivkovic.me` and its devices verify. **Dodo** did not. Pangolin's verdicts carry
+> The demo compares two companies in the same situations. **SecureCompany** adopted RFC 9704: its zone is the real,
+> DNSSEC-signed `zivkovic.me` and its devices verify. **UnsecureCompany** did not. SecureCompany's verdicts carry
 > `trust_context: "global"` and are computed live against the real DNS. The lab also keeps a private DNS
 > root with a real DNSSEC chain for the RFC's corner cases; those verdicts carry `trust_context: "lab"`.
 
@@ -19,8 +19,8 @@ has no test vectors, and its worked example cannot be reproduced. SplitTrust pro
 | Piece | What it does |
 |---|---|
 | `splittrust` (one Go binary) | RFC 9704 verifier: claim canonicalisation, token, Verification Record lookup with local DNSSEC validation (libunbound) through the network's resolver or iteratively, the §6.1 external-resolver path for devices configured that way, resolver TLS identity (RFC 9525), §7 `ds` key binding over `resolver.arpa.`, grants with TTL/RRSIG/PvD-bounded expiry; scoped resolution; **a Do53 proxy so ordinary stubs resolve through the verdicts**; owner tool; DHCP option 90/11 codec; CLI, HTTP API and the embedded demo deck |
-| `lab/` | Docker Compose lab: CoreDNS hybrid resolvers for the office (`dns.splittrust.zivkovic.me` / `dns.corp.lab`, DoT, plus Dodo's plain-DNS resolver) and the hotel (`dns.hotel.lab`: honest, forging and plain views), both with Internet access; BIND serving a signed private root, `lab` TLD and seven parent zones (one expired, one unsigned); nginx PvD server; unbound as `quad9.lab`; web servers for both intranets and the hotel's fake page; a plain client and its twin without SplitTrust; a one-shot bootstrap that regenerates keys, zones and certificates |
-| Three real-domain scenes + ten lab scenarios × three simulated devices | demo: `real-office`, `real-hotel-forged`, `real-replay` (Pangolin's real zone `zivkovic.me`); corner cases: `legit`, `hotel`, `hotel-forged`, `stale-salt`, `expired-signature`, `unsigned`, `wrong-ds`, `replay`, `hotel-blocks-external`, `special-use`; devices `validating-stub`, `private-dns`, `hybrid` |
+| `lab/` | Docker Compose lab: CoreDNS hybrid resolvers for the office (`dns.splittrust.zivkovic.me` / `dns.corp.lab`, DoT, plus UnsecureCompany's plain-DNS resolver) and the hotel (`dns.hotel.lab`: honest, forging and plain views), both with Internet access; BIND serving a signed private root, `lab` TLD and seven parent zones (one expired, one unsigned); nginx PvD server; unbound as `quad9.lab`; web servers for both intranets and the hotel's fake page; a plain client and its twin without SplitTrust; a one-shot bootstrap that regenerates keys, zones and certificates |
+| Three real-domain scenes + ten lab scenarios × three simulated devices | demo: `real-office`, `real-hotel-forged`, `real-replay` (SecureCompany's real zone `zivkovic.me`); corner cases: `legit`, `hotel`, `hotel-forged`, `stale-salt`, `expired-signature`, `unsigned`, `wrong-ds`, `replay`, `hotel-blocks-external`, `special-use`; devices `validating-stub`, `private-dns`, `hybrid` |
 | `vectors/` | Published test vectors: token encoding (incl. the RFC example under both salts, `*`, IDN, SHA-512), TXT parsing, DHCP payloads, PvD documents, expected verdicts |
 | `docs/rfc9704-example-erratum.md` | The forensic explanation of the RFC's broken §5.1 example, a second erratum for Figure 1, and eight points the RFC leaves to implementers |
 | `docs/demo.md` | The 5-minute demo script and Q&A cards |
@@ -33,14 +33,14 @@ evidence); why now (a sourced timeline from DoT in 2016 to RFC 9704 in 2025, int
 works; what SplitTrust brings; the two companies; three live scenes with the proxy's decisions beside the
 browser frames (and the dig output of the real lookups on `t`); the owner tool live against the real zone
 (interactive); who buys and who ships; why encrypted DNS, VPNs and DNSSEC alone do not close the gap
-(interactive); what changes for a company; the architecture; the lab probed live; what is next; closing. **Pangolin**
-adopted RFC 9704 (its zone is the real `zivkovic.me`); **Dodo** did not. *Monday, at the office*: both
-intranets load; only Pangolin's laptop checked that the resolver was allowed to answer. *Tuesday, at the
-hotel*: the hotel claims both domains; Dodo's laptop gets the hotel's login page, Pangolin's laptop refuses
-the forged answer and fails safely; press `2` and Pangolin's phone reaches the real site through Quad9.
-*What Pangolin did*: sign the zone, publish one record, devices that check; a copied claim fails on the
+(interactive); what changes for a company; the architecture; the lab probed live; what is next; closing. **SecureCompany**
+adopted RFC 9704 (its zone is the real `zivkovic.me`); **UnsecureCompany** did not. *Monday, at the office*: both
+intranets load; only SecureCompany's laptop checked that the resolver was allowed to answer. *Tuesday, at the
+hotel*: the hotel claims both domains; UnsecureCompany's laptop gets the hotel's login page, SecureCompany's laptop refuses
+the forged answer and fails safely; press `2` and SecureCompany's phone reaches the real site through Quad9.
+*What SecureCompany did*: sign the zone, publish one record, devices that check; a copied claim fails on the
 certificate. Each scene animates the real checks on a drawing, then shows what each employee's browser
-gets. Keys: left/right arrows, `space` replay, `1 2` Pangolin's device, `e` raw evidence. The deck needs
+gets. Keys: left/right arrows, `space` replay, `1 2` SecureCompany's device, `e` raw evidence. The deck needs
 Internet access; the engine, CLI and lab scenarios do not.
 
 The console is React + Vite + Tailwind in `web/`, built in the image's first stage and embedded into the Go
@@ -110,9 +110,9 @@ validated under the delegated keys; everything else takes the device's default p
 | `replay` | rejected `TLS_IDENTITY_FAILED` | | |
 | `hotel-blocks-external` | | rejected `EXTERNAL_TIMEOUT` | |
 | `special-use` | rejected `SPECIAL_USE_NAME`, no traffic | | |
-| `real-office` (Pangolin's office, real zone) | accepted `AUTHORIZED` | accepted `EXTERNAL_TOKEN_MATCH` (AD=1 from the real dns.quad9.net) | accepted |
-| `real-hotel-forged` (hotel claims Pangolin's domain) | rejected `DNSSEC_BOGUS` | rejected `RECORD_MISSING` | |
-| `real-replay` (hotel replays Pangolin's claim) | rejected `TLS_IDENTITY_FAILED` | | |
+| `real-office` (SecureCompany's office, real zone) | accepted `AUTHORIZED` | accepted `EXTERNAL_TOKEN_MATCH` (AD=1 from the real dns.quad9.net) | accepted |
+| `real-hotel-forged` (hotel claims SecureCompany's domain) | rejected `DNSSEC_BOGUS` | rejected `RECORD_MISSING` | |
+| `real-replay` (hotel replays SecureCompany's claim) | rejected `TLS_IDENTITY_FAILED` | | |
 
 ## No CLI needed: the DNS front door
 
@@ -120,12 +120,12 @@ validated under the delegated keys; everything else takes the device's default p
 client container with **no SplitTrust code** gets it as its DNS server; its naive twin gets the hotel's DNS:
 
 ```bash
-docker compose -f lab/compose.yaml exec client curl -s http://host.internal.splittrust.zivkovic.me   # Pangolin's intranet page
+docker compose -f lab/compose.yaml exec client curl -s http://host.internal.splittrust.zivkovic.me   # SecureCompany's intranet page
 docker compose -f lab/compose.yaml exec client dig host.internal.splittrust.zivkovic.me +dnssec      # EDE: authorised resolver
 # move the client to the hotel Wi-Fi (the Demo page does this when you change scene):
 docker compose -f lab/compose.yaml exec client curl -s -X POST http://172.30.97.60:8001/join -d '{"scenario_id":"real-hotel-forged"}'
 docker compose -f lab/compose.yaml exec client curl -s http://host.internal.splittrust.zivkovic.me   # cannot resolve: SERVFAIL, EDE 6 DNSSEC Bogus
-docker compose -f lab/compose.yaml exec naive  curl -s http://intranet.dodo.example                   # "FAKE PAGE ... served by the hotel resolver"
+docker compose -f lab/compose.yaml exec naive  curl -s http://intranet.unsecure.example                   # "FAKE PAGE ... served by the hotel resolver"
 docker compose -f lab/compose.yaml exec client curl -s -X POST http://172.30.97.60:8001/join -d '{"scenario_id":"real-hotel-forged","device":"private-dns"}'
 docker compose -f lab/compose.yaml exec client dig +short zivkovic.me                                 # the real Cloudflare addresses, via dns.quad9.net
 ```
@@ -144,18 +144,18 @@ per-domain DoT + DNSSEC, Windows NRPT, macOS `/etc/resolver`) is the natural nex
 
 ## The real domain
 
-Pangolin's zone is `zivkovic.me` at Cloudflare: DNSSEC-signed, DS at the `.me` registry, and this record published:
+SecureCompany's zone is `zivkovic.me` at Cloudflare: DNSSEC-signed, DS at the `.me` registry, and this record published:
 
 ```
 dns.splittrust.zivkovic.me._splitdns-challenge.zivkovic.me. 300 IN TXT "token=BiwP_K0bA7xckVbslagu9l-Ku9PgYkSCem6r_GbySJHqpQF1gXmxOT0AjCFqOIGi"
 ```
 
 The office resolver, the hotel resolver, the app and the proxy have Internet access (compose network
-`egress`), so Pangolin's device validates under the IANA root trust anchor (`dns-root-data`) through the
+`egress`), so SecureCompany's device validates under the IANA root trust anchor (`dns-root-data`) through the
 network's resolver, exactly as RFC 9704 Figure 4 describes, and the phone profile asks the real
 `dns.quad9.net`. The announced office resolver is the lab's (`dns.splittrust.zivkovic.me` is a SAN of its
-certificate); the hotel's forged copy of the zone is served by the lab's hotel resolver. Company Dodo's
-domain is `dodo.example` (RFC 2606); it has no scenario because it verifies nothing. The claim's salt is
+certificate); the hotel's forged copy of the zone is served by the lab's hotel resolver. Company UnsecureCompany's
+domain is `unsecure.example` (RFC 2606); it has no scenario because it verifies nothing. The claim's salt is
 fixed in the catalogue so the published record stays valid across lab rebuilds. Only ordinary DNS queries
 and one HTTPS request to our own site leave the machine. The lab's private root and `.lab` zones remain
 for the corner cases; those scenarios run without Internet.
@@ -164,7 +164,7 @@ for the corner cases; those scenarios run without Internet.
 
 - Not an OS integration: nothing intercepts the host's DNS; protection applies to clients that use the SplitTrust proxy (or the CLI) as their resolver.
 - Not DHCP/RA discovery: discovery is pre-configured per scenario; the DHCP option is encoded and decoded, not sent.
-- The hotel and office networks are containers; what is real is Pangolin's zone, the DNS it is validated against, and the resolver the phone uses. Rejecting a claim does not make an untrusted default resolver safe; publishing a record protects only clients that implement the check.
+- The hotel and office networks are containers; what is real is SecureCompany's zone, the DNS it is validated against, and the resolver the phone uses. Rejecting a claim does not make an untrusted default resolver safe; publishing a record protects only clients that implement the check.
 - The binary must be built with `-tags libunbound` (the image always is); without it the pure packages still build and test, but nothing validates.
 
 ## Repository map
