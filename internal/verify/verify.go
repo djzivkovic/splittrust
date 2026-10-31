@@ -133,7 +133,7 @@ type Verifier struct {
 	Deps Deps
 }
 
-var stageOrder = []string{"pvd", "claim", "token", "public_dnssec", "external_resolver", "record", "resolver_tls", "ds", "grant"}
+var stageOrder = []string{"pvd", "claim", "token", "resolver_tls", "public_dnssec", "external_resolver", "record", "ds", "grant"}
 
 // Verify runs every claim of the profile (from its PvD document or, for inline
 // profiles / an explicit claim, the given claim) and returns one report per claim.
@@ -192,6 +192,23 @@ func (v *Verifier) Verify(ctx context.Context, p lab.Profile, inline *claim.RawC
 	}
 	run.Decision = worst(run.Claims)
 	return run
+}
+
+// LoadClaims returns the raw claims a run would verify (PvD document, inline
+// claim file, or the explicit claim) without verifying anything.
+func (v *Verifier) LoadClaims(ctx context.Context, p lab.Profile, inline *claim.RawClaim) ([]claim.RawClaim, error) {
+	switch {
+	case inline != nil:
+		return []claim.RawClaim{*inline}, nil
+	case p.ClaimSource == "inline":
+		return readClaims(p.ClaimFile)
+	default:
+		doc, err := v.Deps.PvD.Fetch(ctx, p.PvDURL, p.PvDID, v.now())
+		if err != nil {
+			return nil, err
+		}
+		return doc.Claims, nil
+	}
 }
 
 func (v *Verifier) now() time.Time {
@@ -287,6 +304,19 @@ func (v *Verifier) verifyClaim(ctx context.Context, p lab.Profile, i int, raw cl
 	claimEv := map[string]any{"discovery": p.Discovery, "announced_addr": announced.Addr, "scopes": c.Scopes, "warnings": c.Warnings}
 	tr.add(Stage{ID: "claim", Status: "pass", Code: "CLAIM_OK", Message: fmt.Sprintf("%s claims %s under %s", c.Resolver, strings.Join(c.Relative, ", "), c.Parent), Evidence: claimEv})
 	tr.add(Stage{ID: "token", Status: "pass", Code: "TOKEN_COMPUTED", Message: "expected token " + ins.Token, Evidence: map[string]any{"token": ins.Token, "record_owner": ins.RecordOwner, "pseudo_wire_hex": ins.PseudoWireHex, "token_input_hex": ins.TokenInputHex}})
+
+	// --- resolver_tls: authenticate the announced resolver before trusting a byte
+	// from it (RFC 9704 section 8 steps 3-5; section 5 certificate requirement) ----
+	conn, err := v.Deps.DoT.Dial(ctx, announced.Addr, strings.TrimSuffix(c.Resolver, "."))
+	if err != nil {
+		var ie *IdentityError
+		if errors.As(err, &ie) {
+			return reject("resolver_tls", "TLS_IDENTITY_FAILED", fmt.Sprintf("the resolver at %s does not hold a certificate for %s: %v — the claim's expected token %s was never looked up", announced.Addr, c.Resolver, ie.Err, ins.Token), map[string]any{"addr": announced.Addr, "server_name": c.Resolver, "expected_token": ins.Token})
+		}
+		return indeterminate("resolver_tls", "RESOLVER_UNREACHABLE", fmt.Sprintf("cannot reach the resolver at %s: %v", announced.Addr, err), map[string]any{"addr": announced.Addr})
+	}
+	defer conn.Close()
+	tr.add(Stage{ID: "resolver_tls", Status: "pass", Code: "TLS_IDENTITY_OK", Message: fmt.Sprintf("%s authenticated as %s over DoT", announced.Addr, c.Resolver), Evidence: map[string]any{"addr": announced.Addr, "server_name": c.Resolver}})
 
 	// --- public_dnssec (section 6.2) / external_resolver (section 6.1) ------
 	var records []dns.RR
@@ -386,18 +416,6 @@ func (v *Verifier) verifyClaim(ctx context.Context, p lab.Profile, i int, raw cl
 		return reject("record", "TOKEN_MISMATCH", fmt.Sprintf("none of the %d Verification Record(s) carries the expected token %s", parsed, ins.Token), map[string]any{"rrs": recordEv, "expected_token": ins.Token})
 	}
 	tr.add(Stage{ID: "record", Status: "pass", Code: "TOKEN_MATCH", Message: fmt.Sprintf("%d of %d record(s) carry the expected token", len(matching), parsed), Evidence: map[string]any{"rrs": recordEv, "expected_token": ins.Token, "invalid_rrs": invalid}})
-
-	// --- resolver_tls -------------------------------------------------------
-	conn, err := v.Deps.DoT.Dial(ctx, announced.Addr, strings.TrimSuffix(c.Resolver, "."))
-	if err != nil {
-		var ie *IdentityError
-		if errors.As(err, &ie) {
-			return reject("resolver_tls", "TLS_IDENTITY_FAILED", fmt.Sprintf("the resolver at %s does not hold a certificate for %s: %v", announced.Addr, c.Resolver, ie.Err), map[string]any{"addr": announced.Addr, "server_name": c.Resolver})
-		}
-		return indeterminate("resolver_tls", "RESOLVER_UNREACHABLE", fmt.Sprintf("cannot reach the resolver at %s: %v", announced.Addr, err), map[string]any{"addr": announced.Addr})
-	}
-	defer conn.Close()
-	tr.add(Stage{ID: "resolver_tls", Status: "pass", Code: "TLS_IDENTITY_OK", Message: fmt.Sprintf("%s authenticated as %s over DoT", announced.Addr, c.Resolver), Evidence: map[string]any{"addr": announced.Addr, "server_name": c.Resolver}})
 
 	// --- ds (section 7) -----------------------------------------------------
 	var dsValues []string
