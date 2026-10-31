@@ -11,6 +11,7 @@ import { BuiltSlide } from "./components/Built";
 import { LabSlide } from "./components/Lab";
 import { Dig, ProxyLog, Terminal } from "./components/Terminal";
 import { ClosingSlide, CompaniesSlide, HowSlide, ProblemSlide, TitleSlide } from "./components/Intro";
+import { ImpactSlide, RoadmapSlide, SolutionSlide, TryItSlide, WhyNotSlide } from "./components/Content";
 import { Slide } from "./components/Slide";
 import { BLUE, Doc, GREEN, INK, Laptop, Lock, Mark, RED, Resolver, Shield } from "./components/Art";
 
@@ -24,14 +25,17 @@ export default function App() {
   const [evidence, setEvidence] = useState(false);
   useEffect(() => { api.scenarios().then(setSummaries).catch((e) => setErr((e as Error).message)); }, []);
 
-  // title, problem, how it works, the two companies, three scenes, what we built, what we found, closing
-  const order: ("title" | "problem" | "how" | "companies" | "scene" | "built" | "lab" | "close")[] = ["title", "problem", "how", "companies", ...SCENES.map(() => "scene" as const), "built", "lab", "close"];
+  // the deck, in order
+  type Kind = "title" | "problem" | "whynot" | "how" | "solution" | "tryit" | "companies" | "scene" | "impact" | "built" | "lab" | "roadmap" | "close";
+  const order: Kind[] = ["title", "problem", "whynot", "how", "solution", "tryit", "companies", ...SCENES.map(() => "scene" as const), "impact", "built", "lab", "roadmap", "close"];
   const total = order.length;
   const sceneIndex = (n: number) => n - order.indexOf("scene");
   const go = useCallback((n: number) => { setSlide(Math.max(0, Math.min(total - 1, n))); setDevice("validating-stub"); }, [total]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
       if (e.key === "ArrowRight" || e.key === "PageDown") go(slide + 1);
       if (e.key === "ArrowLeft" || e.key === "PageUp") go(slide - 1);
       if (e.key === "Home") go(0);
@@ -49,8 +53,10 @@ export default function App() {
   const kind = order[slide];
   const scene = kind === "scene" ? SCENES[sceneIndex(slide)] : null;
   const content = scene ? <SceneSlide scene={scene} device={device} evidence={evidence} />
-    : kind === "problem" ? <ProblemSlide /> : kind === "how" ? <HowSlide /> : kind === "companies" ? <CompaniesSlide />
-    : kind === "built" ? <BuiltSlide /> : kind === "lab" ? <LabSlide /> : kind === "close" ? <ClosingSlide /> : <TitleSlide />;
+    : kind === "problem" ? <ProblemSlide /> : kind === "whynot" ? <WhyNotSlide /> : kind === "how" ? <HowSlide />
+    : kind === "solution" ? <SolutionSlide /> : kind === "tryit" ? <TryItSlide /> : kind === "companies" ? <CompaniesSlide />
+    : kind === "impact" ? <ImpactSlide /> : kind === "built" ? <BuiltSlide /> : kind === "lab" ? <LabSlide />
+    : kind === "roadmap" ? <RoadmapSlide /> : kind === "close" ? <ClosingSlide /> : <TitleSlide />;
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-slate-100 text-slate-900">
       <div className="min-h-0 flex-1 overflow-y-auto">

@@ -17,6 +17,7 @@ import (
 // LabProbe is one live check of a lab component, run from the app container.
 type LabProbe struct {
 	Name   string `json:"name"`
+	Group  string `json:"group"` // demo: runs the scenes; testbed: the RFC's corner cases and the plain clients
 	Role   string `json:"role"`
 	Addr   string `json:"addr"`
 	Kind   string `json:"kind"` // dns, dot, http, https, control
@@ -26,25 +27,27 @@ type LabProbe struct {
 }
 
 type labTarget struct {
-	name, role, addr, kind, serverName, qname string
+	name, group, role, addr, kind, serverName, qname string
 }
 
-// The lab as the console knows it. Addresses match lab/compose.yaml.
+// The lab as the console knows it. Addresses match lab/compose.yaml. The
+// "demo" group is what the scenes use; "testbed" serves the RFC's corner-case
+// scenarios, the plain clients used from the CLI, and the integration suite.
 var labTargets = []labTarget{
-	{"public-dns", "BIND: private root, lab TLD, 7 signed zones", "172.30.97.10:53", "dns", "", "lab."},
-	{"local-dot", "CoreDNS: office resolvers (DoT)", "172.30.97.20:853", "dot", "dns.splittrust.zivkovic.me", "internal.splittrust.zivkovic.me."},
-	{"local-dot :53", "CoreDNS: Beta's plain office resolver", "172.30.97.20:53", "dns", "", "intranet.beta.example."},
-	{"hotel-dot", "CoreDNS: the hotel's resolver (DoT, honest view)", "172.30.97.21:853", "dot", "dns.hotel.lab", "zivkovic.me."},
-	{"hotel-dot :8853", "CoreDNS: the hotel's forging view", "172.30.97.21:8853", "dot", "dns.hotel.lab", "zivkovic.me."},
-	{"hotel-dot :53", "CoreDNS: plain DNS for guests", "172.30.97.21:53", "dns", "", "intranet.beta.example."},
-	{"pvd", "nginx: PvD documents (HTTPS)", "172.30.97.30:443", "https", "pvd.splittrust.zivkovic.me", ""},
-	{"external", "unbound: quad9.lab (DoT)", "172.30.97.40:853", "dot", "quad9.lab", "lab."},
-	{"proxy", "splittrust proxy: the client's DNS server", "172.30.97.60:53", "dns", "", "lab."},
-	{"proxy control", "splittrust proxy: control API", "172.30.97.60:8001", "control", "", ""},
-	{"intranet", "nginx: Alfa's intranet", "172.30.97.70:80", "http", "host.internal.splittrust.zivkovic.me", ""},
-	{"beta-intranet", "nginx: Beta's intranet", "172.30.97.71:80", "http", "intranet.beta.example", ""},
-	{"fake-bank", "nginx: the hotel's page", "172.30.97.66:80", "http", "www.zivkovic.me", ""},
-	{"bank", "nginx: www.banka.lab", "172.30.97.80:80", "http", "www.banka.lab", ""},
+	{"local-dot", "demo", "CoreDNS: Alfa's office resolver (DoT)", "172.30.97.20:853", "dot", "dns.splittrust.zivkovic.me", "internal.splittrust.zivkovic.me."},
+	{"local-dot :53", "demo", "CoreDNS: Beta's plain office resolver", "172.30.97.20:53", "dns", "", "intranet.beta.example."},
+	{"hotel-dot :8853", "demo", "CoreDNS: the hotel's forging resolver (DoT)", "172.30.97.21:8853", "dot", "dns.hotel.lab", "zivkovic.me."},
+	{"hotel-dot :53", "demo", "CoreDNS: the hotel's plain DNS for guests", "172.30.97.21:53", "dns", "", "intranet.beta.example."},
+	{"pvd", "demo", "nginx: the networks' PvD documents (HTTPS)", "172.30.97.30:443", "https", "pvd.splittrust.zivkovic.me", ""},
+	{"proxy", "demo", "splittrust proxy: Alfa's laptop's DNS server", "172.30.97.60:53", "dns", "", "lab."},
+	{"proxy control", "demo", "splittrust proxy: control API (join, status, log)", "172.30.97.60:8001", "control", "", ""},
+	{"intranet", "demo", "nginx: Alfa's intranet", "172.30.97.70:80", "http", "host.internal.splittrust.zivkovic.me", ""},
+	{"beta-intranet", "demo", "nginx: Beta's intranet", "172.30.97.71:80", "http", "intranet.beta.example", ""},
+	{"fake-bank", "demo", "nginx: the hotel's page", "172.30.97.66:80", "http", "www.zivkovic.me", ""},
+	{"public-dns", "testbed", "BIND: private root, lab TLD, 7 signed zones", "172.30.97.10:53", "dns", "", "lab."},
+	{"hotel-dot :853", "testbed", "CoreDNS: the hotel's honest view (lab scenario)", "172.30.97.21:853", "dot", "dns.hotel.lab", "banka.lab."},
+	{"external", "testbed", "unbound: quad9.lab, the lab's external resolver", "172.30.97.40:853", "dot", "quad9.lab", "lab."},
+	{"bank", "testbed", "nginx: www.banka.lab", "172.30.97.80:80", "http", "www.banka.lab", ""},
 }
 
 // labStatus probes every lab component in parallel.
@@ -82,7 +85,7 @@ func labRoots() *x509.CertPool {
 }
 
 func probe(ctx context.Context, t labTarget, roots *x509.CertPool) LabProbe {
-	p := LabProbe{Name: t.name, Role: t.role, Addr: t.addr, Kind: t.kind}
+	p := LabProbe{Name: t.name, Group: t.group, Role: t.role, Addr: t.addr, Kind: t.kind}
 	start := time.Now()
 	defer func() { p.Millis = time.Since(start).Milliseconds() }()
 	d := net.Dialer{Timeout: 3 * time.Second}

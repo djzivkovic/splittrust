@@ -42,7 +42,7 @@ export function BuiltSlide() {
           {/* the lab */}
           <rect x={620} y={30} width={550} height={300} rx={18} fill="#fafaf9" stroke={INK} strokeWidth={2.5} />
           <text x={640} y={60} fontSize={18} fontWeight={800} fill={INK}>the lab</text>
-          <text x={716} y={60} fontSize={13} fill={MUTED}>Docker Compose, 14 containers, 13 scenarios, 3 device profiles</text>
+          <text x={716} y={60} fontSize={13} fill={MUTED}>Docker Compose: 9 containers run the demo, 5 more are the test bed</text>
           <g transform="translate(700, 130)"><Server /><text y={66} textAnchor="middle" fontSize={12} fill={INK}>BIND: private root</text><text y={82} textAnchor="middle" fontSize={11} fill={MUTED}>lab TLD, 7 signed zones</text></g>
           <g transform="translate(830, 130)"><Resolver tone={BLUE} /><text y={56} textAnchor="middle" fontSize={12} fill={INK}>CoreDNS: office</text><text y={72} textAnchor="middle" fontSize={11} fill={MUTED}>DoT, split zones</text></g>
           <g transform="translate(960, 130)"><Resolver hostile /><text y={56} textAnchor="middle" fontSize={12} fill={INK}>CoreDNS: hotel</text><text y={72} textAnchor="middle" fontSize={11} fill={MUTED}>honest, forging, plain</text></g>

@@ -28,10 +28,11 @@ vectors, and a worked example that cannot be reproduced. SplitTrust provides all
 
 ## The console
 
-`http://127.0.0.1:8000` is the presentation: ten slides. An introduction (the problem, how RFC 9704
-works in three steps, the two companies), three live scenes with a terminal panel (the proxy's live log
-or the dig output of the real lookups), "What we built" (the architecture), "The lab" (every container
-probed live) and a closing slide. **Alfa**
+`http://127.0.0.1:8000` is the presentation: fifteen slides. The problem; why encrypted DNS, VPNs and
+DNSSEC alone do not close the gap (interactive); how RFC 9704 works; what SplitTrust brings; the owner
+tool live against the real zone (interactive); the two companies; three live scenes with a terminal panel
+(the proxy's live log or the dig output of the real lookups); why a company adopts it; the architecture;
+the lab probed live; what is next; closing. **Alfa**
 adopted RFC 9704 (its zone is the real `zivkovic.me`); **Beta** did not. *Monday, at the office*: both
 intranets load; only Alfa's laptop checked that the resolver was allowed to answer. *Tuesday, at the
 hotel*: the hotel claims both domains; Beta's laptop gets the hotel's login page, Alfa's laptop refuses
