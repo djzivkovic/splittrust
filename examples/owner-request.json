@@ -1,0 +1,5 @@
+{
+  "resolver": "dns.firma.rs",
+  "parent": "firma.rs",
+  "subdomains": ["mail", "intranet"]
+}

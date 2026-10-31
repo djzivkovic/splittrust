@@ -1,0 +1,25 @@
+# "quad9.lab": the external encrypted resolver a privacy-conscious device is
+# configured with. Validating recursive resolver over the lab root, reachable
+# only over DNS-over-TLS.
+server:
+  verbosity: 1
+  interface: 0.0.0.0@853
+  tls-port: 853
+  tls-service-key: "@GEN@/external/key.pem"
+  tls-service-pem: "@GEN@/external/cert.pem"
+  access-control: 0.0.0.0/0 allow
+  root-hints: "@GEN@/external/root.hints"
+  trust-anchor-file: "@GEN@/external/trust-anchor.key"
+  harden-dnssec-stripped: yes
+  harden-glue: yes
+  qname-minimisation: no
+  do-ip6: no
+  do-not-query-localhost: no
+  username: ""
+  chroot: ""
+  directory: "/tmp"
+  logfile: ""
+  use-syslog: no
+  val-log-level: 2
+  ede: yes
+  module-config: "validator iterator"

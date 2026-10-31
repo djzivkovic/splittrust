@@ -1,0 +1,7 @@
+{
+  "resolver": "resolver17.parent.example",
+  "parent": "parent.example",
+  "subdomains": ["payroll", "secret.project"],
+  "algorithm": "SHA384",
+  "salt": "ZXhhbXBsZSBzYWx0IG9jdGV0cyAoc2hvdWxkIGJlIHJhbmRvbSk"
+}

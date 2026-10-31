@@ -1,0 +1,177 @@
+{
+  "network": "172.30.97.0/24",
+  "addresses": {
+    "public_dns": "172.30.97.10",
+    "local_dot": "172.30.97.20",
+    "hotel_dot": "172.30.97.21",
+    "pvd": "172.30.97.30",
+    "external": "172.30.97.40",
+    "blackhole": "172.30.97.99",
+    "hijack_target": "172.30.97.66",
+    "bank_www": "172.30.97.80",
+    "internal_host": "10.0.5.20"
+  },
+  "scenarios": [
+    {
+      "id": "legit",
+      "title": "Company network, authorised claims",
+      "explanation": "corp.lab is signed and publishes Verification Records for dns.corp.lab (internal, with a ds key binding) and dns2.corp.lab (mail, token-only). Both claims are accepted; only the first one establishes local DNSSEC.",
+      "discovery": "dnr",
+      "parent": "corp.lab",
+      "network_resolvers": [
+        {"adn": "dns.corp.lab", "addr": "172.30.97.20:853"},
+        {"adn": "dns2.corp.lab", "addr": "172.30.97.20:853"}
+      ],
+      "claims": [
+        {"resolver": "dns.corp.lab", "subdomains": ["internal"], "ds": "local"},
+        {"resolver": "dns2.corp.lab", "subdomains": ["mail"], "ds": "none"}
+      ],
+      "pvd_id": "pvd.corp.lab",
+      "default_device": "validating-stub",
+      "example_qname": "host.internal.corp.lab",
+      "expected": [
+        {"device": "validating-stub", "decision": "accepted", "reason": "AUTHORIZED"},
+        {"device": "hybrid", "decision": "accepted", "reason": "AUTHORIZED"}
+      ]
+    },
+    {
+      "id": "hotel",
+      "title": "Hotel claims the bank (honest relay)",
+      "explanation": "The hotel announces dns.hotel.lab as authoritative for all of banka.lab. Its resolver overrides www.banka.lab but relays everything else. The bank never published a record: the signed denial comes back through the hotel and the claim is rejected.",
+      "discovery": "dnr",
+      "parent": "banka.lab",
+      "network_resolvers": [{"adn": "dns.hotel.lab", "addr": "172.30.97.21:853"}],
+      "claims": [{"resolver": "dns.hotel.lab", "subdomains": ["*"], "ds": "none"}],
+      "pvd_id": "pvd.hotel.lab",
+      "default_device": "validating-stub",
+      "example_qname": "www.banka.lab",
+      "expected": [
+        {"device": "validating-stub", "decision": "rejected", "reason": "RECORD_MISSING"},
+        {"device": "private-dns", "decision": "rejected", "reason": "RECORD_MISSING"}
+      ]
+    },
+    {
+      "id": "hotel-forged",
+      "title": "Hotel forges the Verification Record",
+      "explanation": "Same claim, but the hotel resolver now serves its own banka.lab view including dns.hotel.lab._splitdns-challenge.banka.lab TXT with the correct token. The token matches; the signature chain says the bank never signed it. Bogus, rejected.",
+      "discovery": "dnr",
+      "parent": "banka.lab",
+      "network_resolvers": [{"adn": "dns.hotel.lab", "addr": "172.30.97.21:8853"}],
+      "claims": [{"resolver": "dns.hotel.lab", "subdomains": ["*"], "ds": "none", "copy_of": "hotel"}],
+      "pvd_id": "pvd.hotel.lab",
+      "default_device": "validating-stub",
+      "example_qname": "www.banka.lab",
+      "expected": [
+        {"device": "validating-stub", "decision": "rejected", "reason": "DNSSEC_BOGUS"}
+      ]
+    },
+    {
+      "id": "stale-salt",
+      "title": "Claim changed before the record",
+      "explanation": "IT changed the salt in the announced claim but the zone still carries the record for the old salt. Expected token differs from the published one.",
+      "discovery": "dnr",
+      "parent": "stale.lab",
+      "network_resolvers": [{"adn": "dns.stale.lab", "addr": "172.30.97.20:853"}],
+      "claims": [{"resolver": "dns.stale.lab", "subdomains": ["internal"], "ds": "none", "record_salt": "other"}],
+      "pvd_id": "pvd.stale.lab",
+      "default_device": "validating-stub",
+      "example_qname": "host.internal.stale.lab",
+      "expected": [
+        {"device": "validating-stub", "decision": "rejected", "reason": "TOKEN_MISMATCH"}
+      ]
+    },
+    {
+      "id": "expired-signature",
+      "title": "Zone signatures expired",
+      "explanation": "expired.lab is signed, but its RRSIGs expired an hour ago. The record is Bogus and the claim is rejected.",
+      "discovery": "dnr",
+      "parent": "expired.lab",
+      "network_resolvers": [{"adn": "dns.expired.lab", "addr": "172.30.97.20:853"}],
+      "claims": [{"resolver": "dns.expired.lab", "subdomains": ["internal"], "ds": "none"}],
+      "pvd_id": "pvd.expired.lab",
+      "default_device": "validating-stub",
+      "example_qname": "host.internal.expired.lab",
+      "expected": [
+        {"device": "validating-stub", "decision": "rejected", "reason": "DNSSEC_BOGUS"}
+      ]
+    },
+    {
+      "id": "unsigned",
+      "title": "Unsigned parent zone",
+      "explanation": "unsigned.lab publishes a correct record but is not DNSSEC-signed. A validating device has no fallback and rejects; a device whose default resolver is an external encrypted resolver verifies through it (RFC 9704 section 6.1) and accepts, with its security resting on that resolver.",
+      "discovery": "dnr",
+      "parent": "unsigned.lab",
+      "network_resolvers": [{"adn": "dns.unsigned.lab", "addr": "172.30.97.20:853"}],
+      "claims": [{"resolver": "dns.unsigned.lab", "subdomains": ["internal"], "ds": "none"}],
+      "pvd_id": "pvd.unsigned.lab",
+      "default_device": "validating-stub",
+      "example_qname": "host.internal.unsigned.lab",
+      "expected": [
+        {"device": "validating-stub", "decision": "rejected", "reason": "DNSSEC_INSECURE_NO_FALLBACK"},
+        {"device": "private-dns", "decision": "accepted", "reason": "EXTERNAL_TOKEN_MATCH"},
+        {"device": "hybrid", "decision": "accepted", "reason": "EXTERNAL_TOKEN_MATCH"}
+      ]
+    },
+    {
+      "id": "wrong-ds",
+      "title": "Wrong ds key binding",
+      "explanation": "wrongds.lab publishes a record whose token matches but whose ds value does not correspond to the DNSKEY the resolver presents for resolver.arpa. Rejected.",
+      "discovery": "dnr",
+      "parent": "wrongds.lab",
+      "network_resolvers": [{"adn": "dns.wrongds.lab", "addr": "172.30.97.20:853"}],
+      "claims": [{"resolver": "dns.wrongds.lab", "subdomains": ["internal"], "ds": "wrong"}],
+      "pvd_id": "pvd.wrongds.lab",
+      "default_device": "validating-stub",
+      "example_qname": "host.internal.wrongds.lab",
+      "expected": [
+        {"device": "validating-stub", "decision": "rejected", "reason": "DS_MISMATCH"}
+      ]
+    },
+    {
+      "id": "replay",
+      "title": "Hotel replays the company's claim",
+      "explanation": "The hotel copies corp.lab's real claim and announces its own resolver under the name dns.corp.lab. The record exists and the token matches, but the resolver cannot present a certificate for dns.corp.lab.",
+      "discovery": "dnr",
+      "parent": "corp.lab",
+      "network_resolvers": [{"adn": "dns.corp.lab", "addr": "172.30.97.21:853"}],
+      "claims": [{"resolver": "dns.corp.lab", "subdomains": ["internal"], "ds": "local", "copy_of": "legit"}],
+      "pvd_id": "replay.hotel.lab",
+      "default_device": "validating-stub",
+      "example_qname": "host.internal.corp.lab",
+      "expected": [
+        {"device": "validating-stub", "decision": "rejected", "reason": "TLS_IDENTITY_FAILED"}
+      ]
+    },
+    {
+      "id": "hotel-blocks-external",
+      "title": "Hotel blocks the external resolver",
+      "explanation": "A device whose default resolver is quad9.lab tries to verify the hotel's claim through it, but the hotel blocks encrypted DNS egress. RFC 9704 section 6.1: no response means verification failed. The hotel gains only denial of service.",
+      "discovery": "dnr",
+      "parent": "banka.lab",
+      "network_resolvers": [{"adn": "dns.hotel.lab", "addr": "172.30.97.21:853"}],
+      "claims": [{"resolver": "dns.hotel.lab", "subdomains": ["*"], "ds": "none", "copy_of": "hotel"}],
+      "pvd_id": "pvd.hotel.lab",
+      "external_addr": "172.30.97.99:853",
+      "default_device": "private-dns",
+      "example_qname": "www.banka.lab",
+      "expected": [
+        {"device": "private-dns", "decision": "rejected", "reason": "EXTERNAL_TIMEOUT"}
+      ]
+    },
+    {
+      "id": "special-use",
+      "title": "Claim for a Special-Use name",
+      "explanation": "A network claims home.arpa. RFC 9704 section 3: Special-Use Domain Names MUST NOT be validated. Rejected without any network traffic.",
+      "discovery": "dnr",
+      "parent": "home.arpa",
+      "network_resolvers": [{"adn": "dns.corp.lab", "addr": "172.30.97.20:853"}],
+      "claims": [{"resolver": "dns.corp.lab", "subdomains": ["printers"], "ds": "none"}],
+      "claim_source": "inline",
+      "default_device": "validating-stub",
+      "example_qname": "printer.home.arpa",
+      "expected": [
+        {"device": "validating-stub", "decision": "rejected", "reason": "SPECIAL_USE_NAME"}
+      ]
+    }
+  ]
+}
