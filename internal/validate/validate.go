@@ -25,6 +25,9 @@ const (
 	ErrorState    Security = "error"
 )
 
+// String returns the state name.
+func (s Security) String() string { return string(s) }
+
 // Evidence is what the verifier records about one validated lookup.
 type Evidence struct {
 	QName          string     `json:"qname"`

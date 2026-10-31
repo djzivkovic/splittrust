@@ -120,10 +120,11 @@ func (r *libunboundResolver) Resolve(ctx context.Context, qname string, qtype ui
 		case res.Bogus:
 			ev.Security = Bogus
 			ev.Why = res.WhyBogus
-		case res.Rcode == dns.RcodeServerFailure && res.AnswerPacket == nil:
-			// Upstream failure without a validation verdict: operational, not a DNSSEC state.
+		case res.Rcode == dns.RcodeServerFailure:
+			// Upstream failure without a validation verdict (e.g. the forwarder's TLS
+			// handshake failed): operational, not a DNSSEC state.
 			ev.Security = ErrorState
-			ev.Why = "SERVFAIL from the resolution path"
+			ev.Why = "SERVFAIL from the resolution path (forwarder unreachable or not authenticated)"
 		default:
 			ev.Security = Insecure
 		}

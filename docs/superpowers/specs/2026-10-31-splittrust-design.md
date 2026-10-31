@@ -159,7 +159,7 @@ Reason codes (stable strings): `AUTHORIZED`, `EXTERNAL_TOKEN_MATCH` (§6.1 path)
 `RECORD_INVALID`, `TOKEN_MISMATCH`, `TLS_IDENTITY_FAILED`, `DS_MISMATCH`, `LOCAL_SIGNATURE_INVALID`,
 `LOCAL_DNSSEC_NOT_ESTABLISHED`, `GRANT_EXPIRED`, `EXTERNAL_TIMEOUT`.
 
-Stages, in order: `pvd → claim → token → public_dnssec → external_resolver → record → resolver_tls →
+Stages, in order: `pvd → claim → token → resolver_tls → public_dnssec → external_resolver → record →
 ds → grant`. `public_dnssec` runs for `validating-stub` and `hybrid`; `external_resolver` runs for
 `private-dns` always and for `hybrid` only after `insecure`; stages that do not apply to the device are
 `skipped` with code `NOT_APPLICABLE`. For `claim_source: inline` the `pvd` stage is `skipped` with
@@ -228,10 +228,13 @@ it gives the hostile network the chance to interfere.
    selection and recorded as a warning in the evidence; if no RR parses → `RECORD_INVALID`. Matching RRs
    are those whose `token` equals the expected token; none → `TOKEN_MISMATCH`. Token and `ds` values are
    only ever used from the same RR. Selection policy among matching RRs is fixed in step 8.
-7. **Resolver TLS.** Connect to the announced address for this ADN (`dnr`) or the DDR address (`ddr`)
-   with server name = claim ADN and the lab CA; certificate must match the ADN per RFC 9525
-   (`crypto/x509` `VerifyHostname`); failure → `TLS_IDENTITY_FAILED`. This is the stage that rejects the
-   replayed claim (`replay`).
+7. **Resolver TLS** (runs right after the `token` stage, before any DNS: RFC 9704 §8 steps 3–5 have the
+   client authenticate the network's encrypted resolver by TLS before using it for anything, and with
+   `via-network` resolution it *is* the validator's forwarder). Connect to the announced address for this
+   ADN (`dnr`) or the DDR address (`ddr`) with server name = claim ADN and the lab CA; certificate must
+   match the ADN per RFC 9525 (`crypto/x509` `VerifyHostname`); failure → `TLS_IDENTITY_FAILED`. This is
+   the stage that rejects the replayed claim (`replay`): the hotel announces `dns.corp.lab` but cannot
+   present a certificate for it, so the device computes the token and stops before a single DNS query.
 8. **DS (RFC 9704 §7).** If no matching RR carries `ds`: the resolver is authorized token-only,
    `local_dnssec_mode = not_established`, stage `skipped` with `DS_NOT_PRESENT`. Otherwise query
    `DNSKEY resolver.arpa.` over the authenticated DoT connection; for every `ds` value in every matching
@@ -310,7 +313,7 @@ device `validating-stub`, default resolution `via-network`, unless stated):
 | `expired-signature` | `expired.lab` / `dns.expired.lab` / `["internal"]` | local-dot | rejected / `DNSSEC_BOGUS` |
 | `unsigned` | `unsigned.lab` / `dns.unsigned.lab` / `["internal"]` | local-dot | `validating-stub`: rejected / `DNSSEC_INSECURE_NO_FALLBACK`; `private-dns` and `hybrid`: accepted / `EXTERNAL_TOKEN_MATCH` with `external_ad = false` (yellow) |
 | `wrong-ds` | `wrongds.lab` / `dns.wrongds.lab` / `["internal"]` | local-dot | rejected / `DS_MISMATCH` |
-| `replay` | corp's exact first claim | hotel-dot `:853` announced under the ADN `dns.corp.lab` (the hotel's DNR lies) | rejected / `TLS_IDENTITY_FAILED` — token matches, name binding passes, the certificate does not. Also runnable with `discovery: ddr` (no name binding at all) with the same outcome |
+| `replay` | corp's exact first claim | hotel-dot `:853` announced under the ADN `dns.corp.lab` (the hotel's DNR lies) | rejected / `TLS_IDENTITY_FAILED` — name binding passes, the certificate does not; the record is never even fetched. Also runnable with `discovery: ddr` (no name binding at all) with the same outcome |
 | `hotel-blocks-external` | hotel's claim; device `private-dns` | hotel-dot `:853`; `external.addr` = `172.30.97.99:853` (egress to Quad9 blocked) | rejected / `EXTERNAL_TIMEOUT` — the hotel gains only denial of service |
 | `special-use` | `home.arpa` / `dns.corp.lab` / `["printers"]` | `claim_source: inline` | rejected / `SPECIAL_USE_NAME`, zero network calls |
 
