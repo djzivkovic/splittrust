@@ -42,15 +42,15 @@ export function BuiltSlide() {
           {/* the lab */}
           <rect x={620} y={30} width={550} height={300} rx={18} fill="#fafaf9" stroke={INK} strokeWidth={2.5} />
           <text x={640} y={60} fontSize={18} fontWeight={800} fill={INK}>the lab</text>
-          <text x={720} y={60} fontSize={13} fill={MUTED}>Docker Compose, 14 containers, 13 scenarios x 3 device profiles</text>
-          <g transform="translate(690, 130)"><Server /><text y={66} textAnchor="middle" fontSize={12} fill={INK}>BIND: private root</text><text y={82} textAnchor="middle" fontSize={11} fill={MUTED}>lab TLD + 7 signed zones</text></g>
+          <text x={716} y={60} fontSize={13} fill={MUTED}>Docker Compose, 14 containers, 13 scenarios, 3 device profiles</text>
+          <g transform="translate(700, 130)"><Server /><text y={66} textAnchor="middle" fontSize={12} fill={INK}>BIND: private root</text><text y={82} textAnchor="middle" fontSize={11} fill={MUTED}>lab TLD, 7 signed zones</text></g>
           <g transform="translate(830, 130)"><Resolver tone={BLUE} /><text y={56} textAnchor="middle" fontSize={12} fill={INK}>CoreDNS: office</text><text y={72} textAnchor="middle" fontSize={11} fill={MUTED}>DoT, split zones</text></g>
           <g transform="translate(960, 130)"><Resolver hostile /><text y={56} textAnchor="middle" fontSize={12} fill={INK}>CoreDNS: hotel</text><text y={72} textAnchor="middle" fontSize={11} fill={MUTED}>honest, forging, plain</text></g>
-          <g transform="translate(1090, 130)"><Server /><text y={66} textAnchor="middle" fontSize={12} fill={INK}>nginx: PvD</text><text y={82} textAnchor="middle" fontSize={11} fill={MUTED}>+ 4 web servers</text></g>
+          <g transform="translate(1085, 130)"><Server /><text y={66} textAnchor="middle" fontSize={12} fill={INK}>nginx: PvD</text><text y={82} textAnchor="middle" fontSize={11} fill={MUTED}>and 4 web servers</text></g>
           <g transform="translate(700, 262)"><Router /><text y={56} textAnchor="middle" fontSize={12} fill={INK}>unbound: quad9.lab</text></g>
           <g transform="translate(850, 258)"><Laptop /><text y={58} textAnchor="middle" fontSize={12} fill={INK}>plain clients</text></g>
           <g transform="translate(1000, 262)"><Shield /><text y={50} textAnchor="middle" fontSize={12} fill={INK}>integration suite</text><text y={66} textAnchor="middle" fontSize={11} fill={MUTED}>46 checks in the lab</text></g>
-          <g transform="translate(1110, 262)"><Lock tone={GREEN} /><text y={50} textAnchor="middle" fontSize={12} fill={INK}>bootstrap</text><text y={66} textAnchor="middle" fontSize={11} fill={MUTED}>keys, zones, certs</text></g>
+          <g transform="translate(1100, 262)"><Lock tone={GREEN} /><text y={50} textAnchor="middle" fontSize={12} fill={INK}>bootstrap</text><text y={66} textAnchor="middle" fontSize={11} fill={MUTED}>keys, zones, certs</text></g>
 
           {/* the real world */}
           <g transform="translate(740, 420)"><Cloud /></g>

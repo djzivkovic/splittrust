@@ -24,13 +24,13 @@ export function TitleSlide() {
         <div className="text-base font-semibold text-slate-800">Team NXDOMAIN</div>
         {TEAM.map((t) => <div key={t.name} className="text-base text-slate-600"><span className="font-medium text-slate-800">{t.name}</span> <span className="text-slate-400">{t.role}</span></div>)}
       </div>
-      <svg viewBox="0 0 400 60" className="mt-10 h-14 w-96">
-        <g transform="translate(40,34)"><Laptop tone={BLUE} /></g>
-        <g transform="translate(86,10)"><Shield /></g>
-        <line x1={120} y1={34} x2={200} y2={34} stroke="#cbd5e1" strokeWidth={2.5} />
-        <g transform="translate(240,36)"><Router tone={INK} /></g>
-        <line x1={290} y1={34} x2={340} y2={34} stroke="#cbd5e1" strokeWidth={2.5} />
-        <g transform="translate(372,34)"><Lock tone={GREEN} /></g>
+      <svg viewBox="-40 -50 520 130" className="mt-10 h-28 w-[520px] max-w-full">
+        <g transform="translate(40,10)"><Laptop tone={BLUE} /></g>
+        <g transform="translate(92,-24)"><Shield /></g>
+        <line x1={130} y1={10} x2={210} y2={10} stroke="#cbd5e1" strokeWidth={2.5} />
+        <g transform="translate(260,12)"><Router tone={INK} /></g>
+        <line x1={320} y1={10} x2={390} y2={10} stroke="#cbd5e1" strokeWidth={2.5} />
+        <g transform="translate(430,10)"><Lock tone={GREEN} /></g>
       </svg>
     </div>
   );
@@ -40,7 +40,7 @@ export function ProblemSlide() {
   return (
     <Slide section="The problem" title="Any network can say: my resolver answers for your domain" sub="Nothing lets a device check that the domain owner agreed."
       takeaway="Split-horizon DNS is normal and useful. The lie has exactly the same shape as the truth.">
-      <Canvas viewBox="0 0 1200 460" label="A hotel network claims a bank's domain">
+      <Canvas viewBox="0 -10 1200 480" label="A hotel network claims a bank's domain">
         <rect x={60} y={300} width={1080} height={140} rx={24} fill="#fff7ed" />
         <text x={600} y={428} textAnchor="middle" fontSize={14} fontWeight={600} fill="#9a3412">Hotel Wi-Fi</text>
         <g transform="translate(200, 370)"><Laptop /></g>
@@ -79,10 +79,10 @@ export function HowSlide() {
   return (
     <Slide section="RFC 9704" title="How it works, in three steps" sub="The owner publishes, the network claims, the device checks."
       takeaway="The token can be copied by anyone. The owner's DNSSEC signature and the resolver's certificate cannot.">
-      <Canvas viewBox="0 0 1200 440" label="The three steps of RFC 9704">
+      <Canvas viewBox="0 0 1240 440" label="The three steps of RFC 9704">
         {col(200, 1, "The domain owner publishes", "in its own DNSSEC-signed zone")}
         {col(600, 2, "The network announces a claim", "DHCP option or PvD document")}
-        {col(1000, 3, "The device checks before trusting", "SplitTrust does this part")}
+        {col(1010, 3, "The device checks before trusting", "SplitTrust does this part")}
 
         {/* 1: zone with lock and the TXT record */}
         <g transform="translate(200, 230)"><Cloud /></g>
@@ -99,14 +99,14 @@ export function HowSlide() {
         <text x={600} y={404} textAnchor="middle" fontSize={12} fill={MUTED}>plus the salt the owner used</text>
 
         {/* 3: laptop with shield and three checks */}
-        <g transform="translate(900, 340)"><Laptop tone={BLUE} /></g>
-        <g transform="translate(944, 300)"><Shield /></g>
+        <g transform="translate(880, 340)"><Laptop tone={BLUE} /></g>
+        <g transform="translate(924, 300)"><Shield /></g>
         {[
           ["the resolver proves its name", "DNS over TLS, certificate (RFC 9525)"],
-          ["the owner's record is fetched and validated", "DNSSEC, through the network's own resolver"],
-          ["the token matches the claim", "then, and only then, route those names there"],
+          ["the owner's record validates", "DNSSEC, via the network's own resolver"],
+          ["the token matches the claim", "only then route those names there"],
         ].map(([t, s], i) => (
-          <g key={t} transform={`translate(990, ${190 + i * 62})`}>
+          <g key={t} transform={`translate(975, ${190 + i * 62})`}>
             <Mark ok size={11} />
             <text x={20} y={-2} fontSize={14} fontWeight={600} fill={INK}>{t}</text>
             <text x={20} y={16} fontSize={12} fill={MUTED}>{s}</text>

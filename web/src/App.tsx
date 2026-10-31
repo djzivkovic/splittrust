@@ -183,7 +183,7 @@ function Recipe({ live, claim }: { live: LiveRecord | null; claim: Run["claims"]
   const ds = live?.ds.answer?.[0]?.split(/\s+/).slice(3).join(" ");
   const tile = (icon: React.ReactNode, title: string, sub: React.ReactNode) => (
     <div className="flex flex-col items-center rounded-2xl border-2 border-slate-200 bg-white p-5 text-center shadow-sm">
-      <svg viewBox="-50 -50 100 100" className="h-20 w-20 lg:h-24 lg:w-24">{icon}</svg>
+      <svg viewBox="-64 -56 128 112" className="h-20 w-24 lg:h-24 lg:w-28">{icon}</svg>
       <div className="mt-2 text-xl font-bold lg:text-2xl">{title}</div>
       <div className="mt-2 w-full break-all font-mono text-[11px] leading-relaxed text-slate-500">{sub}</div>
     </div>
@@ -199,12 +199,12 @@ function Recipe({ live, claim }: { live: LiveRecord | null; claim: Run["claims"]
           <>DNR/PvD claim, DoT identity (RFC 9525), DNSSEC-validated TXT, token match, then a scoped grant;<br />here: the SplitTrust proxy as the laptop's resolver</>)}
       </div>
       <div className="mt-5 flex items-center gap-6 rounded-2xl border-2 border-slate-200 bg-white p-5 shadow-sm">
-        <svg viewBox="-150 -60 300 120" className="h-28 w-72 shrink-0 lg:h-32 lg:w-80">
-          <g transform="translate(-30,0)"><Resolver hostile /></g>
-          <text x={-30} y={-42} textAnchor="middle" fontSize={11} fontWeight={700} fill={INK}>announced as dns.splittrust.zivkovic.me</text>
-          <text x={-30} y={48} textAnchor="middle" fontSize={11} fill={RED} fontFamily="ui-monospace, Menlo, monospace">TLS cert SAN: dns.hotel.lab</text>
-          <g transform="translate(70,0)"><Mark ok={false} size={16} /></g>
-          <text x={96} y={5} fontSize={11} fontWeight={700} fill={RED}>TLS_IDENTITY_FAILED</text>
+        <svg viewBox="-160 -70 320 140" className="h-32 w-72 shrink-0 lg:h-36 lg:w-80">
+          <g transform="translate(-40,0)"><Resolver hostile /></g>
+          <text x={-40} y={-48} textAnchor="middle" fontSize={11} fontWeight={700} fill={INK}>announced as dns.splittrust.zivkovic.me</text>
+          <text x={-40} y={46} textAnchor="middle" fontSize={11} fill={RED} fontFamily="ui-monospace, Menlo, monospace">TLS cert SAN: dns.hotel.lab</text>
+          <g transform="translate(80,-10)"><Mark ok={false} size={16} /></g>
+          <text x={80} y={30} textAnchor="middle" fontSize={10} fontWeight={700} fill={RED}>TLS_IDENTITY_FAILED</text>
         </svg>
         <div>
           <div className="text-xl font-bold lg:text-2xl">The record is public. Can it be copied?</div>
