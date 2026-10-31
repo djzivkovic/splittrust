@@ -1,5 +1,5 @@
 /* The DNS query flow as an animated map. Driven by the verifier's ordered stages:
-   each stage becomes one or more "beats" — a packet travelling between two actors and a
+   each stage becomes one or more "beats": a packet travelling between two actors and a
    result mark. The animation stops where the scenario breaks. */
 
 import { motion, AnimatePresence } from "framer-motion";
@@ -17,12 +17,12 @@ const P: Record<NodeId, { x: number; y: number }> = {
 
 function nodes(c: ClaimReport, parent: string, announcedResolver: string, external: string): Node[] {
   return [
-    { id: "device", ...P.device, label: "your device" },
+    { id: "device", ...P.device, label: "device", sub: "the client being protected" },
     { id: "pvd", ...P.pvd, label: "PvD server", sub: "the network's claims" },
     { id: "resolver", ...P.resolver, label: announcedResolver || c.resolver, sub: "the network's resolver" },
-    { id: "external", ...P.external, label: external || "quad9.lab", sub: "external resolver" },
+    { id: "external", ...P.external, label: external || "quad9.lab", sub: "external resolver (DoT)" },
     { id: "root", ...P.root, label: "DNS root", sub: "trust anchor" },
-    { id: "zone", ...P.zone, label: parent + " zone", sub: "the owner's records" },
+    { id: "zone", ...P.zone, label: parent, sub: "the owner's zone" },
   ];
 }
 
@@ -75,7 +75,7 @@ export function beatsFor(c: ClaimReport, device: Device, resolution: Resolution)
   return beats;
 }
 
-const COLOR = { ok: "#34d399", fail: "#fb7185", warn: "#fbbf24", info: "#7dd3fc" };
+const COLOR = { ok: "#15803d", fail: "#b91c1c", warn: "#b45309", info: "#1d4ed8" };
 
 export function FlowDiagram({ claim, device, resolution, beats, playedUpTo, parent, announced, external }: {
   claim: ClaimReport; device: Device; resolution: Resolution; beats: Beat[]; playedUpTo: number;
@@ -94,11 +94,12 @@ export function FlowDiagram({ claim, device, resolution, beats, playedUpTo, pare
   const edges: [NodeId, NodeId][] = [["device", "pvd"], ["device", "resolver"], ["device", "external"], ["resolver", "root"], ["device", "root"], ["root", "zone"], ["zone", "device"]];
 
   return (
-    <svg viewBox="0 0 900 500" className="w-full h-auto select-none" role="img" aria-label="DNS query flow">
+    <svg viewBox="0 0 900 500" className="h-auto w-full select-none" role="img" aria-label="DNS query flow">
       <defs>
-        <filter id="glow"><feGaussianBlur stdDeviation="4" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+        <filter id="glow"><feGaussianBlur stdDeviation="3" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
       </defs>
-      {edges.map(([a, b]) => <path key={a + b} d={edge(a, b)} stroke="#1e293b" strokeWidth={2} fill="none" />)}
+      <rect x={0} y={0} width={900} height={500} rx={12} fill="#f8fafc" />
+      {edges.map(([a, b]) => <path key={a + b} d={edge(a, b)} stroke="#cbd5e1" strokeWidth={2} fill="none" />)}
       {granted && (
         <motion.path d={edge("device", "resolver")} stroke={claim.grant!.path === "external" ? COLOR.warn : COLOR.ok} strokeWidth={6} fill="none" filter="url(#glow)"
           initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: 1, opacity: 1 }} transition={{ duration: 0.8 }} />
@@ -118,18 +119,18 @@ export function FlowDiagram({ claim, device, resolution, beats, playedUpTo, pare
       {ns.map((n) => {
         const m = marks.get(n.id);
         const isCurrent = current && (current.to === n.id || current.mark === n.id);
-        const stroke = m ? COLOR[m] : isCurrent ? COLOR.info : "#334155";
+        const stroke = m ? COLOR[m] : isCurrent ? COLOR.info : "#cbd5e1";
         const isBreak = broke && (broke.mark === n.id || broke.to === n.id) && broke.result === "fail";
         return (
           <g key={n.id} transform={`translate(${n.x}, ${n.y})`}>
-            <motion.rect x={-92} y={-34} width={184} height={68} rx={16} fill="#0f172a" stroke={stroke} strokeWidth={isCurrent ? 3 : 2}
+            <motion.rect x={-92} y={-34} width={184} height={68} rx={12} fill="#ffffff" stroke={stroke} strokeWidth={isCurrent ? 3 : 2}
               animate={isBreak ? { x: [-92, -98, -86, -92] } : { x: -92 }} transition={{ duration: 0.4 }} />
-            <text x={0} y={-6} textAnchor="middle" fill="#e2e8f0" fontSize={15} fontWeight={700} fontFamily="ui-monospace, Menlo, monospace">{n.label}</text>
-            {n.sub && <text x={0} y={16} textAnchor="middle" fill="#94a3b8" fontSize={12}>{n.sub}</text>}
+            <text x={0} y={-6} textAnchor="middle" fill="#0f172a" fontSize={15} fontWeight={600} fontFamily="ui-monospace, Menlo, monospace">{n.label}</text>
+            {n.sub && <text x={0} y={16} textAnchor="middle" fill="#64748b" fontSize={12}>{n.sub}</text>}
             {m && (
               <motion.g initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 300, damping: 15 }}>
                 <circle cx={82} cy={-30} r={14} fill={COLOR[m]} />
-                <text x={82} y={-25} textAnchor="middle" fill="#0f172a" fontSize={16} fontWeight={900}>{m === "ok" ? "✓" : m === "warn" ? "!" : "✕"}</text>
+                <text x={82} y={-25} textAnchor="middle" fill="#ffffff" fontSize={16} fontWeight={900}>{m === "ok" ? "✓" : m === "warn" ? "!" : "✕"}</text>
               </motion.g>
             )}
           </g>

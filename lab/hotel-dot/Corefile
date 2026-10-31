@@ -1,9 +1,9 @@
 # The hotel's hybrid resolver, certificate valid for dns.hotel.lab only.
 #
-# :853  honest view  — overrides www.banka.lab, relays everything else unchanged
+# :853  honest view:  overrides www.banka.lab, relays everything else unchanged
 #                      (so the bank's signed denial of the Verification Record
 #                      travels through the hotel intact).
-# :8853 forging view — serves its own unsigned banka.lab, including a
+# :8853 forging view: serves its own unsigned banka.lab, including a
 #                      Verification Record with the *correct* token for the
 #                      hotel's claim. The token matches; the signatures do not exist.
 tls://.:853 {

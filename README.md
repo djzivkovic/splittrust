@@ -1,6 +1,6 @@
 # SplitTrust
 
-**Who may answer for a domain inside a network — an implementation and test lab for [RFC 9704](https://www.rfc-editor.org/rfc/rfc9704).**
+**Who may answer for a domain inside a network: an implementation and test lab for [RFC 9704](https://www.rfc-editor.org/rfc/rfc9704).**
 Team NXDOMAIN, DNS SEC(urity) Hackathon 2026.
 
 A hotel Wi-Fi can tell your device "my resolver is authoritative for `banka.rs`". Nothing today proves the
@@ -9,8 +9,8 @@ domain owner publish a signed statement of *which resolver may answer for which 
 check it in a way the local network cannot tamper with. The standard had no public implementation, no test
 vectors, and a worked example that cannot be reproduced. SplitTrust provides all three.
 
-> Every verdict carries `trust_context: "lab"` — the lab runs a private DNS root with a real DNSSEC chain;
-> the cryptography and the verdicts are real, the Internet is simulated and nothing leaves the lab — except
+> Every verdict carries `trust_context: "lab"`: the lab runs a private DNS root with a real DNSSEC chain;
+> the cryptography and the verdicts are real, the Internet is simulated and nothing leaves the lab, except
 > the one `real-zivkovic` scenario, which carries `trust_context: "global"` and runs in a separate
 > egress-enabled container against our own real zone.
 
@@ -27,17 +27,17 @@ vectors, and a worked example that cannot be reproduced. SplitTrust provides all
 
 ## The console
 
-`http://127.0.0.1:8000` — three pages:
+`http://127.0.0.1:8000` has three pages:
 
-- **Stage** (the presentation): *1 · You are* (laptop that validates DNSSEC / phone with Private DNS / hybrid) →
-  *2 · Join a network* (Corp Wi-Fi, Hotel Guest with four tricks, Startup Café, Branch Office, Home, the real
-  Internet) → *3 · The device checks*: the DNS query flow animated on a map of the actors, a six-step human
-  checklist, and a verdict card that states the consequence → *4 · Now browse*: an address bar that resolves
-  and fetches a page as a plain client on that network would, side by side with a naive device on the same
-  Wi-Fi. Keys: `1 2 3` device, `← →` network, `space` replay.
-- **Live**: the same engine with every knob exposed — verify, resolve, inspect a claim, build a record, the
-  DNS proxy's status — and the raw JSON.
-- **About**: what the point is, what the lab is, how to present, honest limits.
+- **Demo** (the presentation), four steps top to bottom: *1 Choose the device* (laptop that validates DNSSEC,
+  phone with Private DNS, hybrid); *2 Join a network* (Corp Wi-Fi, Hotel Guest with four variants, Startup Cafe,
+  Branch Office, Home, Real Internet); *3 Verification*: the DNS query animated on a map of the actors, a
+  six-step checklist in plain language, and a verdict card that states the consequence; *4 Resolve a name*: an
+  address bar that resolves and fetches a page as a plain client on that network would, next to a device
+  without SplitTrust on the same Wi-Fi. Keys: `1 2 3` device, left/right arrows network, `space` replay.
+- **Tools**: the same engine with every option exposed (verify, resolve, inspect a claim, build a record, the
+  DNS proxy's status) and the raw JSON.
+- **How it works**: what the project does, what the lab is, how to present, limits.
 
 The console is React + Vite + Tailwind in `web/`, built in the image's first stage and embedded into the Go
 binary; the committed `internal/api/web/dist` is a convenience for `go build` on hosts without Node
@@ -78,15 +78,15 @@ go test ./...
 pvd → claim → token → resolver_tls → public_dnssec → external_resolver → record → ds → grant
 ```
 
-1. **pvd** — RFC 8801 Additional Information over HTTPS (certificate = PvD ID, no redirects, 64 KiB cap, `application/pvd+json`); every `splitDnsClaims` entry is verified independently.
-2. **claim** — canonical names (lowercase, IDNA), RFC 6761 special-use names rejected, lab scope enforced, and the claim's resolver must be an ADN the network announced via DNR (with DDR the certificate alone binds).
-3. **token** — RFC 9704 §5 literally: `hash(len(salt) || salt || X)`.
-4. **resolver_tls** — authenticate the announced resolver by name over DoT before trusting anything it says (RFC 9704 §8).
-5. **public_dnssec** (`validating-stub`, `hybrid`) — the Verification Record, validated locally with libunbound, forwarding over the authenticated DoT connection to the network's resolver (RFC 9704 Figure 4) or iterating from the root. Secure / Bogus / Insecure / Indeterminate decide (§6.2).
-6. **external_resolver** (`private-dns`; `hybrid` after Insecure) — the same record through the device's external encrypted resolver (§6.1); no answer ⇒ failed.
-7. **record** — per-RR parsing; token and `ds` only ever from the same RR.
-8. **ds** — §7: DNSKEY `resolver.arpa.` over DoT, DS recomputed over `resolver.arpa.`, full RDATA compared; no silent downgrade to token-only when a published `ds` does not match.
-9. **grant** — expiry = min(TTL, RRSIG expiration, PvD expiry).
+1. **pvd**: RFC 8801 Additional Information over HTTPS (certificate = PvD ID, no redirects, 64 KiB cap, `application/pvd+json`); every `splitDnsClaims` entry is verified independently.
+2. **claim**: canonical names (lowercase, IDNA), RFC 6761 special-use names rejected, lab scope enforced, and the claim's resolver must be an ADN the network announced via DNR (with DDR the certificate alone binds).
+3. **token**: RFC 9704 §5 literally: `hash(len(salt) || salt || X)`.
+4. **resolver_tls**: authenticate the announced resolver by name over DoT before trusting anything it says (RFC 9704 §8).
+5. **public_dnssec** (`validating-stub`, `hybrid`): the Verification Record, validated locally with libunbound, forwarding over the authenticated DoT connection to the network's resolver (RFC 9704 Figure 4) or iterating from the root. Secure / Bogus / Insecure / Indeterminate decide (§6.2).
+6. **external_resolver** (`private-dns`; `hybrid` after Insecure): the same record through the device's external encrypted resolver (§6.1); no answer ⇒ failed.
+7. **record**: per-RR parsing; token and `ds` only ever from the same RR.
+8. **ds**: §7: DNSKEY `resolver.arpa.` over DoT, DS recomputed over `resolver.arpa.`, full RDATA compared; no silent downgrade to token-only when a published `ds` does not match.
+9. **grant**: expiry = min(TTL, RRSIG expiration, PvD expiry).
 
 `resolve` then shows what the grant is for: names inside it go to the authorised resolver and the answer is
 validated under the delegated keys; everything else takes the device's default path.
@@ -97,7 +97,7 @@ validated under the delegated keys; everything else takes the device's default p
 |---|---|---|---|
 | `legit` | accepted (`AUTHORIZED`, two claims; claim 1 delegated, claim 2 token-only) | | accepted |
 | `hotel` | rejected `RECORD_MISSING` | rejected `RECORD_MISSING` | |
-| `hotel-forged` | rejected `DNSSEC_BOGUS` — correct token, no signature chain | | |
+| `hotel-forged` | rejected `DNSSEC_BOGUS` (correct token, no signature chain) | | |
 | `stale-salt` | rejected `TOKEN_MISMATCH` | | |
 | `expired-signature` | rejected `DNSSEC_BOGUS` | | |
 | `unsigned` | rejected `DNSSEC_INSECURE_NO_FALLBACK` | accepted `EXTERNAL_TOKEN_MATCH` (yellow) | accepted (yellow) |
@@ -146,7 +146,7 @@ dns.splittrust.zivkovic.me._splitdns-challenge.zivkovic.me. 3600 IN TXT "token=B
 The device validates under the IANA root trust anchor (`dns-root-data`), iterating from the real root
 because the lab's resolver has no Internet access, and the `private-dns` device asks the real
 `dns.quad9.net`. The announced resolver is still the lab's `dns.splittrust.zivkovic.me` (local-dot). It
-runs only in the egress-enabled `real` service — the console and the `app` container stay offline:
+runs only in the egress-enabled `real` service; the console and the `app` container stay offline:
 
 ```bash
 docker compose -f lab/compose.yaml --profile real run --rm real verify --scenario real-zivkovic
@@ -174,7 +174,7 @@ internal/validate     libunbound (cgo, -tags libunbound)   internal/verify   the
 internal/route        scoped resolution                    internal/proxy    Do53 front door with grant cache + EDE
 internal/engine       wiring shared by CLI, API and proxy
 internal/api          HTTP API, /api/browse, embedded console (dist)   internal/lab  scenario catalogue + manifest
-web/                  the console: React + Vite + Tailwind + framer-motion (Stage, Live, About)
+web/                  the console: React + Vite + Tailwind + framer-motion (Demo, Tools, How it works)
 internal/labgen       lab artefacts the engine must make   internal/vectors  published vectors + forensics
 lab/                  compose, Dockerfiles, bootstrap, CoreDNS/nginx/unbound configs
 tests/integration     runs inside the lab (compose "test" service)

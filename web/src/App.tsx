@@ -1,23 +1,26 @@
 import { useEffect, useState } from "react";
-import { BrowserRouter, NavLink, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, NavLink, Route, Routes } from "react-router-dom";
 import { api, type Summary } from "./lib/api";
-import { Stage } from "./pages/Stage";
-import { About } from "./pages/About";
-import { Live } from "./pages/Live";
+import { Demo } from "./pages/Demo";
+import { HowItWorks } from "./pages/HowItWorks";
+import { Tools } from "./pages/Tools";
 
 function Nav() {
-  const link = ({ isActive }: { isActive: boolean }) => `rounded-lg px-3 py-1.5 text-sm font-semibold transition ${isActive ? "bg-slate-800 text-white" : "text-slate-300 hover:text-white"}`;
+  const link = ({ isActive }: { isActive: boolean }) => `rounded-md px-3 py-1.5 text-sm font-medium transition ${isActive ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"}`;
   return (
-    <header className="sticky top-0 z-20 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-6 py-3">
-        <div className="text-xl font-black tracking-tight">SplitTrust <span className="ml-2 text-sm font-medium text-slate-400">RFC 9704 — who may answer for a domain inside a network</span></div>
-        <nav className="ml-auto flex gap-1">
-          <NavLink to="/" end className={link}>Stage</NavLink>
-          <NavLink to="/live" className={link}>Live</NavLink>
-          <NavLink to="/about" className={link}>About</NavLink>
+    <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 px-6 py-3">
+        <div>
+          <div className="text-lg font-bold tracking-tight">SplitTrust</div>
+          <div className="text-xs text-slate-500">RFC 9704: who may answer for a domain inside a network</div>
+        </div>
+        <nav className="flex gap-1">
+          <NavLink to="/" end className={link}>Demo</NavLink>
+          <NavLink to="/tools" className={link}>Tools</NavLink>
+          <NavLink to="/how" className={link}>How it works</NavLink>
         </nav>
-        <div className="w-full rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-200">
-          LAB — a private DNS root with a real DNSSEC chain. Verdicts are real cryptography; the Internet is simulated. Only the “real Internet” network carries <code>trust_context: global</code>.
+        <div className="ml-auto text-xs text-slate-500">
+          Lab environment: a private DNS root with a real DNSSEC chain. Verdicts are real; the Internet is simulated.
         </div>
       </div>
     </header>
@@ -31,14 +34,16 @@ export default function App() {
   return (
     <BrowserRouter>
       <Nav />
-      {err && <div className="mx-auto max-w-7xl px-6 pt-6 text-rose-300">Cannot reach the API: {err}. Is the lab up? <code>docker compose -f lab/compose.yaml ps</code></div>}
-      {!summaries && !err && <div className="mx-auto max-w-7xl px-6 pt-6 text-slate-400">loading…</div>}
+      {err && <div className="mx-auto max-w-7xl px-6 pt-6 text-red-700">Cannot reach the API: {err}. Is the lab running? <code>docker compose -f lab/compose.yaml ps</code></div>}
+      {!summaries && !err && <div className="mx-auto max-w-7xl px-6 pt-6 text-slate-500">Loading the scenario catalogue...</div>}
       {summaries && (
         <Routes>
-          <Route path="/" element={<Stage summaries={summaries} />} />
-          <Route path="/live" element={<Live summaries={summaries} />} />
-          <Route path="/about" element={<About />} />
-          <Route path="*" element={<Stage summaries={summaries} />} />
+          <Route path="/" element={<Demo summaries={summaries} />} />
+          <Route path="/tools" element={<Tools summaries={summaries} />} />
+          <Route path="/how" element={<HowItWorks />} />
+          <Route path="/live" element={<Navigate to="/tools" replace />} />
+          <Route path="/about" element={<Navigate to="/how" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       )}
     </BrowserRouter>

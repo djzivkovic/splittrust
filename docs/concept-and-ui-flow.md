@@ -1,6 +1,6 @@
-# SplitTrust — what it is, what the lab is for, and how the console should flow
+# SplitTrust: what it is, what the lab is for, and how the console should flow
 
-Status: implemented (2026-10-31) as the React console in `web/` — Stage / Live / About. Section 5 below
+Status: implemented (2026-10-31) as the React console in `web/`: Demo / Tools / How it works (first built as "Stage / Live / About", renamed for clarity). Section 5 below
 is the flow as built; section 6's backend additions exist (`/api/browse`, the story sentences live in
 `web/src/lib/story.ts`, network metadata in `web/src/lib/networks.ts`).
 
@@ -16,7 +16,7 @@ is the flow as built; section 6's backend additions exist (`/api/browse`, the st
           │ www.banka.lab ?                    Should the device believe it?
           ▼
    ┌──────────────┐                            Today: nothing to check. Encrypting the
-   │ dns.hotel.lab│ ──► 172.30.97.66 (fake)    query does not help — the device is talking
+   │ dns.hotel.lab│ ──► 172.30.97.66 (fake)    query does not help: the device is talking
    └──────────────┘                            to the wrong server, encrypted.
 ```
 
@@ -75,17 +75,17 @@ certificate match?). The verdicts are real cryptography; only the Internet is sm
 
 | Scenario (network) | What the network announces | The world | Verdict for a validating device |
 |---|---|---|---|
-| `legit` — Corp Wi-Fi | `dns.corp.lab` for `internal`, `dns2.corp.lab` for `mail` | corp.lab signed, records present, first one delegates a key | **accepted** — names route to the company resolver, validated |
-| `hotel` — Hotel Wi-Fi | `dns.hotel.lab` for all of `banka.lab` | bank never published anything; hotel relays the bank's signed denial | rejected `RECORD_MISSING` |
-| `hotel-forged` | same | hotel serves its own banka.lab incl. a record with the *correct token* | rejected `DNSSEC_BOGUS` — token right, signature chain absent |
+| `legit`: Corp Wi-Fi | `dns.corp.lab` for `internal`, `dns2.corp.lab` for `mail` | corp.lab signed, records present, first one delegates a key | **accepted**: names route to the company resolver, validated |
+| `hotel`: Hotel Wi-Fi | `dns.hotel.lab` for all of `banka.lab` | bank never published anything; hotel relays the bank's signed denial | rejected `RECORD_MISSING` |
+| `hotel-forged` | same | hotel serves its own banka.lab incl. a record with the *correct token* | rejected `DNSSEC_BOGUS`: token right, signature chain absent |
 | `replay` | the company's claim, announced as `dns.corp.lab` | hotel cannot present a certificate for that name | rejected `TLS_IDENTITY_FAILED` before any DNS |
 | `stale-salt` | claim with a new salt | zone still has the old record | rejected `TOKEN_MISMATCH` |
 | `expired-signature` | correct claim | zone's signatures expired | rejected `DNSSEC_BOGUS` |
-| `unsigned` — Startup café | correct claim, record present | zone not DNSSEC-signed | validating device: rejected; Private-DNS phone: **accepted via Quad9, yellow** |
-| `wrong-ds` | claim whose record carries a wrong `ds` | key mismatch | rejected `DS_MISMATCH` — no downgrade to token-only |
+| `unsigned`: Startup café | correct claim, record present | zone not DNSSEC-signed | validating device: rejected; Private-DNS phone: **accepted via Quad9, yellow** |
+| `wrong-ds` | claim whose record carries a wrong `ds` | key mismatch | rejected `DS_MISMATCH`: no downgrade to token-only |
 | `hotel-blocks-external` | hotel claim; device is a Private-DNS phone | Quad9 unreachable | rejected `EXTERNAL_TIMEOUT` |
-| `special-use` — Home | `home.arpa` | RFC 6761 name | rejected without any traffic |
-| `real-zivkovic` — Real Internet | `dns.splittrust.zivkovic.me` for `internal.splittrust.zivkovic.me` | real Cloudflare zone, real DS at the `.me` registry, real Quad9 | **accepted** under the IANA root (`trust_context: global`) |
+| `special-use`: Home | `home.arpa` | RFC 6761 name | rejected without any traffic |
+| `real-zivkovic`: Real Internet | `dns.splittrust.zivkovic.me` for `internal.splittrust.zivkovic.me` | real Cloudflare zone, real DS at the `.me` registry, real Quad9 | **accepted** under the IANA root (`trust_context: global`) |
 
 Three **device profiles** change the answer the RFC gives:
 `validating-stub` (laptop that validates DNSSEC itself; the network resolver is its forwarder),
@@ -102,7 +102,7 @@ It is an engineer's test harness, not a story:
   in four places; the proxy panel and the verification table drive different things and look the same.
 - The trace is a wall of stage ids and reason codes; the sentence that matters ("the hotel knew the
   token but the bank never signed it") is buried in `evidence` JSON.
-- The payoff — a normal program reaching the right site or failing safely — is not in the UI at all; it
+- The payoff: a normal program reaching the right site or failing safely: is not in the UI at all; it
   lives in a terminal command the presenter has to type.
 - The real-DNS result, the strongest thing we have, is a greyed-out row.
 
@@ -113,7 +113,7 @@ sentence first and shows the technical detail on demand.
 
 ```
  ┌───────────────────────────────────────────────────────────────────────────────────┐
- │ SplitTrust            LAB — a private root with a real DNSSEC chain · [real DNS ✓] │
+ │ SplitTrust            LAB: a private root with a real DNSSEC chain · [real DNS ✓] │
  ├───────────────────────────────────────────────────────────────────────────────────┤
  │ 1  YOU ARE                                                                        │
  │   [ Laptop: validates DNSSEC ]  [ Phone: Private DNS (Quad9) ]  [ Hybrid ]        │
@@ -130,12 +130,12 @@ sentence first and shows the technical detail on demand.
  │ 3  THE DEVICE CHECKS                                      [ Verify ]  (auto-run)  │
  │   ● Claim read         dns.hotel.lab wants *.banka.lab                            │
  │   ● Token computed     4mEZ…oDb  (what the bank would have had to publish)        │
- │   ● Resolver identity  certificate is for dns.hotel.lab — as announced   ✓        │
- │   ✖ Owner's record     fetched through the hotel — the bank's zone never signed   │
+ │   ● Resolver identity  certificate is for dns.hotel.lab: as announced   ✓        │
+ │   ✖ Owner's record     fetched through the hotel: the bank's zone never signed   │
  │                        it: DNSSEC Bogus                                           │
  │   ○ Key delegation     not reached                                                │
  │   ┌───────────────────────────────────────────────────────────────────────────┐   │
- │   │ REJECTED — DNSSEC_BOGUS                                                   │   │
+ │   │ REJECTED: DNSSEC_BOGUS                                                   │   │
  │   │ The hotel knows the token (it wrote the claim). It cannot produce the     │   │
  │   │ bank's signature. Nothing under banka.lab will be sent to this resolver.  │   │
  │   └───────────────────────────────────────────────────────────────────────────┘   │
@@ -157,35 +157,35 @@ sentence first and shows the technical detail on demand.
 
 ### Panel by panel
 
-**1 — You are.** Three cards; selecting one re-runs the current network. One sentence each:
-*Laptop* — "validates DNSSEC itself; the network's resolver is only a forwarder; an unsigned zone cannot
-be verified"; *Phone with Private DNS* — "asks Quad9 for everything; verifies the owner's record through
-Quad9, so its safety rests on Quad9"; *Hybrid* — "validates, and only when a zone is provably unsigned
+**1: You are.** Three cards; selecting one re-runs the current network. One sentence each:
+*Laptop*: "validates DNSSEC itself; the network's resolver is only a forwarder; an unsigned zone cannot
+be verified"; *Phone with Private DNS*: "asks Quad9 for everything; verifies the owner's record through
+Quad9, so its safety rests on Quad9"; *Hybrid*: "validates, and only when a zone is provably unsigned
 asks Quad9". Default: Laptop.
 
-**2 — Join a network.** Networks are SSID-like cards, not scenario ids. The hotel is one card with a
+**2: Join a network.** Networks are SSID-like cards, not scenario ids. The hotel is one card with a
 variant switch (honest / forging / replaying the company's claim / blocking Quad9) because the story is
 "same hotel, four tricks". Selecting a card shows *what the network announces* in plain words and the
 mechanism (DNR, PvD/DHCP), then auto-runs panel 3. Joining also moves the lab `client` container to that
 network (the proxy's `/join`), so panel 4 is consistent with panel 3.
 
-**3 — The device checks.** The pipeline rendered as a vertical checklist of five human steps (claim →
+**3: The device checks.** The pipeline rendered as a vertical checklist of five human steps (claim →
 token → resolver identity → owner's record → key delegation), each with a one-line explanation generated
 from the stage code, and a verdict card whose text is the *consequence for the user*: "nothing under
 banka.lab will be sent to this resolver" / "names under internal.corp.lab go to dns.corp.lab and answers
-are validated under the key the owner delegated" / "accepted, but only because Quad9 said so — yellow".
+are validated under the key the owner delegated" / "accepted, but only because Quad9 said so: yellow".
 The existing stage trace, evidence JSON and `dig` output move into a collapsed "technical trace".
 Multi-claim networks (Corp) show one checklist per claim, collapsed to a row each when all pass.
 
-**4 — Now browse.** The payoff without a terminal. An address bar with suggested names. The app performs
+**4: Now browse.** The payoff without a terminal. An address bar with suggested names. The app performs
 the fetch *inside the lab* (`POST /api/browse {name}`): the left column resolves the name as the current
 device would (through the proxy's path) and fetches `http://name/`, showing the page banner or the DNS
 failure with its Extended DNS Error; the right column does the same through the hotel's plain DNS as a
 naive device would (only when the current network is a hotel; otherwise it shows the public answer). The
-page banners are the lab's three web servers — intranet, REAL bank, FAKE bank — written to be read from
+page banners are the lab's three web servers: intranet, REAL bank, FAKE bank: written to be read from
 the back of a room.
 
-**5 — Domain owner (tab).** The publishing side: the current form, but framed as "a network asked you
+**5: Domain owner (tab).** The publishing side: the current form, but framed as "a network asked you
 for permission; here is what to publish and what to tell them", plus the live `zivkovic.me` record and
 its real verification result (green under the IANA root) with the `dig` evidence.
 
@@ -198,7 +198,7 @@ it really do all of this?".
 - Lead with the consequence, follow with the mechanism, end with the RFC section.
 - Never show a reason code without its sentence. `DNSSEC_BOGUS` → "the owner's zone never signed this".
 - Green = authority established and answers validated; **yellow** = authority rests on someone else
-  (Quad9) or no key was delegated; red = rejected; grey = could not decide (network error) — and grey
+  (Quad9) or no key was delegated; red = rejected; grey = could not decide (network error): and grey
   never pretends to be red or green.
 - The lab banner stays on every screen; the real-DNS card is the only thing allowed to say "global".
 
@@ -210,7 +210,7 @@ Already there: `GET /api/scenarios` (with `expected`, `default_device`, `require
 
 Needed for the flow above (small, server-side):
 
-1. `POST /api/browse {name}` → `{device: {route, answers, error, ede, body}, naive: {answers, body}}` — the
+1. `POST /api/browse {name}` → `{device: {route, answers, error, ede, body}, naive: {answers, body}}`: the
    app resolves via the proxy (DNS query to `172.30.97.60:53`) and via the hotel's plain DNS
    (`172.30.97.21:53`), then HTTP-GETs `http://<ip>/` with `Host: name` and returns the banner text. ~80
    lines of Go; the app already lives on the lab network.
@@ -226,6 +226,6 @@ Needed for the flow above (small, server-side):
 ## 7. What to say when asked "so what does the product look like?"
 
 A resolver component on the device (or in the network's own router) that does what the proxy does: learn
-the claim from DHCP/PvD, verify it, and only then split DNS for exactly those names — with the OS's own
+the claim from DHCP/PvD, verify it, and only then split DNS for exactly those names: with the OS's own
 split-DNS machinery (systemd-resolved per-domain DoT+DNSSEC, Windows NRPT) as the enforcement point.
 The lab shows the whole loop end to end with real cryptography; the console shows it to a human.

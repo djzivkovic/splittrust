@@ -314,7 +314,7 @@ func (v *Verifier) verifyClaim(ctx context.Context, p lab.Profile, i int, raw cl
 	if err != nil {
 		var ie *IdentityError
 		if errors.As(err, &ie) {
-			return reject("resolver_tls", "TLS_IDENTITY_FAILED", fmt.Sprintf("the resolver at %s does not hold a certificate for %s: %v — the claim's expected token %s was never looked up", announced.Addr, c.Resolver, ie.Err, ins.Token), map[string]any{"addr": announced.Addr, "server_name": c.Resolver, "expected_token": ins.Token})
+			return reject("resolver_tls", "TLS_IDENTITY_FAILED", fmt.Sprintf("the resolver at %s does not hold a certificate for %s: %v; the claim's expected token %s was never looked up", announced.Addr, c.Resolver, ie.Err, ins.Token), map[string]any{"addr": announced.Addr, "server_name": c.Resolver, "expected_token": ins.Token})
 		}
 		return indeterminate("resolver_tls", "RESOLVER_UNREACHABLE", fmt.Sprintf("cannot reach the resolver at %s: %v", announced.Addr, err), map[string]any{"addr": announced.Addr})
 	}
@@ -375,7 +375,7 @@ func (v *Verifier) verifyClaim(ctx context.Context, p lab.Profile, i int, raw cl
 		path = "external"
 		conn, err := v.Deps.DoT.Dial(ctx, p.External.Addr, strings.TrimSuffix(p.External.ADN, "."))
 		if err != nil {
-			return reject("external_resolver", "EXTERNAL_TIMEOUT", fmt.Sprintf("no response from the external resolver %s (%s): %v — RFC 9704 section 6.1: verification MUST be considered failed", p.External.ADN, p.External.Addr, err), map[string]any{"external": p.External})
+			return reject("external_resolver", "EXTERNAL_TIMEOUT", fmt.Sprintf("no response from the external resolver %s (%s): %v; RFC 9704 section 6.1: verification MUST be considered failed", p.External.ADN, p.External.Addr, err), map[string]any{"external": p.External})
 		}
 		msg, err := conn.Query(ctx, ins.RecordOwner, dns.TypeTXT)
 		conn.Close()

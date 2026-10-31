@@ -1,11 +1,11 @@
-# RFC 9704 — erratum report (draft) and implementer notes
+# RFC 9704: erratum report (draft) and implementer notes
 
 Status: **draft, not yet filed.** Team NXDOMAIN, DNS SEC(urity) Hackathon 2026. Per the hackathon
 rules this goes to the organisers first; filing at <https://www.rfc-editor.org/errata.php> follows.
 Reproduction: `splittrust vectors` (Go) and `docs/research/rfc9704_token_check.py` (stdlib Python)
 agree on every value below.
 
-## Erratum 1 — Section 5.1, the worked example cannot be reproduced (Technical)
+## Erratum 1: Section 5.1, the worked example cannot be reproduced (Technical)
 
 **Section 5.1 says:**
 
@@ -59,14 +59,14 @@ token input          len(salt) || salt || X
 implementer can test against. A wrong example is worse than none: an implementation that
 *matches* it is broken, and one that does not cannot tell whether it or the document is wrong.
 
-## Erratum 2 — Section 7, Figure 1, the NSEC record (Editorial/Technical, lower priority)
+## Erratum 2: Section 7, Figure 1, the NSEC record (Editorial/Technical, lower priority)
 
 **Figure 1 says:** `@ IN NSEC subdomain.parent.example. NS`
 
 **Problem.** RFC 4035 §2.3 requires the type bit map of every NSEC record in a signed zone to include
 NSEC and RRSIG, and the apex also holds SOA and DNSKEY. More importantly, the proof that
 `subdomain.parent.example` is an *insecure* delegation is the NSEC record **at the delegation
-point**, with the NS bit set and the DS bit clear — not an NSEC at the apex pointing to it. The
+point**, with the NS bit set and the DS bit clear, not an NSEC at the apex pointing to it. The
 delegation itself (`subdomain IN NS …`) is also missing from the figure.
 
 **It should say** (illustratively):
@@ -76,7 +76,7 @@ delegation itself (`subdomain IN NS …`) is also missing from the figure.
    subdomain IN NSEC <next-name>.parent.example. NS RRSIG NSEC
 ```
 
-## Observation 3 — Section 5.1's names are Special-Use (Editorial)
+## Observation 3: Section 5.1's names are Special-Use (Editorial)
 
 The example uses `parent.example`. `.example` is in the IANA Special-Use Domain Names registry
 (RFC 6761), and Section 3 says Special-Use Domain Names "MUST NOT be validated using the mechanism
@@ -85,7 +85,7 @@ own example claim. The example is still useful for token computation (SplitTrust
 continues for inspection, and rejects it in verification), but a name under a documentation TLD that
 is *not* special-use, or an explicit note, would avoid the contradiction.
 
-## Implementer notes — what RFC 9704 leaves to the implementation
+## Implementer notes: what RFC 9704 leaves to the implementation
 
 Each of these produced a decision and a test vector in SplitTrust. They are offered as input to the
 ADD working group, not as errata.
@@ -101,7 +101,7 @@ ADD working group, not as errata.
 3. **One claim per DHCP message.** Section 5.2.1 says "each authorization claim is encoded as a
    DHCP Authentication option", but RFC 8415 §20.2 forbids more than one Authentication option per
    DHCPv6 message, and RFC 3396 (which §5.2.1 invokes) makes a DHCPv4 client concatenate repeated
-   option 90 instances — and `$X` is not self-delimiting. In practice DHCP carries exactly one claim;
+   option 90 instances, and `$X` is not self-delimiting. In practice DHCP carries exactly one claim;
    PvD carries any number.
 4. **Replay Detection field.** Section 5.2.1 fixes RDM to 0 but never says what the 64-bit field
    holds. RFC 3118 / RFC 8415 §20.3 require a strictly increasing counter for RDM 0 and oblige a
@@ -119,7 +119,7 @@ ADD working group, not as errata.
 8. **Insecure and the external path.** Section 6.1 applies "only if the client is already
    configured" with an external encrypted resolver. SplitTrust models this as a property of the
    device, not of the verification run; the lab shows the same unsigned zone rejected by a
-   validating device and accepted — visibly weaker — by a device whose default resolver is external.
+   validating device and accepted, visibly weaker, by a device whose default resolver is external.
 
 ## Implementation status wording
 

@@ -3,54 +3,54 @@
 
 import type { Device } from "./api";
 
-export interface DeviceCard { id: Device; name: string; blurb: string; icon: string }
+export interface DeviceCard { id: Device; name: string; short: string; blurb: string }
 
 export const DEVICES: DeviceCard[] = [
-  { id: "validating-stub", name: "Laptop that validates DNSSEC", icon: "💻",
-    blurb: "Checks every signature itself. The network's resolver is only a forwarder — if a zone is unsigned there is nothing to check, and nothing to trust." },
-  { id: "private-dns", name: "Phone with Private DNS", icon: "📱",
-    blurb: "Sends everything to Quad9 over TLS by default and verifies the owner's record through it. Its safety rests on Quad9 — the RFC calls this the external-resolver path (§6.1)." },
-  { id: "hybrid", name: "Hybrid", icon: "🧭",
-    blurb: "Validates like the laptop, and only when a zone is provably unsigned asks Quad9 instead (§6.2 'SHOULD retry')." },
+  { id: "validating-stub", name: "Laptop", short: "validates DNSSEC itself",
+    blurb: "Checks every DNSSEC signature itself. The network's resolver is only a forwarder. If a zone is unsigned there is nothing to check, so nothing is trusted." },
+  { id: "private-dns", name: "Phone", short: "Private DNS via Quad9",
+    blurb: "Sends all queries to Quad9 over TLS and verifies the owner's record through it. Its safety rests on Quad9. RFC 9704 section 6.1 calls this the external-resolver path." },
+  { id: "hybrid", name: "Hybrid", short: "validates, falls back to Quad9",
+    blurb: "Validates like the laptop. Only when a zone is provably unsigned does it ask Quad9 instead (RFC 9704 section 6.2, the recommended retry)." },
 ];
 
 export interface NetworkVariant { id: string; label: string; announces: string; world: string }
-export interface NetworkGroup { key: string; ssid: string; icon: string; tagline: string; variants: NetworkVariant[]; requiresInternet?: boolean }
+export interface NetworkGroup { key: string; name: string; tagline: string; variants: NetworkVariant[]; requiresInternet?: boolean }
 
 export const NETWORKS: NetworkGroup[] = [
-  { key: "corp", ssid: "Corp Wi-Fi", icon: "🏢", tagline: "The company that actually agreed with its domain owner.",
+  { key: "corp", name: "Corp Wi-Fi", tagline: "The company whose domain owner agreed.",
     variants: [{ id: "legit", label: "as configured",
-      announces: "dns.corp.lab answers for internal.corp.lab, and dns2.corp.lab for mail.corp.lab.",
-      world: "corp.lab is DNSSEC-signed and publishes both Verification Records; the first also delegates a key for internal.corp.lab." }] },
-  { key: "hotel", ssid: "Hotel Guest", icon: "🏨", tagline: "Claims the bank. Four tricks, one Wi-Fi.",
+      announces: "dns.corp.lab answers for internal.corp.lab; dns2.corp.lab answers for mail.corp.lab.",
+      world: "corp.lab is DNSSEC-signed and publishes both Verification Records. The first one also delegates a key for internal.corp.lab." }] },
+  { key: "hotel", name: "Hotel Guest", tagline: "Claims the bank. Four variants.",
     variants: [
-      { id: "hotel", label: "plays it straight", announces: "dns.hotel.lab answers for everything under banka.lab.",
-        world: "The bank never published a record. The hotel relays the bank's signed denial unchanged, and overrides www.banka.lab for its guests." },
-      { id: "hotel-forged", label: "forges the record", announces: "dns.hotel.lab answers for everything under banka.lab.",
-        world: "The hotel's resolver serves its own banka.lab, including a Verification Record with the correct token — it wrote the claim, so it knows the token." },
-      { id: "replay", label: "replays the company's claim", announces: "dns.corp.lab answers for internal.corp.lab (copied from the company, word for word).",
-        world: "The hotel's resolver sits at the announced address, but it only has a certificate for dns.hotel.lab." },
-      { id: "hotel-blocks-external", label: "blocks Quad9", announces: "dns.hotel.lab answers for everything under banka.lab.",
-        world: "Port 853 to Quad9 is black-holed. A Private-DNS phone cannot reach its own resolver." },
+      { id: "hotel", label: "plain hijack", announces: "dns.hotel.lab answers for everything under banka.lab.",
+        world: "The bank never published a record. The hotel relays the bank's signed denial unchanged and overrides www.banka.lab for its guests." },
+      { id: "hotel-forged", label: "forged record", announces: "dns.hotel.lab answers for everything under banka.lab.",
+        world: "The hotel's resolver serves its own copy of banka.lab, including a Verification Record with the correct token. It wrote the claim, so it knows the token." },
+      { id: "replay", label: "replayed claim", announces: "dns.corp.lab answers for internal.corp.lab (copied from the company word for word).",
+        world: "The hotel's resolver sits at the announced address, but its certificate is for dns.hotel.lab." },
+      { id: "hotel-blocks-external", label: "Quad9 blocked", announces: "dns.hotel.lab answers for everything under banka.lab.",
+        world: "Port 853 to Quad9 is black-holed. A phone with Private DNS cannot reach its own resolver." },
     ] },
-  { key: "cafe", ssid: "Startup Café", icon: "☕", tagline: "Honest, but never signed its zone.",
+  { key: "cafe", name: "Startup Cafe", tagline: "Honest, but the zone is not signed.",
     variants: [{ id: "unsigned", label: "as configured", announces: "dns.unsigned.lab answers for internal.unsigned.lab.",
-      world: "The record is published and correct, but unsigned.lab has no DNSSEC. A validating device has no proof; a Private-DNS phone takes Quad9's word for it." }] },
-  { key: "branch", ssid: "Branch Office", icon: "🏬", tagline: "Well-meaning IT, three different mistakes.",
+      world: "The record is published and correct, but unsigned.lab has no DNSSEC. A validating device has no proof. A phone with Private DNS takes Quad9's word for it." }] },
+  { key: "branch", name: "Branch Office", tagline: "Well-meaning IT, three mistakes.",
     variants: [
       { id: "stale-salt", label: "stale record", announces: "dns.stale.lab answers for internal.stale.lab (with a new salt).",
         world: "IT changed the salt in the claim but the zone still carries the record for the old one." },
       { id: "expired-signature", label: "expired signatures", announces: "dns.expired.lab answers for internal.expired.lab.",
-        world: "expired.lab is signed, but every RRSIG expired an hour ago." },
+        world: "expired.lab is signed, but every signature expired an hour ago." },
       { id: "wrong-ds", label: "wrong key", announces: "dns.wrongds.lab answers for internal.wrongds.lab.",
         world: "The record's ds value points at a key the resolver does not have." },
     ] },
-  { key: "home", ssid: "Home", icon: "🏠", tagline: "A router claiming home.arpa.",
+  { key: "home", name: "Home", tagline: "A router claiming home.arpa.",
     variants: [{ id: "special-use", label: "as configured", announces: "dns.corp.lab answers for printers.home.arpa.",
-      world: "home.arpa is a Special-Use Domain Name (RFC 6761). RFC 9704 §3: such names MUST NOT be validated this way." }] },
-  { key: "real", ssid: "The real Internet", icon: "🌍", tagline: "Our own zone, the real root, real Quad9.", requiresInternet: true,
+      world: "home.arpa is a Special-Use Domain Name (RFC 6761). RFC 9704 section 3 says such names must not be verified this way." }] },
+  { key: "real", name: "Real Internet", tagline: "Our own zone, the real root, real Quad9.", requiresInternet: true,
     variants: [{ id: "real-zivkovic", label: "zivkovic.me", announces: "dns.splittrust.zivkovic.me answers for internal.splittrust.zivkovic.me.",
-      world: "A Verification Record we published in the real, DNSSEC-signed zivkovic.me (Cloudflare); validated under the IANA root trust anchor." }] },
+      world: "A Verification Record we published in the real, DNSSEC-signed zone zivkovic.me (Cloudflare), validated under the IANA root trust anchor." }] },
 ];
 
 export function findVariant(id: string): { group: NetworkGroup; variant: NetworkVariant } | undefined {
