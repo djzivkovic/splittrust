@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Deliver the RFC 9704 verifier, owner tooling, eight-scenario Docker lab, console, vectors and erratum described in the design, as one Go binary, in 22 hours.
+**Goal:** Deliver the RFC 9704 verifier, owner tooling, ten-scenario Docker lab (three simulated device profiles), console, vectors and erratum described in the design, as one Go binary, in 22 hours.
 
 **Architecture:** One Go module; `internal/claim`, `txtrec`, `dhcp`, `pvd` are pure; `validate` wraps libunbound (cgo, build tag) with a daemon fallback; `dot`, `verify`, `route` implement RFC 9704 §5–7 against injectable dependencies; `api` serves the embedded console; the lab is Compose services fed by a one-shot bootstrap that signs public zones with BIND tools and local zones with miekg/dns.
 
@@ -18,7 +18,7 @@
 - Every report carries `trust_context: "lab"`.
 - Runtime input is a `scenario_id` or a claim file; never caller-supplied IPs, URLs, anchors, CA paths.
 - Compose network `172.30.97.0/24`, `internal: true`; only `127.0.0.1:8000` published; generated material only in the named volume `labgen`; nothing generated is committed.
-- Never `InsecureSkipVerify`; token and `ds` from the same TXT RR only; `--external` never default.
+- Never `InsecureSkipVerify`; token and `ds` from the same TXT RR only; the §6.1 path runs only for `private-dns` and (after insecure) `hybrid` devices, never for `validating-stub`.
 - Token procedure literal to RFC 9704 §5; `*` encoded as label `\x01*`; names lowercased and IDNA A-labels.
 - Tests: important behaviours only (the user asked not to go overboard). One table-driven test per pure package, targeted tests for security-relevant branches, one integration suite for the lab. No UI unit tests.
 - Commits: `git -c user.name="Ilija Radosavljevic" -c user.email="45182003+ilija02@users.noreply.github.com" commit …` on branch `iradosavljevic/spec` (or a branch cut from it); never change git config.
@@ -27,11 +27,11 @@
 
 ## Review Focus
 
-1. A PvD document whose claim `resolver` differs from the DNR-announced ADN must be rejected with `CLAIM_RESOLVER_MISMATCH` before any DNS query — Task 3.
-2. A TXT RRset where the matching RR has a non-matching `ds` and another matching RR is token-only must be `DS_MISMATCH`, never a token-only grant — Task 3.
-3. A DNSKEY set containing an approved key but signed only by an unrelated key must fail local validation — Task 3.
+1. A network resolver that answers the verification query itself with a record carrying the *correct* token but no valid signature chain must be `DNSSEC_BOGUS`, never accepted (`hotel-forged`) — Tasks 2 and 4.
+2. A PvD document whose claim `resolver` is not among the DNR-announced ADNs must be rejected with `CLAIM_RESOLVER_MISMATCH` before any DNS query — Task 3.
+3. A TXT RRset where the matching RR has a non-matching `ds` and another matching RR is token-only must be `DS_MISMATCH`, never a token-only grant; a DNSKEY set containing an approved key but signed only by an unrelated key must fail local validation — Task 3.
 4. `resolve` for `internal.corp.lab.evil.lab` must take the default route (label-wise suffix), and a name outside the lab must make zero DNS calls — Task 4.
-5. A DoT endpoint whose certificate does not match the ADN must yield `TLS_IDENTITY_FAILED` even when the token matches (scenario `replay`) — Tasks 3 and 8.
+5. A `private-dns` device whose external resolver is unreachable must end `EXTERNAL_TIMEOUT`/rejected (never fall back to the network resolver), and a DoT endpoint whose certificate does not match the ADN must yield `TLS_IDENTITY_FAILED` even when the token matches (`replay`) — Tasks 3, 4 and 7.
 
 ---
 
@@ -153,30 +153,32 @@ func SplitV4(payload []byte) [][]byte              // RFC 3396 chunks ≤ 255
 type Security string  // "secure" "insecure" "bogus" "indeterminate" "error"
 type Evidence struct { QName string; QType uint16; Rcode int; Security Security; Why string; TTL uint32; RRSIGExpiresAt *time.Time; Answer []dns.RR; WireB64 string; ObservedAt time.Time }
 type PublicResolver interface { Resolve(ctx context.Context, qname string, qtype uint16) (Evidence, error) }
-type Config struct { AnchorFile, RootHintsFile string; DaemonAddr string }
-func New(cfg Config) (PublicResolver, error)       // libunbound build: fresh ub ctx per call; default build: daemon
+type Forwarder struct { Addr, ServerName string }      // DoT forwarder = the network's announced resolver
+type Config struct { AnchorFile, RootHintsFile, CAFile string; Forward *Forwarder /* nil = iterative */; DaemonAddr string }
+func New(cfg Config) (PublicResolver, error)       // libunbound build: fresh ub ctx per call (forward-addr "ip@853#name", forward-tls-upstream yes, tls-cert-bundle CA) ; default build: daemon
 func EarliestRRSIGExpiry(rrs []dns.RR) *time.Time
 // internal/lab
-type Profile struct { ScenarioID, Title, Explanation, Resolver, ClaimSource, PvDURL, ClaimFile, DoTAddr, ExternalAddr, ExternalName, CAFile, AnchorFile, RootHints, ExampleQName string; PermittedNamespaces []string; Expected struct{ Decision, Reason string } }
+type Announced struct { ADN, Addr string }
+type Profile struct { ScenarioID, Title, Explanation, Discovery, PvDID, ClaimSource, PvDURL, ClaimFile, DefaultDevice, CAFile, AnchorFile, RootHints, ExampleQName string; NetworkResolvers []Announced; External Announced /* ADN=quad9.lab */; PermittedNamespaces []string; Expected []struct{ Device, Decision, Reason string } }
 type Manifest struct { Profiles map[string]Profile; Order []string }
 func Load(path string) (Manifest, error)
 // internal/labgen
-func Generate(outDir string, now time.Time) error   // writes claims, PvD docs, TXT lines, local zones (signed), resolver.arpa DNSKEY, DS values, manifest.json
+func Generate(outDir string, now time.Time) error   // writes claims, PvD docs (legit: two claims), TXT lines, local zones (signed), resolver.arpa DNSKEY, DS values, the hotel's forged TXT line, manifest.json
 ```
 
-- [ ] **Step 1: Write `tests/integration/lab_test.go` (`//go:build integration`) — failing until the lab exists:** `TestPublicStatesAreReal`: resolve each profile's record owner TXT via `validate.New` → `legit` secure, `expired-signature` bogus, `unsigned` insecure, `hotel` secure with Rcode NXDOMAIN; `TestDoTIdentity`: `dot.Client.Dial(hotel-dot, "dns.corp.lab")` returns `*dot.IdentityError`, `Dial(local-dot, "dns.corp.lab")` succeeds. (The `dot` package arrives in Task 3; keep this test compiling by writing only the resolver cases now and adding the TLS case in Task 3.)
+- [ ] **Step 1: Write `tests/integration/lab_test.go` (`//go:build integration`) — failing until the lab exists:** `TestPublicStatesAreReal`: resolve each profile's record owner TXT via `validate.New` **forwarding through that profile's network resolver** → `legit` secure, `expired-signature` bogus, `unsigned` insecure, `hotel` (honest view) secure with Rcode NXDOMAIN, `hotel-forged` (forging view) bogus with `Why` mentioning missing signatures; plus `legit` via `Forward: nil` (iterative) also secure. `TestDoTIdentity`: `dot.Client.Dial(hotel-dot, "dns.corp.lab")` returns `*dot.IdentityError`, `Dial(local-dot, "dns.corp.lab")` succeeds. (The `dot` package arrives in Task 3; keep this test compiling by writing only the resolver cases now and adding the TLS case in Task 3.)
 
-- [ ] **Step 2: Implement `labgen.Generate`.** For each scenario in design §9: random 16-byte salt (stale-salt: TXT uses a *second* salt), RawClaim JSON, PvD document (`identifier`, `expires` now+36 h, `prefixes` ["2001:db8:97::/48"], `splitDnsClaims`), TXT line `token=…[,ds=…]`. Generate local KSK/ZSK (ECDSAP256SHA256 via `dns.DNSKEY.Generate(256)`), write `resolver.arpa.` DNSKEY RRset file, child zones `internal.{corp,stale,expired,unsigned,wrongds}.lab` with SOA/NS/A `host` 10.0.5.20 (+ the duplicated KSK at apex) signed with `RRSIG.Sign` for now−5 min → now+48 h; `ds=` for legit = `ToDS(SHA256)` of the KSK with owner `resolver.arpa.`; for wrong-ds = DS of a throw-away key. Hotel view zone `banka.lab` with `www A 172.30.97.66`. Write `manifest.json` (profiles from `lab/scenarios.json` + generated paths).
+- [ ] **Step 2: Implement `labgen.Generate`.** For each scenario in design §9: random 16-byte salt (stale-salt: TXT uses a *second* salt), RawClaim JSON, PvD document (`identifier`, `expires` now+36 h, `prefixes` ["2001:db8:97::/48"], `splitDnsClaims` — `legit` carries two claims: `dns.corp.lab`/`internal` with `ds`, `dns2.corp.lab`/`mail` token-only), TXT lines `token=…[,ds=…]`. Generate local KSK/ZSK (ECDSAP256SHA256 via `dns.DNSKEY.Generate(256)`), write `resolver.arpa.` DNSKEY RRset file, child zones `internal.{corp,stale,expired,unsigned,wrongds}.lab` and `mail.corp.lab` with SOA/NS/A `host` 10.0.5.20 (+ the duplicated KSK at apex) signed with `RRSIG.Sign` for now−5 min → now+48 h; `ds=` for legit = `ToDS(SHA256)` of the KSK with owner `resolver.arpa.`; for wrong-ds = DS of a throw-away key. Hotel forging view zone `banka.lab` with `www A 172.30.97.66` **and** `dns.hotel.lab._splitdns-challenge TXT "token=<the hotel claim's correct token>"`; hotel honest view = a `hosts` file with `172.30.97.66 www.banka.lab`. Write `manifest.json` (profiles from `lab/scenarios.json` + generated paths; `hotel-blocks-external` gets `External.Addr = 172.30.97.99:853`).
 
 - [ ] **Step 3: Write `lab/bootstrap/bootstrap.sh`** (BIND 9.20 image + openssl): run `splittrust lab-init --out /gen/work`; `dnssec-keygen` KSK+ZSK for `.`, `lab`, each parent; render zone templates (TXT lines from lab-init; `corp.lab` etc. get `internal NS ns.internal` + glue, **no DS**; `lab` gets DS for every signed parent except `unsigned.lab`; root gets DS for `lab`); `dnssec-signzone -S -3 - -H 0`? → use NSEC (`-S` without `-3`) for readability; validity `-s now-300 -e now+172800`, expired zone `-s now-7200 -e now-3600`; write root `DS` as trust anchor (`trust-anchor-file` syntax and `unbound` `trust-anchor:` line) and `root.hints` (`. NS ns.root.` / `ns.root. A 172.30.97.10`); openssl CA + leaf certs with SANs per design §9; copy per-service directories under `/gen/{client,public-dns,local-dot,hotel-dot,pvd,external}`; chmod readable; exit non-zero on any failure (`set -euo pipefail`).
 
-- [ ] **Step 4: Write Corefiles, nginx.conf, unbound.conf.tmpl, `lab/compose.yaml`.** CoreDNS `public-dns`: one `file` block per zone, `dnssec`? — no: serve pre-signed files only, `errors`, no `forward`. `local-dot`: `tls://.:853 { tls /gen/local-dot/cert.pem /gen/local-dot/key.pem; file … }` per child zone + `resolver.arpa`. `hotel-dot`: same with the hotel cert and the hijacked `banka.lab`. nginx: one `server` on 443 with the PvD cert, `root /gen/pvd/$host/` serving `/.well-known/pvd` with `types { application/pvd+json pvd; }`. External unbound: `root-hints`, `trust-anchor-file`, `tls-service-key/pem`, `interface: 0.0.0.0@853`, `harden-dnssec-stripped: yes`, no forwarders. Compose: services `bootstrap` (one-shot, volume `labgen:/gen`), `public-dns`, `local-dot`, `hotel-dot`, `pvd`, `external`, `app` (`depends_on` bootstrap completed; `ports: 127.0.0.1:8000:8000`), `test` (profile `tools`, runs `go test -tags integration ./tests/...`); network `splitlab` `internal: true`, subnet `172.30.97.0/24`, static IPs as design §5; `extra_hosts`/`aliases` for `pvd.*.lab`, `dns.*.lab`, `quad9.lab` so the app resolves them without DNS.
+- [ ] **Step 4: Write Corefiles, nginx.conf, unbound.conf.tmpl, `lab/compose.yaml`.** CoreDNS `public-dns`: one `file` block per zone, serve pre-signed files only, `errors`, no `forward`. `local-dot` (hybrid): `tls://.:853 { tls /gen/local-dot/cert.pem /gen/local-dot/key.pem; file … }` for each child zone and `resolver.arpa`, plus a catch-all block `tls://.:853 { … forward . 172.30.97.10 }` (CoreDNS picks the longest matching zone, so split-view zones win and everything else is forwarded). `hotel-dot` (hybrid, two views): `tls://.:853 { tls hotel cert; hosts /gen/hotel-dot/hosts { fallthrough }; forward . 172.30.97.10 }` (honest: only `www.banka.lab` overridden) and `tls://banka.lab:8853 { tls hotel cert; file /gen/hotel-dot/banka.lab.fake }` + `tls://.:8853 { tls hotel cert; forward . 172.30.97.10 }` (forging). nginx: one `server` on 443 with the PvD cert, `root /gen/pvd/$host/` serving `/.well-known/pvd` with `types { application/pvd+json pvd; }`. External unbound: `root-hints`, `trust-anchor-file`, `tls-service-key/pem`, `interface: 0.0.0.0@853`, `harden-dnssec-stripped: yes`, no forwarders. Compose: services `bootstrap` (one-shot, volume `labgen:/gen`), `public-dns`, `local-dot`, `hotel-dot`, `pvd`, `external`, `app` (`depends_on` bootstrap completed; `ports: 127.0.0.1:8000:8000`), `test` (profile `tools`, runs `go test -tags integration ./tests/...`); network `splitlab` `internal: true`, subnet `172.30.97.0/24`, static IPs as design §5 (nothing at `.99`); `extra_hosts`/`aliases` for `pvd.*.lab`, `dns.*.lab`, `quad9.lab` so the app resolves them without DNS.
 
 - [ ] **Step 5: `lab/app/Dockerfile`:** stage 1 `golang:1.26-bookworm` (fallback `1.25`), `apt-get install -y libunbound-dev`, `ARG LIBUNBOUND=1`, `go build -tags "$( [ "$LIBUNBOUND" = 1 ] && echo libunbound )" -o /out/splittrust ./cmd/splittrust`; stage 2 `debian:bookworm-slim` + `libunbound8` (+ `unbound` when LIBUNBOUND=0, started by `entrypoint.sh` on 127.0.0.1:5353 with the lab anchor/hints). **Time box:** if the cgo build or `miekg/unbound` API does not work within 45 minutes, set `LIBUNBOUND=0` in compose and continue with the daemon adapter; record the decision in README.
 
-- [ ] **Step 6: Implement `validate`:** `libunbound.go` — per call `unbound.New()`, `SetOption("root-hints:", hints)`, `AddTaFile(anchor)`, `SetOption("do-udp:", "yes")`, `Resolve(qname, qtype, ClassINET)`, map `Secure→secure`, `Bogus→bogus (Why=WhyBogus)`, else `insecure`; Rcode and `Rr` into Evidence, `Destroy()`. `daemon.go` — `dns.Exchange` with DO+AD to `DaemonAddr`; `AD→secure`; `SERVFAIL` + EDE option (`dns.EDNS0_EDE`) codes 6–12 → `bogus` with Why = EDE text; `NOERROR/NXDOMAIN` without AD → `insecure`; network error → `error`.
+- [ ] **Step 6: Implement `validate`:** `libunbound.go` — per call `unbound.New()`, `AddTaFile(anchor)`, then either `SetOption("root-hints:", hints)` (iterative) or `SetOption("tls-cert-bundle:", ca)`, `SetOption("forward-tls-upstream:", "yes")`, `SetFwd` / `SetOption("forward-addr:", "IP@853#ADN")` (via-network), `Resolve(qname, qtype, ClassINET)`, map `Secure→secure`, `Bogus→bogus (Why=WhyBogus)`, else `insecure`; Rcode and `Rr` into Evidence, `Destroy()`. `daemon.go` — same two modes rendered into a per-call unbound config? No: the daemon fallback runs one unbound per mode (`127.0.0.1:5353` iterative, `127.0.0.1:5354` forwarding to the profile's resolver is not static) — **Ruling for the fallback:** the daemon fallback supports `iterative` only and reports `via-network` as unsupported; this is written in README if the fallback is ever used. `dns.Exchange` with DO+AD; `AD→secure`; `SERVFAIL` + EDE (`dns.EDNS0_EDE`) codes 6–12 → `bogus` with Why = EDE text; `NOERROR/NXDOMAIN` without AD → `insecure`; network error → `error`.
 
-- [ ] **Step 7: Bring the lab up and run the gate:** `docker compose -f lab/compose.yaml up --build -d` then `docker compose -f lab/compose.yaml --profile tools run --rm test`. Expected: `TestPublicStatesAreReal` PASS (secure / bogus / insecure / secure-NXDOMAIN). Also `dig @172.30.97.10 dns.corp.lab._splitdns-challenge.corp.lab TXT +dnssec` from the `test` container shows the RRSIG.
+- [ ] **Step 7: Bring the lab up and run the gate:** `docker compose -f lab/compose.yaml up --build -d` then `docker compose -f lab/compose.yaml --profile tools run --rm test`. Expected: `TestPublicStatesAreReal` PASS (secure / bogus / insecure / secure-NXDOMAIN / forged → bogus). Also `dig @172.30.97.10 dns.corp.lab._splitdns-challenge.corp.lab TXT +dnssec` from the `test` container shows the RRSIG, and `kdig +tls @172.30.97.21 -p 8853 dns.hotel.lab._splitdns-challenge.banka.lab TXT` shows the forged record without RRSIG.
 
 - [ ] **Step 8: Commit: `feat: isolated DNSSEC/DoT/PvD lab and validator adapter` (no `lab/generated`).**
 
@@ -199,28 +201,35 @@ type Fetcher struct { Roots *x509.CertPool; Timeout time.Duration; MaxBytes int6
 func Parse(b []byte) (Document, error)
 func (f *Fetcher) Fetch(ctx context.Context, url, expectedID string, now time.Time) (Document, error) // *Error{Code: PVD_INVALID|PVD_EXPIRED}
 // internal/verify
-type Deps struct { Public validate.PublicResolver; DoT *dot.Client; PvD *pvd.Fetcher; Now func() time.Time }
-type Options struct { External bool }
+type Device string      // "validating-stub" | "private-dns" | "hybrid"
+type Resolution string  // "via-network" | "iterative"
+type PublicFactory func(fwd *validate.Forwarder) (validate.PublicResolver, error)   // builds a fresh validator per claim (forwarder = announced resolver of the claim's ADN, nil = iterative)
+type Deps struct { Public PublicFactory; DoT *dot.Client; PvD *pvd.Fetcher; Now func() time.Time }
+type Options struct { Device Device; Resolution Resolution }
 type Stage struct { ID, Status, Code, Message string; Evidence any }
-type Grant struct { Resolver string; Scopes []string; ExpiresAt time.Time; AuthorizedKeys []string; LocalDNSSECMode, Path string }
-type Report struct { SchemaVersion int; ScenarioID, TrustContext, Decision, Reason string; Stages []Stage; Inspection *claim.Inspection; Grant *Grant }
-func (v *Verifier) Verify(ctx context.Context, p lab.Profile, inline *claim.RawClaim, opt Options) Report
+type Grant struct { Resolver string; Scopes []string; ExpiresAt time.Time; AuthorizedKeys []string; LocalDNSSECMode, Path string; ExternalAD bool }
+type ClaimReport struct { Index int; Resolver, Decision, Reason string; Stages []Stage; Inspection *claim.Inspection; Grant *Grant }
+type Run struct { SchemaVersion int; ScenarioID string; Device Device; Resolution Resolution; TrustContext, Decision string; Claims []ClaimReport }
+func (v *Verifier) Verify(ctx context.Context, p lab.Profile, inline *claim.RawClaim, opt Options) Run
 func MatchDS(dsB64 []string, keys []*dns.DNSKEY) []*dns.DNSKEY             // owner "resolver.arpa."
 func ValidateLocalA(approved []*dns.DNSKEY, dnskeyMsg, aMsg *dns.Msg, now time.Time) ([]string, error)
 ```
 
-- [ ] **Step 1: Write failing `verify_test.go` with fake `PublicResolver`/DoT/PvD (in-memory, call counters):**
-  - `TestResolverMismatchRejectsBeforeDNS` — PvD claim resolver `dns.evil.lab`, profile resolver `dns.corp.lab` → `rejected/CLAIM_RESOLVER_MISMATCH`, public resolver calls == 0.
+- [ ] **Step 1: Write failing `verify_test.go` with fake `PublicFactory`/DoT/PvD (in-memory, call counters):**
+  - `TestResolverMismatchRejectsBeforeDNS` — PvD claim resolver `dns.evil.lab`, announced ADNs [`dns.corp.lab`] → `rejected/CLAIM_RESOLVER_MISMATCH`, validator calls == 0; same claim with `Discovery: "ddr"` proceeds to the TLS stage.
   - `TestWrongDSRejectsDespiteTokenOnlyRR` — RRset {matching token+bad ds, matching token-only} → `rejected/DS_MISMATCH`, Grant nil.
   - `TestTokenOnlyGrantNotEstablished` — single matching token-only RR → `accepted/AUTHORIZED`, `LocalDNSSECMode == "not_established"`, ds stage `skipped/DS_NOT_PRESENT`.
-  - `TestInsecureWithoutExternalRejects` and `TestInsecureWithExternalAccepts` — security insecure → `DNSSEC_INSECURE_NO_FALLBACK`; with `Options{External:true}` and the fake external returning the token → `accepted/EXTERNAL_TOKEN_MATCH`, `Grant.Path == "external"`.
+  - `TestDevicesOnInsecureZone` — validator says insecure: `validating-stub` → `DNSSEC_INSECURE_NO_FALLBACK`; `hybrid` → external fake returns the token with AD=false → `accepted/EXTERNAL_TOKEN_MATCH`, `Grant.Path == "external"`, `ExternalAD == false`; `private-dns` → never calls the validator (calls == 0), `accepted/EXTERNAL_TOKEN_MATCH`.
+  - `TestPrivateDNSExternalUnreachable` — external fake returns a timeout error → `rejected/EXTERNAL_TIMEOUT`, no grant, network-resolver DoT never queried for the TXT.
+  - `TestForgedRecordIsBogus` — validator fake returns `bogus` with Why "no signatures" for a TXT whose token matches → `rejected/DNSSEC_BOGUS` (token equality must never short-circuit the DNSSEC state).
   - `TestKeySubstitutionFailsLocalValidation` — DNSKEY set = approved key + attacker key, RRSIG by attacker only → `ValidateLocalA` error `LOCAL_SIGNATURE_INVALID`; positive control with approved signer returns the A string.
   - `TestGrantExpiryUsesRRSIG` — TTL 3600 but RRSIG expires in 60 s → `ExpiresAt` ≈ now+60 s.
+  - `TestTwoClaimsTwoReports` — PvD with two claims → `len(Claims)==2`, run `Decision` = worst.
   Fixtures: generate keys and sign in-test with `dns.DNSKEY.Generate` and `RRSIG.Sign` (no files).
 
 - [ ] **Step 2: `go test ./internal/verify/` — compile failure.**
 
-- [ ] **Step 3: Implement `dot.go`, `pvd.go`, `verify.go`, `ds.go` per design §7 steps 1–9** (stage order, skipped stages, selection policy from §7.6/§7.8, expiry from §7.9, external stage only after `insecure`). `MatchDS`: decode base64url → key tag(2) alg(1) digest type(1) digest; for each key `key.ToDS(digestType)` with `Hdr.Name = "resolver.arpa."`; compare full RDATA.
+- [ ] **Step 3: Implement `dot.go`, `pvd.go`, `verify.go`, `ds.go` per design §7** (device gating of `public_dnssec`/`external_resolver`, `NOT_APPLICABLE` skips, per-claim validator built from the announced resolver matching the claim's ADN, stage order, selection policy §7.6/§7.8, expiry §7.9, run decision = worst claim). `MatchDS`: decode base64url → key tag(2) alg(1) digest type(1) digest; for each key `key.ToDS(digestType)` with `Hdr.Name = "resolver.arpa."`; compare full RDATA.
 
 - [ ] **Step 4: `go test ./internal/verify/ ./internal/pvd/` — PASS.** Add `TestDoTIdentity` to the integration file and run it in the lab (`--profile tools run --rm test`): hotel-dot with name `dns.corp.lab` → `*dot.IdentityError`.
 
@@ -230,28 +239,29 @@ func ValidateLocalA(approved []*dns.DNSKEY, dnskeyMsg, aMsg *dns.Msg, now time.T
 
 ### Task 4: Scoped resolution, scenarios, full CLI
 
-**Files:** Create `internal/route/{route,route_test}.go`; modify `cmd/splittrust/main.go` (`verify`, `resolve`, `scenarios`, `dhcp`), `lab/scenarios.json` (eight entries incl. `replay`, `special-use`), `internal/labgen` (replay/special-use profiles).
+**Files:** Create `internal/route/{route,route_test}.go`; modify `cmd/splittrust/main.go` (`verify`, `resolve`, `scenarios`, `dhcp`), `lab/scenarios.json` (ten entries), `internal/labgen` (profiles for `hotel-forged`, `replay`, `hotel-blocks-external`, `special-use`).
 
 **Interfaces (produces):**
 ```go
 // internal/route
-type Resolver struct { V *verify.Verifier; Public validate.PublicResolver; DoT *dot.Client }
-type ResolveReport struct { QName, QType, Route, RouteReason string; Answers []string; Verification *verify.Report; ErrorCode string }
+type Resolver struct { V *verify.Verifier; Public verify.PublicFactory; DoT *dot.Client }
+type ResolveReport struct { QName, QType string; Device verify.Device; Route, RouteReason string; Answers []string; Verification *verify.Run; ErrorCode string }
 func (r *Resolver) Resolve(ctx context.Context, p lab.Profile, qname string, opt verify.Options) ResolveReport
 func InScope(qname string, scopes []string) bool   // label-wise
 ```
+Default route per device (design §8): `validating-stub`/`hybrid` → validator forwarding through the network resolver (bogus → `DEFAULT_LOOKUP_FAILED`); `private-dns` → DoT to the external resolver.
 
-- [ ] **Step 1: Write failing `route_test.go`:** `TestLabelSuffixNotStringSuffix` (`internal.corp.lab.evil.lab.` with scope `internal.corp.lab.` → default route, no verification); `TestOutOfLabMakesNoCalls` (`example.com.` → route none, `OUT_OF_LAB_SCOPE`, resolver calls 0); `TestRejectedClaimKeepsDefault` (fake verifier returns rejected → route default, `RouteReason == "DEFAULT_CLAIM_REJECTED"`, DoT calls 0).
+- [ ] **Step 1: Write failing `route_test.go`:** `TestLabelSuffixNotStringSuffix` (`internal.corp.lab.evil.lab.` with scope `internal.corp.lab.` → default route, no verification); `TestOutOfLabMakesNoCalls` (`example.com.` → route none, `OUT_OF_LAB_SCOPE`, resolver calls 0); `TestRejectedClaimKeepsDefault` (fake verifier returns rejected → route default, `RouteReason == "DEFAULT_CLAIM_REJECTED"`, local DoT calls 0); `TestDefaultRouteFollowsDevice` (`private-dns` default route queries the external fake, never the network fake).
 
 - [ ] **Step 2: Implement `route.go` per design §8** (`DEFAULT_LOOKUP_FAILED` never retried through the local resolver; `LOCAL_DNSSEC_NOT_ESTABLISHED` when the grant has no keys; `GRANT_EXPIRED`).
 
 - [ ] **Step 3: `go test ./internal/route/` — PASS.**
 
-- [ ] **Step 4: CLI:** `verify --scenario ID | --claim FILE [--external] [--json]`, `resolve --scenario ID --name FQDN [--json]`, `scenarios [--json]`, `dhcp encode --claim FILE | decode HEX`. Manifest path from `SPLITTRUST_MANIFEST` (default `/gen/client/manifest.json`). Text output: one line per stage `[pass] token  …`, final `DECISION reason (trust_context=lab)`.
+- [ ] **Step 4: CLI:** `verify --scenario ID | --claim FILE [--device …] [--resolution …] [--json]`, `resolve --scenario ID --name FQDN [--device …] [--json]`, `scenarios [--json]`, `dhcp encode --claim FILE | decode HEX`. Device defaults to the profile's `default_device`; resolution defaults to `via-network`. Manifest path from `SPLITTRUST_MANIFEST` (default `/gen/client/manifest.json`). Text output: per claim, one line per stage `[pass] token  …`, final `DECISION reason (device=…, trust_context=lab)`; exit code from the run's worst decision.
 
-- [ ] **Step 5: Verify in the lab:** `docker compose -f lab/compose.yaml up --build -d`; for each of the eight ids `docker compose -f lab/compose.yaml exec app splittrust verify --scenario ID --json` prints the table outcome from design §9; `verify --scenario unsigned --external` → `EXTERNAL_TOKEN_MATCH`; `resolve --scenario legit --name host.internal.corp.lab` → route local, answer `10.0.5.20`; `resolve --scenario hotel --name www.banka.lab` → route default.
+- [ ] **Step 5: Verify in the lab:** `docker compose -f lab/compose.yaml up --build -d`; for each of the ten ids `docker compose -f lab/compose.yaml exec app splittrust verify --scenario ID --json` prints the table outcome from design §9 for the default device; `verify --scenario unsigned --device private-dns` → `EXTERNAL_TOKEN_MATCH` with `external_ad=false`; `verify --scenario hotel-forged` → `DNSSEC_BOGUS` with the forged record visible in evidence; `verify --scenario hotel-blocks-external` → `EXTERNAL_TIMEOUT`; `verify --scenario legit --resolution iterative` → same as via-network; `resolve --scenario legit --name host.internal.corp.lab` → route local, answer `10.0.5.20`; `resolve --scenario hotel --name www.banka.lab` → `DEFAULT_LOOKUP_FAILED` (bogus) for `validating-stub`, `172.30.97.80` for `--device private-dns`.
 
-- [ ] **Step 6: Commit: `feat: eight scenarios, scoped resolution and complete CLI`.**
+- [ ] **Step 6: Commit: `feat: ten scenarios, device profiles, scoped resolution and complete CLI`.**
 
 ---
 
@@ -261,13 +271,13 @@ func InScope(qname string, scopes []string) bool   // label-wise
 
 **Interfaces (produces):** `func NewHandler(m lab.Manifest, v *verify.Verifier, r *route.Resolver) http.Handler` with routes from design §10; `//go:embed web` served at `/`.
 
-- [ ] **Step 1: Write failing `api_test.go` with a fake verifier:** `TestRejectedIs200Report` (`POST /api/verify {"scenario_id":"wrong-ds"}` → 200, body `reason == "DS_MISMATCH"`, `grant == null`); `TestUnknownFieldIs422` (`{"scenario_id":"legit","url":"http://x"}` → 422, verifier calls 0); `TestUnknownScenarioIs404`; `TestBodyLimit413` (17 KiB body).
+- [ ] **Step 1: Write failing `api_test.go` with a fake verifier:** `TestRejectedIs200Report` (`POST /api/verify {"scenario_id":"wrong-ds"}` → 200, body `decision == "rejected"`, `claims[0].reason == "DS_MISMATCH"`, `claims[0].grant == null`); `TestUnknownFieldIs422` (`{"scenario_id":"legit","url":"http://x"}` → 422, verifier calls 0); `TestUnknownScenarioIs404`; `TestBodyLimit413` (17 KiB body).
 
-- [ ] **Step 2: Implement handlers** (`http.MaxBytesReader` 16 KiB, `DisallowUnknownFields`, 10 s context per verification, JSON errors), `GET /api/capabilities` (`trust_context`, `verification_methods: ["dnssec","external"]`, `ds_support: true`, `dhcp: "codec-only"`), `GET /api/scenarios` from the manifest with `expected`.
+- [ ] **Step 2: Implement handlers** (`http.MaxBytesReader` 16 KiB, `DisallowUnknownFields`, 10 s context per verification, JSON errors), `GET /api/capabilities` (`trust_context`, `devices: ["validating-stub","private-dns","hybrid"]`, `resolutions: ["via-network","iterative"]`, `ds_support: true`, `multi_claim: true`, `dhcp: "codec-only"`), `GET /api/scenarios` from the manifest with `expected`.
 
-- [ ] **Step 3: Console page:** section 1 scenario list (button per scenario, expected vs actual columns, `--external` toggle only on `unsigned`); section 2 stage trace (status chip, code, message, collapsible evidence `<pre>`); section 3 owner form → `/api/records/build` with copy buttons and unsigned warning; fixed banner "LAB TRUST CONTEXT — private .lab root, not the global DNS"; colours per design §10. Vanilla JS `fetch`, no build step.
+- [ ] **Step 3: Console page:** section 1 scenario list (button per scenario, device selector `validating-stub | private-dns | hybrid` preset to the profile default, expected vs actual columns per device); section 2 stage trace per claim (status chip, code, message, collapsible evidence `<pre>`), yellow only when `external_ad` is false or the grant is `not_established`; section 3 owner form → `/api/records/build` with copy buttons and unsigned warning; fixed banner "LAB TRUST CONTEXT — private .lab root, not the global DNS"; colours per design §10. Vanilla JS `fetch`, no build step.
 
-- [ ] **Step 4: `go test ./internal/api/` PASS; in the lab open `http://127.0.0.1:8000`, run all eight, build one record. Commit: `feat: HTTP API and embedded console`.**
+- [ ] **Step 4: `go test ./internal/api/` PASS; in the lab open `http://127.0.0.1:8000`, run all ten (unsigned with two devices), build one record. Commit: `feat: HTTP API and embedded console`.**
 
 ---
 
@@ -277,9 +287,9 @@ func InScope(qname string, scopes []string) bool   // label-wise
 
 - [ ] **Step 1: `TestCommittedVectorsAreCurrent`:** `vectors.Generate()` output equals the committed files byte-for-byte (fails until generated); `TestForensics`: `Nul-stripped(sha384(draft07 input))` base64url equals the RFC's printed 63-char token, and the printed token decodes to 47 bytes.
 
-- [ ] **Step 2: Implement `vectors.Generate`** (rows of Task 1's table + TXT cases + DHCP payload hex for firma and a 300-byte claim with `SplitV4` chunks + PvD valid/invalid docs + verification-cases from `lab/scenarios.json`), `splittrust vectors --out vectors/`; run it, commit the JSON.
+- [ ] **Step 2: Implement `vectors.Generate`** (rows of Task 1's table + TXT cases + DHCP payload hex for firma and a 300-byte claim with `SplitV4` chunks + PvD valid/invalid/two-claim docs + verification-cases = scenario × device from `lab/scenarios.json`), `splittrust vectors --out vectors/`; run it, commit the JSON.
 
-- [ ] **Step 3: Write `docs/rfc9704-example-erratum.md`** (design §11: full forensic chain with the draft-07 salt, NUL at offset 30, two consistent corrections, Figure 1 NSEC note, implementer decisions list, implementation-status wording) and `docs/demo.md` (order: legit → hotel → stale → expired → unsigned (both modes) → wrong-ds → replay → special-use; recovery: `docker compose down -v && up --build`), and `README.md` (prerequisites: Docker Desktop only; commands; trust caveat; supported subset; how to run tests).
+- [ ] **Step 3: Write `docs/rfc9704-example-erratum.md`** (design §11: full forensic chain with the draft-07 salt, NUL at offset 30, two consistent corrections, Figure 1 NSEC note, implementer decisions list, implementation-status wording) and `docs/demo.md` (the 5-minute script from design §13: hotel-forged → legit (+resolve) → unsigned with both devices on stage; the remaining seven as Q&A cards; recovery: `docker compose down -v && up --build`), and `README.md` (prerequisites: Docker Desktop only; commands; trust caveat; supported subset; how to run tests).
 
 - [ ] **Step 4: `go test ./...` PASS. Commit: `docs: vectors, erratum draft, demo script and README`.**
 
@@ -289,7 +299,7 @@ func InScope(qname string, scopes []string) bool   // label-wise
 
 **Files:** Modify `tests/integration/lab_test.go` (`TestAllScenariosForwardAndReverse`, `TestCLIAPIParity`), `lab/compose.yaml` (healthchecks), `README.md`.
 
-- [ ] **Step 1: Write the acceptance tests:** all eight scenarios via the Go API in forward and reverse order equal `expected` (decision, reason); `exec app splittrust verify --json` vs `POST /api/verify` agree on decision/reason/stage statuses for every scenario; hotel `resolve` never touches DoT (counter via a wrapping DoT client in tests).
+- [ ] **Step 1: Write the acceptance tests:** all ten scenarios × their `expected` devices via the Go API in forward and reverse order equal `expected` (decision, reason), `hotel-forged` evidence shows the forged TXT with the correct token; `exec app splittrust verify --json` vs `POST /api/verify` agree on decision/reason/stage statuses for every scenario; hotel `resolve` never touches DoT (counter via a wrapping DoT client in tests).
 
 - [ ] **Step 2: Run from a clean clone on macOS and Windows (Operator):** `docker compose -f lab/compose.yaml up --build -d && docker compose -f lab/compose.yaml --profile tools run --rm test`. Expected: all PASS; console works; `docker compose down -v` leaves nothing behind.
 
@@ -299,13 +309,13 @@ func InScope(qname string, scopes []string) bool   // label-wise
 
 ## Definition of done
 
-Eight scenarios correct from CLI and console on a clean clone (both OSes); positive DS binding and local validation work in `legit`; `replay` fails on TLS identity with a matching token; `unsigned` shows both §6.2 and §6.1 outcomes; vectors regenerate identically; erratum and README state the trust caveat; backup video exists.
+Ten scenarios correct from CLI and console on a clean clone (both OSes); positive DS binding and local validation work in `legit`; `hotel-forged` is Bogus with a correct token; `replay` fails on TLS identity with a matching token; `unsigned` shows the §6.2 and §6.1 outcomes by device; `hotel-blocks-external` times out and rejects; vectors regenerate identically; erratum and README state the trust caveat; backup video exists.
 
-Cut order if behind: console polish → `dhcp` subcommand → `--external` → `replay` → … never wrong `ds`, real validation, TLS identity, honest verdicts.
+Cut order if behind: console polish → `dhcp` subcommand → `hybrid` device → `hotel-blocks-external` → `replay` → … never wrong `ds`, `hotel-forged`, real validation, TLS identity, honest verdicts.
 
 ## Self-review record
 
-- Spec coverage: §5 architecture → file structure; §6 contracts → Task 1/2/3 interfaces; §7 algorithm → Task 3; §8 → Task 4; §9 lab → Task 2 (+ profiles in Task 4); §10 → Tasks 4–5; §11 → Task 6; §12 rules → Global Constraints + Review Focus; §13 gates → Tasks 2/4/7; §15 calls → Task 3 tests 1–2 and §7.9 expiry test.
+- Spec coverage: §5 architecture → file structure; §6 contracts → Task 1/2/3 interfaces; §7 algorithm (devices, resolution paths, multi-claim) → Task 3; §8 → Task 4; §9 lab (hybrid resolvers, two hotel views, ten scenarios) → Task 2 (+ profiles in Task 4); §10 → Tasks 4–5; §11 → Task 6; §12 rules → Global Constraints + Review Focus; §13 gates and 5-minute script → Tasks 2/4/6/7; §15 calls → Task 3 tests.
 - Types consistent: `claim.Canonical`, `validate.Evidence`, `verify.Report/Grant/Stage`, `route.ResolveReport`, `lab.Profile` used with the same names in later tasks.
-- Review Focus 1–5 each has a named test (Task 3: mismatch, DS policy, key substitution; Task 4: label suffix/zero calls; Task 3 integration + Task 7: TLS identity).
+- Review Focus 1–5 each has a named test (Task 2/4: forged → bogus; Task 3: mismatch, DS policy, key substitution, external unreachable; Task 4: label suffix/zero calls; Task 3 integration + Task 7: TLS identity).
 - Test volume deliberately limited per the approval note: ~25 unit tests, one integration file.
