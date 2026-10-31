@@ -8,17 +8,17 @@ import { Slide } from "./Slide";
 
 /* ---------- Why existing tools do not solve it (interactive tabs) ---------- */
 
-const CRITERIA = ["stops the hotel's hijack", "keeps split-horizon working", "no change to applications", "no new infrastructure"];
+const CRITERIA = ["stops the hotel's hijack", "the office intranet still works", "uses the local resolver, no hairpin", "no new infrastructure or app changes"];
 
 const OPTIONS: { name: string; short: string; marks: boolean[]; text: string; detail: string }[] = [
   { name: "Encrypted DNS", short: "DoT / DoH to the network's resolver", marks: [false, true, true, true],
-    text: "The hotel hands out its resolver; the laptop encrypts its queries to it. The conversation is private, and it is with the attacker.",
+    text: "The hotel hands out its resolver; the laptop encrypts its queries to it. The conversation is private, and it is with the attacker. At the office the same setup works fine, because the office resolver is honest.",
     detail: "Encryption protects the path, not the choice of resolver. RFC 9704 is what makes the choice checkable." },
-  { name: "Always-on VPN", short: "tunnel everything to the office", marks: [true, false, true, false],
-    text: "Works, as long as the tunnel is up before the first query. Every packet hairpins through the office; local split-horizon at partners and branches stops working; one more thing to run.",
-    detail: "The problem RFC 9704 solves is exactly the case VPNs avoid rather than fix: using the local network's resolver safely." },
+  { name: "Always-on VPN", short: "tunnel everything to the office", marks: [true, true, false, false],
+    text: "Works for the company's own names: DNS goes through the tunnel to the office resolver, so the hotel never sees those queries. The cost: the tunnel must be up before the first query, every packet hairpins through the office, and local names at partner sites, branches and home are invisible.",
+    detail: "A VPN avoids the local resolver instead of making it safe. RFC 9704 is for the case where you do want to use the network you are on." },
   { name: "DNSSEC alone", short: "validate every answer", marks: [true, false, true, true],
-    text: "A forged copy of a signed zone fails validation, so the hotel's attack is caught. But the office intranet fails too: internal names do not exist in the public zone, and a validating laptop gets a signed proof that they do not exist.",
+    text: "A forged copy of a signed zone fails validation, so the hotel's attack is caught. But the office intranet fails too: internal names do not exist in the public zone, so a validating laptop gets a signed proof that they do not exist and rejects the office resolver's answer.",
     detail: "DNSSEC can say 'this is not the owner's answer'. It cannot say 'the owner allows this resolver to answer for these names'. That is the missing sentence." },
   { name: "RFC 9704 with SplitTrust", short: "the owner authorises, the device checks", marks: [true, true, true, true],
     text: "The owner publishes one signed TXT record naming the resolver and the names it may answer for. The device verifies the record and the resolver's certificate, then routes only those names there. Everything else keeps its normal path.",
