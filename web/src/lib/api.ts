@@ -10,7 +10,9 @@ export interface Inspection { canonical_resolver: string; canonical_parent: stri
 export interface ClaimReport { index: number; resolver: string; decision: Decision; reason: string; stages: Stage[]; inspection?: Inspection; grant?: Grant }
 export interface Run { scenario_id: string; device: Device; trust_context: string; decision: Decision; claims: ClaimReport[] }
 
-export interface Lookup { via: string; rcode: string; ad: boolean; answers: string[]; ede?: string; page?: string; page_url?: string; page_error?: string; error?: string; millis: number }
+export interface Lookup { via: string; rcode: string; ad: boolean; answers: string[]; ede?: string; dig?: string; page?: string; page_url?: string; page_error?: string; error?: string; millis: number }
+export interface ProxyEvent { time: string; kind: "join" | "verify" | "query"; scenario?: string; device?: string; resolver?: string; decision?: string; reason?: string; name?: string; qtype?: string; rcode?: string; ad?: boolean; ede?: number; ede_name?: string; text?: string }
+export interface LabProbe { name: string; group: string; role: string; addr: string; kind: string; ok: boolean; millis: number; detail?: string }
 export interface BrowseResult { name: string; device: Lookup; naive?: Lookup }
 
 export interface LiveRecord {
@@ -34,5 +36,9 @@ export const api = {
   browse: (name: string, with_naive: boolean, naive_dns = "") => call<BrowseResult>("/api/browse", { name, with_naive, naive_dns }),
   live: (scenario_id: string) => call<LiveRecord>("/api/live", { scenario_id }),
   clientJoin: (scenario_id: string, device: Device) => call<unknown>("/api/client/join", { scenario_id, device, resolution: "" }),
+  clientLog: () => call<{ lines: string[] }>("/api/client/log"),
+  clientEvents: () => call<{ events: ProxyEvent[] }>("/api/client/events"),
+  labStatus: () => call<{ checked_at: string; probes: LabProbe[] }>("/api/lab/status"),
+  build: (req: { resolver: string; parent: string; subdomains: string[]; algorithm: string; salt: string; ds: string[] }) => call<{ zone_line: string; token: string; record_owner: string; txt: string; warnings: string[]; error?: string; detail?: string }>("/api/records/build", req),
   inspect: (claim: { resolver: string; parent: string; subdomains: string[]; algorithm: string; salt: string }) => call<Inspection & { pseudo_wire_hex: string; token_input_hex: string }>("/api/inspect", { claim }),
 };

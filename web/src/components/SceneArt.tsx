@@ -45,7 +45,7 @@ export function stepsFor(place: Place, run: Run | null, alfaReached: boolean | n
       const ok = pub.code === "DNSSEC_SECURE";
       alfa.push({ side: "alfa", from: res, to: "cloud", label: "TXT _splitdns-challenge?", stages: ["public_dnssec"] });
       alfa.push({ side: "alfa", from: "cloud", to: res, stages: ["public_dnssec"],
-        mark: { node: "cloud", ok, text: ok ? "DNSSEC Secure, AD=1" : pub.code === "DNSSEC_BOGUS" ? "DNSSEC Bogus: no signed chain from .me" : pub.code === "DNSSEC_INSECURE" || pub.code === "DNSSEC_INSECURE_NO_FALLBACK" ? "Insecure: zone unsigned" : pub.code ?? "failed" } });
+        mark: { node: "cloud", ok, text: ok ? "DNSSEC Secure (validated locally)" : pub.code === "DNSSEC_BOGUS" ? "DNSSEC Bogus: no signed chain from .me" : pub.code === "DNSSEC_INSECURE" || pub.code === "DNSSEC_INSECURE_NO_FALLBACK" ? "Insecure: zone unsigned" : pub.code ?? "failed" } });
     }
     const ext = st("external_resolver");
     if (ext && ext.status === "pass") {
@@ -57,7 +57,7 @@ export function stepsFor(place: Place, run: Run | null, alfaReached: boolean | n
     }
     const accepted = c.decision === "accepted";
     alfa.push({ side: "alfa", from: "alfa", to: "alfa", stages: ["record", "ds", "grant"],
-      mark: { node: "alfa", ok: accepted, text: accepted ? `${c.reason}: token match` : c.reason } });
+      mark: { node: "alfa", ok: accepted, text: accepted ? `${c.reason}: identity, signatures, token` : c.reason } });
     if (accepted) {
       alfa.push({ side: "alfa", from: "alfa", to: res, label: `A ${ALFA.domain}?` });
       alfa.push({ side: "alfa", from: res, to: "alfaSrv" });

@@ -49,6 +49,7 @@ type Lookup struct {
 	AD        bool     `json:"ad"`
 	Answers   []string `json:"answers"`
 	EDE       string   `json:"ede,omitempty"`
+	Dig       string   `json:"dig,omitempty"` // the response as dig would print it
 	Page      string   `json:"page,omitempty"`
 	PageURL   string   `json:"page_url,omitempty"`
 	PageError string   `json:"page_error,omitempty"`
@@ -104,12 +105,13 @@ func (b *Browser) lookupAndFetch(ctx context.Context, server, via, qname string)
 	m.SetQuestion(qname, dns.TypeA)
 	m.SetEdns0(1232, true)
 	c := &dns.Client{Timeout: 12 * time.Second}
-	in, _, err := c.ExchangeContext(ctx, m, server)
+	in, rtt, err := c.ExchangeContext(ctx, m, server)
 	if err != nil {
 		l.Error = "DNS query failed: " + err.Error()
 		return l
 	}
 	l.Rcode = dns.RcodeToString[in.Rcode]
+	l.Dig = digFormat(server, m, in, rtt)
 	l.AD = in.AuthenticatedData
 	for _, rr := range in.Answer {
 		if a, ok := rr.(*dns.A); ok {
@@ -128,6 +130,52 @@ func (b *Browser) lookupAndFetch(ctx context.Context, server, via, qname string)
 	}
 	l.Page, l.PageURL, l.PageError = fetchPage(ctx, l.Answers[0], strings.TrimSuffix(qname, "."))
 	return l
+}
+
+// digFormat renders a real exchange the way dig prints it: the command line,
+// the header, the question and the sections, and the EDNS/EDE pseudo section.
+func digFormat(server string, q, in *dns.Msg, rtt time.Duration) string {
+	var b strings.Builder
+	qn := strings.TrimSuffix(q.Question[0].Name, ".")
+	fmt.Fprintf(&b, "$ dig @%s %s %s +dnssec\n", strings.TrimSuffix(server, ":53"), qn, dns.TypeToString[q.Question[0].Qtype])
+	fmt.Fprintf(&b, ";; ->>HEADER<<- opcode: QUERY, status: %s, id: %d\n", dns.RcodeToString[in.Rcode], in.Id)
+	flags := []string{"qr"}
+	if in.RecursionDesired {
+		flags = append(flags, "rd")
+	}
+	if in.RecursionAvailable {
+		flags = append(flags, "ra")
+	}
+	if in.AuthenticatedData {
+		flags = append(flags, "ad")
+	}
+	fmt.Fprintf(&b, ";; flags: %s; QUERY: %d, ANSWER: %d, AUTHORITY: %d, ADDITIONAL: %d\n", strings.Join(flags, " "), len(in.Question), len(in.Answer), len(in.Ns), len(in.Extra))
+	if opt := in.IsEdns0(); opt != nil {
+		fmt.Fprintf(&b, ";; OPT PSEUDOSECTION: EDNS: version: %d, flags:%s; udp: %d\n", opt.Version(), map[bool]string{true: " do", false: ""}[opt.Do()], opt.UDPSize())
+		for _, o := range opt.Option {
+			if e, ok := o.(*dns.EDNS0_EDE); ok {
+				fmt.Fprintf(&b, ";; EDE: %d (%s): %s\n", e.InfoCode, dns.ExtendedErrorCodeToString[e.InfoCode], e.ExtraText)
+			}
+		}
+	}
+	fmt.Fprintf(&b, ";; QUESTION SECTION:\n;%s\n", q.Question[0].Name+"\t\tIN\t"+dns.TypeToString[q.Question[0].Qtype])
+	section := func(title string, rrs []dns.RR) {
+		var lines []string
+		for _, rr := range rrs {
+			if _, isOpt := rr.(*dns.OPT); !isOpt {
+				lines = append(lines, rr.String())
+			}
+		}
+		if len(lines) == 0 {
+			return
+		}
+		fmt.Fprintf(&b, ";; %s SECTION:\n%s\n", title, strings.Join(lines, "\n"))
+	}
+	section("ANSWER", in.Answer)
+	section("AUTHORITY", in.Ns)
+	section("ADDITIONAL", in.Extra)
+	fmt.Fprintf(&b, ";; Query time: %d msec\n;; SERVER: %s", rtt.Milliseconds(), server)
+	return b.String()
 }
 
 // labIP reports whether an address belongs to the lab (172.30.97.0/24).

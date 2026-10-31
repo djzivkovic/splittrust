@@ -6,8 +6,8 @@ Team NXDOMAIN, DNS SEC(urity) Hackathon 2026.
 A hotel Wi-Fi can tell your device "my resolver is authoritative for `banka.rs`". Nothing today proves the
 bank agreed, and encrypting DNS does not help when you are talking to the wrong server. RFC 9704 lets the
 domain owner publish a signed statement of *which resolver may answer for which names*, and lets the device
-check it in a way the local network cannot tamper with. The standard had no public implementation, no test
-vectors, and a worked example that cannot be reproduced. SplitTrust provides all three.
+check it in a way the local network cannot tamper with. We found no public implementation of the standard (its authors reported none known in February 2025), it
+has no test vectors, and its worked example cannot be reproduced. SplitTrust provides all three.
 
 > The demo compares two companies in the same situations. **Alfa** adopted RFC 9704: its zone is the real,
 > DNSSEC-signed `zivkovic.me` and its devices verify. **Beta** did not. Alfa's verdicts carry
@@ -28,9 +28,12 @@ vectors, and a worked example that cannot be reproduced. SplitTrust provides all
 
 ## The console
 
-`http://127.0.0.1:8000` is the presentation: ten slides. An introduction (the problem, how RFC 9704
-works in three steps, the two companies), three live scenes, "What we built" (the architecture), "What we
-found" (the RFC's worked example recomputed live by the engine) and a closing slide. **Alfa**
+`http://127.0.0.1:8000` is the presentation: seventeen slides in pitch order. The problem (with incident
+evidence); why now (a sourced timeline from DoT in 2016 to RFC 9704 in 2025, interactive); how RFC 9704
+works; what SplitTrust brings; the two companies; three live scenes with the proxy's decisions beside the
+browser frames (and the dig output of the real lookups on `t`); the owner tool live against the real zone
+(interactive); who buys and who ships; why encrypted DNS, VPNs and DNSSEC alone do not close the gap
+(interactive); what changes for a company; the architecture; the lab probed live; what is next; closing. **Alfa**
 adopted RFC 9704 (its zone is the real `zivkovic.me`); **Beta** did not. *Monday, at the office*: both
 intranets load; only Alfa's laptop checked that the resolver was allowed to answer. *Tuesday, at the
 hotel*: the hotel claims both domains; Beta's laptop gets the hotel's login page, Alfa's laptop refuses

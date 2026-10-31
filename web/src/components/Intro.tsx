@@ -1,14 +1,14 @@
 /* Introduction and closing slides: who we are, the problem, how RFC 9704 answers it, the two companies. */
 
-import { ALFA, BETA, TEAM } from "../lib/deck";
+import { ALFA, BETA } from "../lib/deck";
 import { BLUE, Cloud, Doc, GREEN, INK, Laptop, Lock, Mark, Mask, MUTED, RED, Resolver, Router, Server, Shield } from "./Art";
 import { Canvas, Slide } from "./Slide";
 
-const Bubble = ({ x, y, w, text, tone = INK }: { x: number; y: number; w: number; text: string; tone?: string }) => (
+const Bubble = ({ x, y, w, text, tone = INK, tail = 0 }: { x: number; y: number; w: number; text: string; tone?: string; tail?: number }) => (
   <g transform={`translate(${x}, ${y})`}>
     <rect x={-w / 2} y={-18} width={w} height={36} rx={18} fill="#fff" stroke={tone} strokeWidth={2.5} />
-    <path d={`M -10 18 L -4 30 L 6 18 Z`} fill="#fff" stroke={tone} strokeWidth={2.5} strokeLinejoin="round" />
-    <line x1={-9} y1={18} x2={5} y2={18} stroke="#fff" strokeWidth={4} />
+    <path d={`M ${tail - 10} 18 L ${tail - 4} 30 L ${tail + 6} 18 Z`} fill="#fff" stroke={tone} strokeWidth={2.5} strokeLinejoin="round" />
+    <line x1={tail - 9} y1={18} x2={tail + 5} y2={18} stroke="#fff" strokeWidth={4} />
     <text textAnchor="middle" y={5} fontSize={14} fontWeight={600} fill={tone}>{text}</text>
   </g>
 );
@@ -20,10 +20,7 @@ export function TitleSlide() {
       <h1 className="mt-3 text-5xl font-bold tracking-tight lg:text-6xl xl:text-7xl">SplitTrust</h1>
       <p className="mt-4 text-2xl text-slate-700 lg:text-3xl">Who may answer for your domain inside a network?</p>
       <p className="mt-2 text-lg text-slate-500 lg:text-xl">An implementation of RFC 9704, a lab to attack it, and what we learned on the way.</p>
-      <div className="mt-12 flex flex-wrap items-center gap-x-10 gap-y-3">
-        <div className="text-base font-semibold text-slate-800">Team NXDOMAIN</div>
-        {TEAM.map((t) => <div key={t.name} className="text-base text-slate-600"><span className="font-medium text-slate-800">{t.name}</span> <span className="text-slate-400">{t.role}</span></div>)}
-      </div>
+      <div className="mt-12 text-base font-semibold text-slate-800">Team NXDOMAIN</div>
       <svg viewBox="-40 -50 520 130" className="mt-10 h-28 w-[520px] max-w-full">
         <g transform="translate(40,10)"><Laptop tone={BLUE} /></g>
         <g transform="translate(92,-24)"><Shield /></g>
@@ -43,26 +40,27 @@ export function ProblemSlide() {
       <Canvas viewBox="0 -10 1200 480" label="A hotel network claims a bank's domain">
         <rect x={60} y={300} width={1080} height={140} rx={24} fill="#fff7ed" />
         <text x={600} y={428} textAnchor="middle" fontSize={14} fontWeight={600} fill="#9a3412">Hotel Wi-Fi</text>
+        {/* connections first, so nothing is drawn over the actors */}
+        <line x1={200} y1={340} x2={600} y2={340} stroke="#cbd5e1" strokeWidth={2.5} />
+        <line x1={600} y1={340} x2={600} y2={166} stroke="#cbd5e1" strokeWidth={2.5} />
+        <line x1={654} y1={140} x2={926} y2={100} stroke="#cbd5e1" strokeWidth={2.5} />
         <g transform="translate(200, 370)"><Laptop /></g>
         <text x={200} y={436} textAnchor="middle" fontSize={15} fontWeight={600} fill={INK}>your laptop</text>
         <g transform="translate(600, 380)"><Router tone="#9a3412" /></g>
-        <Bubble x={600} y={250} w={360} text="my resolver answers for banka.rs" tone="#9a3412" />
-        <line x1={200} y1={330} x2={600} y2={330} stroke="#cbd5e1" strokeWidth={2.5} />
-        <line x1={600} y1={330} x2={600} y2={190} stroke="#cbd5e1" strokeWidth={2.5} />
+        <Bubble x={820} y={250} w={360} text="my resolver answers for banka.rs" tone="#9a3412" tail={-150} />
         <g transform="translate(600, 140)"><Resolver hostile /></g>
         <text x={600} y={196} textAnchor="middle" fontSize={13} fill={MUTED}>the hotel's resolver</text>
-        <line x1={654} y1={140} x2={900} y2={100} stroke="#cbd5e1" strokeWidth={2.5} />
         <g transform="translate(960, 100)"><Server tone={RED} fill="#fef2f2" /><Mask x={0} y={-50} /></g>
         <text x={960} y={160} textAnchor="middle" fontSize={15} fontWeight={600} fill={RED}>a copy of the bank's login page</text>
-        <g transform="translate(300, 320)"><Lock tone={MUTED} /></g>
-        <text x={330} y={325} fontSize={13} fill={MUTED}>encrypted, to the wrong server</text>
+        <g transform="translate(300, 310)"><Lock tone={MUTED} /></g>
+        <text x={330} y={316} fontSize={13} fill={MUTED}>encrypted, to the wrong server</text>
         <text x={200} y={296} textAnchor="middle" fontSize={40} fontWeight={800} fill={INK}>?</text>
         <g transform="translate(1040, 54)"><Mark ok={false} size={16} /></g>
       </Canvas>
       <div className="grid grid-cols-3 gap-5 pb-2 text-base text-slate-700 lg:text-lg">
-        <div className="rounded-xl bg-white p-4 shadow-sm"><b>Today:</b> the device takes the network's word for it. DHCP says "use this resolver", and it does.</div>
-        <div className="rounded-xl bg-white p-4 shadow-sm"><b>Encryption does not help:</b> DNS over TLS to the hotel's resolver is a private conversation with the attacker.</div>
-        <div className="rounded-xl bg-white p-4 shadow-sm"><b>RFC 9704 (January 2025)</b> gives the domain owner a way to say who may answer, and the device a way to check. No public implementation when we started.</div>
+        <div className="rounded-xl bg-white p-4 shadow-sm"><b>Today:</b> the device takes the network's word for it. DHCP says "use this resolver", and it does. Encrypting the queries to that resolver is a private conversation with the attacker.</div>
+        <div className="rounded-xl bg-white p-4 shadow-sm"><b>Not hypothetical:</b> DNS interception was measured in 259 of 3,047 networks probed (USENIX Security 2018); a hotel in Amsterdam was documented rewriting DNS answers and stripping DNSSEC signatures (2013); DarkHotel delivered malware over hotel networks (Kaspersky, 2014).</div>
+        <div className="rounded-xl bg-white p-4 shadow-sm"><b>RFC 9704 (January 2025)</b> gives the domain owner a way to say who may answer for which names, and the device a way to check. Its authors reported no known implementation in February 2025.</div>
       </div>
     </Slide>
   );
@@ -78,16 +76,18 @@ export function HowSlide() {
   );
   return (
     <Slide section="RFC 9704" title="How it works, in three steps" sub="The owner publishes, the network claims, the device checks."
-      takeaway="The token can be copied by anyone. The owner's DNSSEC signature and the resolver's certificate cannot.">
+      takeaway="The token can be copied by anyone. The owner's signature (or a trusted resolver's word) and the resolver's certificate cannot.">
       <Canvas viewBox="0 0 1240 440" label="The three steps of RFC 9704">
-        {col(200, 1, "The domain owner publishes", "in its own DNSSEC-signed zone")}
+        <line x1={300} y1={300} x2={470} y2={300} stroke="#cbd5e1" strokeWidth={2.5} strokeDasharray="6 6" />
+        <line x1={700} y1={300} x2={840} y2={300} stroke="#cbd5e1" strokeWidth={2.5} strokeDasharray="6 6" />
+        {col(200, 1, "The domain owner publishes", "one TXT record in its own zone")}
         {col(600, 2, "The network announces a claim", "DHCP option or PvD document")}
         {col(1010, 3, "The device checks before trusting", "SplitTrust does this part")}
 
         {/* 1: zone with lock and the TXT record */}
         <g transform="translate(200, 230)"><Cloud /></g>
         <text x={194} y={226} textAnchor="middle" fontSize={15} fontWeight={700} fill={INK}>alfa.example zone</text>
-        <text x={194} y={246} textAnchor="middle" fontSize={11} fill={MUTED}>signed with DNSSEC</text>
+        <text x={194} y={246} textAnchor="middle" fontSize={11} fill={MUTED}>DNSSEC-signed, or reached via a trusted resolver</text>
         <g transform="translate(262, 190)"><Lock tone={GREEN} /></g>
         <g transform="translate(200, 350)"><Doc tone={BLUE} /></g>
         <text x={200} y={404} textAnchor="middle" fontSize={12} fontFamily="ui-monospace, Menlo, monospace" fill={INK}>dns.alfa.example._splitdns-challenge.alfa.example</text>
@@ -103,7 +103,7 @@ export function HowSlide() {
         <g transform="translate(924, 300)"><Shield /></g>
         {[
           ["the resolver proves its name", "DNS over TLS, certificate (RFC 9525)"],
-          ["the owner's record validates", "DNSSEC, via the network's own resolver"],
+          ["the owner's record validates", "DNSSEC locally, or via a resolver the device trusts"],
           ["the token matches the claim", "only then route those names there"],
         ].map(([t, s], i) => (
           <g key={t} transform={`translate(975, ${190 + i * 62})`}>
@@ -113,8 +113,6 @@ export function HowSlide() {
           </g>
         ))}
 
-        <line x1={300} y1={300} x2={470} y2={300} stroke="#cbd5e1" strokeWidth={2.5} strokeDasharray="6 6" />
-        <line x1={700} y1={300} x2={860} y2={300} stroke="#cbd5e1" strokeWidth={2.5} strokeDasharray="6 6" />
       </Canvas>
     </Slide>
   );
@@ -155,9 +153,9 @@ export function ClosingSlide() {
         <div className="rounded-2xl border-2 border-green-200 bg-white p-6 shadow-sm">
           <div className="text-xl font-bold text-green-800">Real</div>
           <ul className="mt-3 space-y-2 text-base text-slate-700">
-            <li>A complete RFC 9704 device-side implementation, plus the owner's tool</li>
+            <li>The RFC 9704 device-side pipeline, verification and enforcement, plus the owner's tool</li>
             <li>A DNS proxy any ordinary client can use today</li>
-            <li>A real zone, verified live under the IANA root</li>
+            <li>Tested live against the public DNS with our own signed zone</li>
             <li>Published test vectors and a draft erratum</li>
           </ul>
         </div>
@@ -166,7 +164,7 @@ export function ClosingSlide() {
           <ul className="mt-3 space-y-2 text-base text-slate-700">
             <li>Not an OS integration: protection applies to clients that use the proxy; a product would drive systemd-resolved or Windows NRPT</li>
             <li>Discovery is pre-configured; the DHCP option is encoded, not sent</li>
-            <li>Unsigned zones can only be verified through an external resolver the device already trusts</li>
+            <li>Unsigned zones are verified only through an external resolver the device already trusts (s.6.1); that trust is then the whole story</li>
           </ul>
         </div>
         <div className="rounded-2xl border-2 border-blue-200 bg-white p-6 shadow-sm">

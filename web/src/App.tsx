@@ -7,8 +7,12 @@ import { api, type BrowseResult, type Device, type LiveRecord, type Run, type Su
 import { ALFA, BETA, REASONS, SCENES, type Scene } from "./lib/deck";
 import { SceneArt, stepsFor, type Step } from "./components/SceneArt";
 import { BrowserFrame } from "./components/Browser";
-import { BuiltSlide, FoundSlide } from "./components/Built";
+import { BuiltSlide } from "./components/Built";
+import { LabSlide } from "./components/Lab";
+import { DigPanel, ProxyDecisions } from "./components/Terminal";
 import { ClosingSlide, CompaniesSlide, HowSlide, ProblemSlide, TitleSlide } from "./components/Intro";
+import { ImpactSlide, RoadmapSlide, SolutionSlide, TryItSlide, WhyNotSlide } from "./components/Content";
+import { AudienceSlide, WhyNowSlide } from "./components/Pitch";
 import { Slide } from "./components/Slide";
 import { BLUE, Doc, GREEN, INK, Laptop, Lock, Mark, RED, Resolver, Shield } from "./components/Art";
 
@@ -22,20 +26,23 @@ export default function App() {
   const [evidence, setEvidence] = useState(false);
   useEffect(() => { api.scenarios().then(setSummaries).catch((e) => setErr((e as Error).message)); }, []);
 
-  // title, problem, how it works, the two companies, three scenes, what we built, what we found, closing
-  const order: ("title" | "problem" | "how" | "companies" | "scene" | "built" | "found" | "close")[] = ["title", "problem", "how", "companies", ...SCENES.map(() => "scene" as const), "built", "found", "close"];
+  // the deck, in order
+  type Kind = "title" | "problem" | "whynow" | "how" | "solution" | "companies" | "scene" | "tryit" | "audience" | "whynot" | "impact" | "built" | "lab" | "roadmap" | "close";
+  const order: Kind[] = ["title", "problem", "whynow", "how", "solution", "companies", ...SCENES.map(() => "scene" as const), "tryit", "audience", "whynot", "impact", "built", "lab", "roadmap", "close"];
   const total = order.length;
   const sceneIndex = (n: number) => n - order.indexOf("scene");
   const go = useCallback((n: number) => { setSlide(Math.max(0, Math.min(total - 1, n))); setDevice("validating-stub"); }, [total]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
       if (e.key === "ArrowRight" || e.key === "PageDown") go(slide + 1);
       if (e.key === "ArrowLeft" || e.key === "PageUp") go(slide - 1);
       if (e.key === "Home") go(0);
       if (e.key === "1") setDevice("validating-stub");
       if (e.key === "2") setDevice("private-dns");
-      if (e.key === "e") setEvidence((v) => !v);
+      if (e.key === "e" || e.key === "t") setEvidence((v) => !v);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -47,8 +54,11 @@ export default function App() {
   const kind = order[slide];
   const scene = kind === "scene" ? SCENES[sceneIndex(slide)] : null;
   const content = scene ? <SceneSlide scene={scene} device={device} evidence={evidence} />
-    : kind === "problem" ? <ProblemSlide /> : kind === "how" ? <HowSlide /> : kind === "companies" ? <CompaniesSlide />
-    : kind === "built" ? <BuiltSlide /> : kind === "found" ? <FoundSlide /> : kind === "close" ? <ClosingSlide /> : <TitleSlide />;
+    : kind === "problem" ? <ProblemSlide /> : kind === "whynow" ? <WhyNowSlide /> : kind === "how" ? <HowSlide />
+    : kind === "solution" ? <SolutionSlide /> : kind === "companies" ? <CompaniesSlide /> : kind === "tryit" ? <TryItSlide />
+    : kind === "audience" ? <AudienceSlide /> : kind === "whynot" ? <WhyNotSlide /> : kind === "impact" ? <ImpactSlide />
+    : kind === "built" ? <BuiltSlide /> : kind === "lab" ? <LabSlide /> : kind === "roadmap" ? <RoadmapSlide />
+    : kind === "close" ? <ClosingSlide /> : <TitleSlide />;
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-slate-100 text-slate-900">
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -68,7 +78,7 @@ export default function App() {
             ))}
           </span>
         )}
-        <span className="ml-auto">{slide + 1} / {total}<span className="kbd ml-4">←</span> <span className="kbd">→</span> slides{scene && <><span className="kbd ml-2">space</span> replay <span className="kbd ml-2">e</span> evidence</>}</span>
+        <span className="ml-auto">{slide + 1} / {total}<span className="kbd ml-4">←</span> <span className="kbd">→</span> slides{scene && <><span className="kbd ml-2">space</span> replay <span className="kbd ml-2">t</span> {evidence ? "back to the pages" : "show dig output"}</>}</span>
       </footer>
     </div>
   );
@@ -84,6 +94,7 @@ function SceneSlide({ scene, device, evidence }: { scene: Scene; device: Device;
   const [live, setLive] = useState<LiveRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [at, setAt] = useState(-1);
+  const [runAt, setRunAt] = useState(0);
   const timer = useRef<number | null>(null);
   const recipe = scene.id === "real-replay";
   const phoneOff = device === "private-dns" && scene.place === "hotel";
@@ -97,7 +108,7 @@ function SceneSlide({ scene, device, evidence }: { scene: Scene; device: Device;
       api.browse(alfaName, false),
       api.browse(scene.betaName, true, scene.betaDNS),
       recipe ? api.live("real-office") : Promise.resolve(null),
-    ])).then(([r, a, b, l]) => { if (!cancelled) { setRun(r); setAlfa(a); setBeta(b); setLive(l); } })
+    ])).then(([r, a, b, l]) => { if (!cancelled) { setRun(r); setAlfa(a); setBeta(b); setLive(l); setRunAt(Date.now()); } })
       .catch((e) => { if (!cancelled) setError((e as Error).message); });
     return () => { cancelled = true; };
   }, [scene, device, alfaName, recipe]);
@@ -142,21 +153,28 @@ function SceneSlide({ scene, device, evidence }: { scene: Scene; device: Device;
             <SceneArt place={scene.place} device={device} steps={steps} at={at} resolverName="dns.splittrust.zivkovic.me" />
           </div>
           {claim && <StageStrip claim={claim} steps={steps} at={at} />}
-          <div className="grid grid-cols-2 gap-4 pb-3 lg:gap-6">
-            <div className={`transition-opacity ${done ? "opacity-100" : "opacity-0"}`}>
-              <BrowserFrame who={`${BETA.name}'s laptop`} url={`http://${scene.betaName}/`} l={beta?.naive ?? null} tone="beta" />
+          {evidence ? (
+            <div className="h-64 pb-3">
+              <DigPanel leftTitle={`Beta's laptop asks the network's resolver (${scene.betaDNS})`} left={beta?.naive ?? null}
+                rightTitle={`Alfa's ${device === "private-dns" ? "phone" : "laptop"} asks the SplitTrust proxy (172.30.97.60)`} right={alfa?.device ?? null} />
             </div>
-            <div className={`transition-opacity ${done ? "opacity-100" : "opacity-0"}`}>
-              <BrowserFrame who={`${ALFA.name}'s ${device === "private-dns" ? "phone" : "laptop"}`} url={`${phoneOff ? "https" : "http"}://${alfaName}/`} l={alfa?.device ?? null} tone="alfa" />
+          ) : (
+            <div className="grid h-56 grid-cols-[1fr_1fr_1.2fr] gap-4 pb-3">
+              <div className={`transition-opacity ${done ? "opacity-100" : "opacity-0"}`}>
+                <BrowserFrame who={`${BETA.name}'s laptop`} url={`http://${scene.betaName}/`} l={beta?.naive ?? null} tone="beta" />
+              </div>
+              <div className={`transition-opacity ${done ? "opacity-100" : "opacity-0"}`}>
+                <BrowserFrame who={`${ALFA.name}'s ${device === "private-dns" ? "phone" : "laptop"}`} url={`${phoneOff ? "https" : "http"}://${alfaName}/`} l={alfa?.device ?? null} tone="alfa" />
+              </div>
+              <ProxyDecisions since={runAt} />
             </div>
-          </div>
+          )}
           <AnimatePresence>
             {done && <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="pb-3 text-center text-lg font-medium text-slate-800 lg:text-xl">{scene.takeaway}</motion.p>}
           </AnimatePresence>
         </>
       )}
 
-      {evidence && claim && <Evidence claim={claim} />}
     </Slide>
   );
 }
@@ -214,18 +232,4 @@ function Recipe({ live, claim }: { live: LiveRecord | null; claim: Run["claims"]
       <p className="mt-auto py-4 text-center text-lg font-medium text-slate-800 lg:text-xl">{SCENES[2].takeaway}</p>
     </div>
   );
-}
-
-/* Raw evidence for the curious: the query as dig would print it, and the certificate. */
-function Evidence({ claim }: { claim: Run["claims"][number] }) {
-  const ev = (id: string) => (claim.stages.find((s) => s.id === id)?.evidence ?? {}) as Record<string, unknown>;
-  const pub = ev("public_dnssec"), ext = ev("external_resolver"), tls = ev("resolver_tls");
-  const cert = tls.certificate as { subject?: string; sans?: string[] } | undefined;
-  const lines = [
-    ...(pub.security ? [`;; ${pub.qname as string} TXT via ${(pub.forwarder as string) ?? "iterative"}`, `;; DNSSEC: ${pub.security as string}${pub.why ? `: ${pub.why as string}` : ""}`, ...((pub.answer as string[]) ?? [])] : []),
-    ...(ext.rcode ? [`;; via dns.quad9.net: ${ext.rcode as string}, AD=${String(ext.ad)}`, ...((ext.answers as string[]) ?? [])] : []),
-    tls.server_name ? `;; TLS: announced ${tls.server_name as string}, certificate ${cert?.subject ?? "n/a"} (SANs: ${cert?.sans?.join(", ") ?? "n/a"})` : "",
-    `;; verdict: ${claim.decision} ${claim.reason}`,
-  ].filter(Boolean);
-  return <pre className="mb-3 max-h-40 overflow-auto rounded-lg bg-slate-900 p-3 font-mono text-[11px] leading-relaxed text-slate-100">{lines.join("\n")}</pre>;
 }
