@@ -1,0 +1,146 @@
+# SplitTrust laboratory. Isolated network (no Internet access at runtime); the
+# only published port is the console on 127.0.0.1:8000.
+#
+#   docker compose -f lab/compose.yaml up --build -d
+#   docker compose -f lab/compose.yaml exec app splittrust verify --scenario hotel-forged
+#   docker compose -f lab/compose.yaml --profile tools run --rm test
+#   docker compose -f lab/compose.yaml down -v
+name: splittrust
+
+x-labgen: &labgen
+  volumes:
+    - labgen:/gen:ro
+
+services:
+  bootstrap:
+    build:
+      context: ..
+      dockerfile: lab/bind/Dockerfile
+      target: bootstrap
+    volumes:
+      - labgen:/gen
+    network_mode: none
+
+  public-dns:
+    build:
+      context: ..
+      dockerfile: lab/bind/Dockerfile
+      target: bind
+    command: ["named", "-g", "-c", "/gen/public-dns/named.conf", "-u", "bind"]
+    <<: *labgen
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+    networks:
+      splitlab:
+        ipv4_address: 172.30.97.10
+
+  local-dot:
+    image: coredns/coredns:1.12.0
+    command: ["-conf", "/gen/local-dot/Corefile"]
+    <<: *labgen
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+    networks:
+      splitlab:
+        ipv4_address: 172.30.97.20
+
+  hotel-dot:
+    image: coredns/coredns:1.12.0
+    command: ["-conf", "/gen/hotel-dot/Corefile"]
+    <<: *labgen
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+    networks:
+      splitlab:
+        ipv4_address: 172.30.97.21
+
+  pvd:
+    image: nginx:1.27-alpine
+    command: ["nginx", "-g", "daemon off;", "-c", "/gen/pvd/nginx.conf"]
+    <<: *labgen
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+    networks:
+      splitlab:
+        ipv4_address: 172.30.97.30
+
+  external:
+    build:
+      context: ./external
+    <<: *labgen
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+    networks:
+      splitlab:
+        ipv4_address: 172.30.97.40
+
+  app:
+    build:
+      context: ..
+      dockerfile: lab/app/Dockerfile
+      args:
+        LIBUNBOUND: "1"
+    # Task 5 replaces this with: command: ["serve", "--addr", "0.0.0.0:8000"]
+    entrypoint: ["sleep", "infinity"]
+    <<: *labgen
+    ports:
+      - "127.0.0.1:8000:8000"
+    extra_hosts: &pvdhosts
+      - "pvd.corp.lab:172.30.97.30"
+      - "pvd.hotel.lab:172.30.97.30"
+      - "replay.hotel.lab:172.30.97.30"
+      - "pvd.stale.lab:172.30.97.30"
+      - "pvd.expired.lab:172.30.97.30"
+      - "pvd.unsigned.lab:172.30.97.30"
+      - "pvd.wrongds.lab:172.30.97.30"
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+      public-dns:
+        condition: service_started
+      local-dot:
+        condition: service_started
+      hotel-dot:
+        condition: service_started
+      pvd:
+        condition: service_started
+      external:
+        condition: service_started
+    networks:
+      splitlab:
+        ipv4_address: 172.30.97.50
+
+  test:
+    profiles: ["tools"]
+    build:
+      context: ..
+      dockerfile: lab/app/Dockerfile
+      target: builder
+    working_dir: /src
+    command: ["go", "test", "-count=1", "-tags", "integration libunbound", "./tests/..."]
+    environment:
+      SPLITTRUST_MANIFEST: /gen/client/manifest.json
+    <<: *labgen
+    extra_hosts: *pvdhosts
+    depends_on:
+      app:
+        condition: service_started
+    networks:
+      splitlab:
+        ipv4_address: 172.30.97.51
+
+volumes:
+  labgen: {}
+
+networks:
+  splitlab:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.30.97.0/24

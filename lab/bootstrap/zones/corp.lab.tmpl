@@ -1,0 +1,10 @@
+$TTL 60
+@        IN SOA ns.lab. hostmaster.corp.lab. 1 3600 600 86400 60
+@        IN NS  ns.lab.
+dns      IN A   @LOCAL@
+dns2     IN A   @LOCAL@
+pvd      IN A   @PVD@
+www      IN A   @PUB@
+; split-view children: delegated to the local resolver, deliberately without DS (RFC 9704 section 7)
+internal IN NS  dns.corp.lab.
+mail     IN NS  dns2.corp.lab.
