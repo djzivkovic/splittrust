@@ -7,6 +7,8 @@ package integration
 
 import (
 	"context"
+	"crypto/x509"
+	"errors"
 	"os"
 	"strings"
 	"testing"
@@ -15,6 +17,7 @@ import (
 	"github.com/miekg/dns"
 
 	"github.com/djzivkovic/splittrust/internal/claim"
+	"github.com/djzivkovic/splittrust/internal/dot"
 	"github.com/djzivkovic/splittrust/internal/lab"
 	"github.com/djzivkovic/splittrust/internal/validate"
 )
@@ -125,4 +128,38 @@ func TestPublicStatesAreReal(t *testing.T) {
 			t.Error("no RRSIG expiration recorded for a secure answer")
 		}
 	})
+}
+
+// The replay defence: the hotel's resolver cannot present a certificate for
+// dns.corp.lab, while the company's resolver can.
+func TestDoTIdentity(t *testing.T) {
+	m := manifest(t)
+	p := m.Profiles["legit"]
+	pem, err := os.ReadFile(p.CAFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pool := x509.NewCertPool()
+	if !pool.AppendCertsFromPEM(pem) {
+		t.Fatal("bad CA bundle")
+	}
+	c := &dot.Client{Roots: pool, Timeout: 3 * time.Second}
+	ctx := context.Background()
+
+	hotel := m.Profiles["hotel"].NetworkResolvers[0].Addr
+	_, err = c.Dial(ctx, hotel, "dns.corp.lab")
+	var ie *dot.IdentityError
+	if !errors.As(err, &ie) {
+		t.Fatalf("hotel-dot accepted as dns.corp.lab: %v", err)
+	}
+	conn, err := c.Dial(ctx, p.NetworkResolvers[0].Addr, "dns.corp.lab")
+	if err != nil {
+		t.Fatalf("local-dot rejected as dns.corp.lab: %v", err)
+	}
+	defer conn.Close()
+	msg, err := conn.Query(ctx, "resolver.arpa.", dns.TypeDNSKEY)
+	if err != nil || len(msg.Answer) == 0 {
+		t.Fatalf("resolver.arpa DNSKEY over DoT: %v %v", err, msg)
+	}
+	t.Logf("resolver.arpa. DNSKEY: %s", msg.Answer[0])
 }
