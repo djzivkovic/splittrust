@@ -17,10 +17,8 @@ export function LabSlide() {
   }, []);
   const ok = probes?.filter((p) => p.ok).length ?? 0;
   return (
-    <Slide section="Evidence" title="The network the laptops were on, probed from this page right now"
-      sub="14 endpoints across the lab's services: DNS queries, TLS handshakes, HTTP requests, every four seconds"
-      right={probes && <span className={`rounded-md px-2.5 py-1 text-sm font-semibold ${ok === probes.length ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"}`}>{ok} / {probes.length} answering{at && `, ${new Date(at).toLocaleTimeString()}`}</span>}
-      takeaway="This is the network the two laptops were on. Nothing in the scenes was recorded or mocked.">
+    <Slide section="Evidence" title="Live checks: the lab and the proxy" sub="every four seconds, from this page"
+      right={probes && <span className={`rounded-md px-2.5 py-1 text-sm font-semibold ${ok === probes.length ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"}`}>{ok} / {probes.length} answering{at && `, ${new Date(at).toLocaleTimeString()}`}</span>}>
       <div className="grid min-h-0 min-w-0 flex-1 gap-5 lg:grid-cols-[3fr_2fr]">
         <div className="flex min-w-0 flex-col gap-4">
           {(["demo", "testbed"] as const).map((g) => (

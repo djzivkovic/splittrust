@@ -12,25 +12,24 @@ const CRITERIA = ["stops the hotel's hijack", "the office intranet still works",
 
 const OPTIONS: { name: string; short: string; marks: boolean[]; text: string; detail: string }[] = [
   { name: "Encrypted DNS", short: "DoT / DoH to the network's resolver", marks: [false, true, true, true],
-    text: "The hotel hands out its resolver; the laptop encrypts its queries to it. The conversation is private, and it is with the attacker. At the office the same setup works fine, because the office resolver is honest.",
-    detail: "Encryption protects the path, not the choice of resolver. RFC 9704 is what makes the choice checkable." },
+    text: "The hotel hands out its resolver; the laptop encrypts its queries to it. The conversation is private, and it is with the attacker.",
+    detail: "Encryption protects the path, not the choice of resolver." },
   { name: "Always-on VPN", short: "tunnel everything to the office", marks: [true, true, false, false],
-    text: "Works for the company's own names: DNS goes through the tunnel to the office resolver, so the hotel never sees those queries. The cost: the tunnel must be up before the first query, every packet hairpins through the office, and local names at partner sites, branches and home are invisible.",
-    detail: "A VPN avoids the local resolver instead of making it safe. RFC 9704 is for the case where you do want to use the network you are on." },
+    text: "DNS goes through the tunnel to the office resolver, so the hotel never sees it. The cost: tunnel first, every packet through the office, and no local names at partner sites, branches or home.",
+    detail: "A VPN avoids the local resolver instead of making it safe." },
   { name: "DNSSEC alone", short: "validate every answer", marks: [true, false, true, true],
-    text: "A forged copy of a signed zone fails validation, so the hotel's attack is caught. But the office intranet fails too: internal names do not exist in the public zone, so a validating laptop gets a signed proof that they do not exist and rejects the office resolver's answer.",
-    detail: "DNSSEC can say 'this is not the owner's answer'. It cannot say 'the owner allows this resolver to answer for these names'. That is the missing sentence." },
+    text: "The forged copy fails validation. So does the office intranet: internal names do not exist in the public zone, and a validating laptop gets a signed proof of that.",
+    detail: "DNSSEC can say 'this is not the owner's answer'. It cannot say 'the owner allows this resolver for these names'. RFC 9704 adds that." },
   { name: "RFC 9704 with SplitTrust", short: "the owner authorises, the device checks", marks: [true, true, true, true],
-    text: "The owner publishes one signed TXT record under the resolver's name: a salted hash of the exact claim (resolver, zone, subdomains). The device recomputes the hash from the network's claim, validates the record with DNSSEC, checks the resolver's certificate, then routes only those names there. Everything else keeps its normal path.",
-    detail: "One record in a zone you already run, DNSSEC you should already have (or a resolver the device already trusts), and a resolver on the device that checks. No application notices." },
+    text: "One TXT record in the owner's zone names the resolver and carries a salted hash of the claimed names. The device validates it with DNSSEC, checks the resolver's certificate, then routes only those names there.",
+    detail: "A record in a zone you already run, and a resolver on the device that checks." },
 ];
 
 export function WhyNotSlide() {
   const [i, setI] = useState(0);
   const o = OPTIONS[i];
   return (
-    <Slide section="Today's options" title="Why the usual tools do not close this gap" sub="Click through the options."
-      takeaway="Nothing today lets a device ask the domain owner: may this network's resolver answer for your names?">
+    <Slide section="Today's options" title="Why the usual tools do not close this gap">
       <div className="grid flex-1 gap-5 lg:grid-cols-[2fr_3fr]">
         <div className="flex flex-col gap-2">
           {OPTIONS.map((opt, k) => (
@@ -65,24 +64,23 @@ export function WhyNotSlide() {
 /* ---------- What SplitTrust brings ---------- */
 
 const FEATURES: { icon: React.ReactNode; title: string; lines: string[] }[] = [
-  { icon: <g transform="scale(1.1)"><Shield /></g>, title: "The RFC 9704 device side: verify, then enforce",
-    lines: ["claim canonicalisation and token (s.5)", "resolver identity over DoT (RFC 9525)", "DNSSEC validation in-process (libunbound)", "ds key binding (s.7), scoped grants with expiry", "discovery simulated: PvD served, DHCP codec only"] },
-  { icon: <g transform="translate(0,4) scale(0.9)"><Laptop tone={BLUE} /></g>, title: "Works for any client, today",
-    lines: ["a plain DNS proxy: point a stub at it", "verdicts enforced per query, cached, re-verified", "Extended DNS Errors say why (EDE 6 Bogus, ...)", "no change to browsers or applications"] },
-  { icon: <g transform="scale(1.3)"><Lock tone={RED} /></g>, title: "Fails safe and explains itself",
-    lines: ["rejected claims never route a query", "SERVFAIL instead of a wrong address", "nine-stage trace with evidence per verdict", "grey (cannot decide) is never red or green"] },
-  { icon: <g transform="scale(1.1)"><Doc tone={BLUE} /></g>, title: "The owner's side too",
-    lines: ["build-record: claim in, TXT record out", "rotate the salt to revoke", "DHCP option 90/11 codec, PvD documents", "ds: delegate a key so local answers validate"] },
-  { icon: <g transform="scale(0.9)"><Resolver tone={GREEN} /></g>, title: "Tested live against the public DNS",
-    lines: ["a real zone: zivkovic.me, DNSSEC at Cloudflare", "validated under the IANA root, live", "phone profile through the real dns.quad9.net", "the hotel's forgery fails exactly as the RFC says"] },
+  { icon: <g transform="scale(1.1)"><Shield /></g>, title: "The RFC 9704 client check",
+    lines: ["claim canonicalisation and token (§5)", "resolver identity over DoT (RFC 9525)", "DNSSEC validation in-process (libunbound)", "ds key binding (§7), grants with expiry"] },
+  { icon: <g transform="translate(0,4) scale(0.9)"><Laptop tone={BLUE} /></g>, title: "A DNS proxy that enforces it",
+    lines: ["any stub resolver can point at it", "rejected claims: SERVFAIL with an Extended DNS Error", "verdicts cached and re-verified", "no application changes"] },
+  { icon: <g transform="scale(1.1)"><Doc tone={BLUE} /></g>, title: "The owner's record tool",
+    lines: ["claim in, TXT record out", "replace record and salt to revoke (after TTLs)", "DHCP option 90/11 codec, PvD documents"] },
+  { icon: <g transform="scale(0.9)"><Resolver tone={GREEN} /></g>, title: "Tested against the public DNS",
+    lines: ["our zone zivkovic.me, DNSSEC-signed", "validated under the IANA root", "phone profile through dns.quad9.net"] },
   { icon: <g transform="scale(0.9)"><Server /></g>, title: "A lab that attacks it",
-    lines: ["13 scenarios, 3 device profiles, 20 expected verdicts", "forged records, replayed claims, stale salts,", "expired signatures, wrong keys, blocked Quad9", "46 generated checks plus 5 end-to-end tests, green"] },
+    lines: ["forged records, replayed claims, stale salts", "expired signatures, wrong keys, blocked Quad9", "13 scenarios, 3 device profiles"] },
+  { icon: <g transform="scale(1.3)"><Lock tone={RED} /></g>, title: "Limits",
+    lines: ["discovery pre-configured; DHCP not sent on the wire", "no OS integration yet", "unsigned zones only via a trusted resolver (§6.1)"] },
 ];
 
 export function SolutionSlide() {
   return (
-    <Slide section="Our solution" title="SplitTrust: one Go binary that checks, enforces and explains" sub="Verifier, DNS proxy, owner tool, lab."
-      takeaway="We found no public implementation of RFC 9704; its authors reported none known in February 2025. This one runs, fails safe, and shows its work.">
+    <Slide section="Inventory" title="What SplitTrust implements">
       <div className="grid flex-1 content-center gap-4 md:grid-cols-3">
         {FEATURES.map((f) => (
           <div key={f.title} className="rounded-2xl border-2 border-slate-200 bg-white p-5 shadow-sm">
@@ -159,34 +157,28 @@ export function TryItSlide() {
 
 export function ImpactSlide() {
   const col = (title: string, tone: string, items: [string, string][]) => (
-    <div className={`rounded-2xl border-2 bg-white p-5 shadow-sm ${tone}`}>
+    <div className={`rounded-2xl border-2 bg-white p-6 shadow-sm ${tone}`}>
       <div className="text-xl font-bold">{title}</div>
-      <ul className="mt-3 space-y-3">
-        {items.map(([h, d]) => <li key={h}><div className="font-semibold text-slate-900">{h}</div><div className="text-sm text-slate-600">{d}</div></li>)}
+      <ul className="mt-4 space-y-4">
+        {items.map(([h, d]) => <li key={h}><div className="text-lg font-semibold text-slate-900">{h}</div><div className="text-base text-slate-600">{d}</div></li>)}
       </ul>
     </div>
   );
   return (
-    <Slide section="Why adopt it" title="What changes for a company like SecureCompany" sub="Security outcome, operational cost, user experience."
-      takeaway="The attack that works on UnsecureCompany does not work on SecureCompany. SecureCompany changed its DNS and its devices' resolver, not a single application.">
-      <div className="grid flex-1 content-center gap-5 lg:grid-cols-3">
-        {col("Security", "border-green-200", [
-          ["Hostile networks cannot impersonate internal services", "A forged record or a hijacked name fails DNSSEC validation; the resolver is never used for the company's names."],
-          ["Fails safe, not open", "The laptop gets SERVFAIL with an Extended DNS Error, not a login page on the attacker's server."],
-          ["A copied claim is worthless", "The resolver must present a certificate for the announced name over TLS before the first query."],
-          ["Evidence for the SOC", "Every verdict carries its stages, codes and the raw responses."],
+    <Slide section="Why adopt it" title="What changes for a company like SecureCompany"
+      takeaway="DNS and resolver configuration change. Applications do not.">
+      <div className="grid flex-1 content-center gap-6 lg:grid-cols-2">
+        {col("The company changes", "border-blue-200", [
+          ["DNSSEC on the zone", "Enable it at the DNS provider; publish the DS through the registrar. Without it, devices can verify only through a resolver they already trust (§6.1)."],
+          ["One TXT record per claim", "Built from the exact claim with the record tool. Replace record and salt to revoke; takes effect as caches expire."],
+          ["DoT on the office resolver", "With a certificate for the announced name. The resolver software does not change."],
+          ["A client that checks", "The SplitTrust proxy as the device's resolver today; the OS resolver once vendors ship the check."],
         ])}
-        {col("Operations", "border-blue-200", [
-          ["One TXT record", "Built with the owner tool from the exact claim; published once; rotate the salt to revoke."],
-          ["DNSSEC on the zone (recommended)", "Cloudflare and most registrars offer it; without it, RFC 9704 s.6.1 lets devices verify through an external resolver they already trust."],
-          ["DoT on the office resolver", "A certificate for its own name. The resolver software does not change."],
-          ["No agents in applications", "The proxy is the device's DNS server; a product would use the OS split-DNS hooks."],
-        ])}
-        {col("People", "border-slate-200", [
-          ["Nothing to learn", "Employees connect to Wi-Fi and open the intranet as before."],
-          ["Phones too", "Private DNS users are covered through the external-resolver path (RFC 9704 s.6.1)."],
-          ["Works on every network", "Office, home, partner sites: the check happens wherever a network makes a claim."],
-          ["Clear failure", "'This site can't be reached' on a hostile network is the intended outcome, and it says why."],
+        {col("What users see", "border-green-200", [
+          ["On the office network", "The intranet loads as before."],
+          ["On a hostile network", "The intranet name fails to resolve: SERVFAIL with an Extended DNS Error. No connection to the attacker's page."],
+          ["A copied claim", "Rejected on the resolver's certificate before the first query."],
+          ["Evidence", "Every verdict carries its checks and the raw responses."],
         ])}
       </div>
     </Slide>
@@ -203,8 +195,7 @@ export function RoadmapSlide() {
     ["Partners", "One OS or resolver vendor trying it; a managed-device pilot with a company that has split-horizon DNS", "ask"],
   ];
   return (
-    <Slide section="What's next" title="From a working verifier to something your laptop ships with"
-      takeaway="The protocol is published. What it lacked was running code. Now it has some.">
+    <Slide section="What's next" title="Next: a managed-device pilot, then OS integration">
       <div className="flex flex-1 flex-col justify-center gap-6">
         <svg viewBox="0 0 1200 120" className="h-28 w-full">
           <line x1={80} y1={60} x2={1120} y2={60} stroke="#cbd5e1" strokeWidth={4} />
@@ -231,7 +222,7 @@ export function RoadmapSlide() {
         </div>
         <div className="grid gap-4 md:grid-cols-3 text-sm text-slate-600">
           <div className="rounded-xl bg-white p-4 shadow-sm"><b className="text-slate-900">Limit:</b> protection applies to clients that use the proxy or the CLI; nothing intercepts the host's DNS yet.</div>
-          <div className="rounded-xl bg-white p-4 shadow-sm"><b className="text-slate-900">Limit:</b> unsigned zones can only be verified through an external resolver the device already trusts (s.6.1).</div>
+          <div className="rounded-xl bg-white p-4 shadow-sm"><b className="text-slate-900">Limit:</b> unsigned zones can only be verified through an external resolver the device already trusts (§6.1).</div>
           <div className="rounded-xl bg-white p-4 shadow-sm"><b className="text-slate-900">Limit:</b> discovery is pre-configured per network; the DHCP option is encoded and decoded, not yet sent.</div>
         </div>
       </div>

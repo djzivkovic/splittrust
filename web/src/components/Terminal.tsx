@@ -30,8 +30,8 @@ export function ProxyDecisions({ since, limit = 4, warm = false }: { since: numb
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border-2 border-slate-200 bg-white shadow-md">
       <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">
-        <span className={`h-2 w-2 rounded-full ${failed ? "bg-red-500" : "animate-pulse bg-green-500"}`} /> SplitTrust proxy, live
-        {status && <span className="ml-auto font-normal text-slate-500">on <code>{status.scenario_id}</code> as {status.device === "private-dns" ? "phone" : "laptop"}, {status.queries} queries answered</span>}
+        <span className={`h-2 w-2 rounded-full ${failed ? "bg-red-500" : "animate-pulse bg-green-500"}`} /> SecureCompany's resolver (the SplitTrust proxy): decisions
+        {status && <span className="ml-auto font-normal text-slate-500">{status.queries} queries</span>}
       </div>
       <div className="min-h-0 flex-1 overflow-auto">
         {failed && <div className="p-3 text-sm text-red-700">cannot reach the proxy at 172.30.97.60:8001</div>}

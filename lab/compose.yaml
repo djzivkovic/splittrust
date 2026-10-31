@@ -89,6 +89,7 @@ services:
       context: ..
       dockerfile: lab/app/Dockerfile
     command: ["serve", "--addr", "0.0.0.0:8000"]
+    restart: unless-stopped
     environment:
       SPLITTRUST_PROXY: http://172.30.97.60:8001
       SPLITTRUST_PROXY_DNS: 172.30.97.60:53
@@ -132,6 +133,7 @@ services:
       context: ..
       dockerfile: lab/app/Dockerfile
     command: ["proxy", "--scenario", "legit", "--listen", "0.0.0.0:53", "--control", "0.0.0.0:8001"]
+    restart: unless-stopped
     <<: *labgen
     extra_hosts: *pvdhosts
     depends_on:

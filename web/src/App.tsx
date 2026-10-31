@@ -10,7 +10,7 @@ import { BrowserFrame } from "./components/Browser";
 import { BuiltSlide } from "./components/Built";
 import { LabSlide } from "./components/Lab";
 import { DigPanel, ProxyDecisions } from "./components/Terminal";
-import { ClosingSlide, CompaniesSlide, HowSlide, ProblemSlide, TitleSlide } from "./components/Intro";
+import { ClosingSlide, HowSlide, ProblemSlide, TitleSlide } from "./components/Intro";
 import { ImpactSlide, RoadmapSlide, SolutionSlide, TryItSlide, WhyNotSlide } from "./components/Content";
 import { AudienceSlide, WhyNowSlide } from "./components/Pitch";
 import { Slide } from "./components/Slide";
@@ -27,9 +27,9 @@ export default function App() {
   useEffect(() => { api.scenarios().then(setSummaries).catch((e) => setErr((e as Error).message)); }, []);
 
   // the deck, in order
-  type Kind = "title" | "problem" | "whynow" | "how" | "solution" | "companies" | "scene" | "tryit" | "audience" | "whynot" | "impact" | "built" | "lab" | "roadmap" | "close";
-  // main run (fits five minutes), then an appendix for questions
-  const order: Kind[] = ["title", "problem", "whynow", "how", "solution", "companies", ...SCENES.map(() => "scene" as const), "built", "lab", "close", "audience", "whynot", "impact", "tryit", "roadmap"];
+  type Kind = "title" | "problem" | "whynow" | "how" | "solution" | "scene" | "tryit" | "audience" | "whynot" | "impact" | "built" | "lab" | "roadmap" | "close";
+  // main run (ten slides, five minutes), then an appendix for questions
+  const order: Kind[] = ["title", "problem", "whynow", "how", ...SCENES.map(() => "scene" as const), "built", "lab", "close", "solution", "audience", "whynot", "impact", "tryit", "roadmap"];
   const appendixFrom = order.indexOf("close") + 1;
   const total = order.length;
   const sceneIndex = (n: number) => n - order.indexOf("scene");
@@ -57,7 +57,7 @@ export default function App() {
   const scene = kind === "scene" ? SCENES[sceneIndex(slide)] : null;
   const content = scene ? <SceneSlide scene={scene} device={device} evidence={evidence} />
     : kind === "problem" ? <ProblemSlide /> : kind === "whynow" ? <WhyNowSlide /> : kind === "how" ? <HowSlide />
-    : kind === "solution" ? <SolutionSlide /> : kind === "companies" ? <CompaniesSlide /> : kind === "tryit" ? <TryItSlide />
+    : kind === "solution" ? <SolutionSlide /> : kind === "tryit" ? <TryItSlide />
     : kind === "audience" ? <AudienceSlide /> : kind === "whynot" ? <WhyNotSlide /> : kind === "impact" ? <ImpactSlide />
     : kind === "built" ? <BuiltSlide /> : kind === "lab" ? <LabSlide /> : kind === "roadmap" ? <RoadmapSlide />
     : kind === "close" ? <ClosingSlide /> : <TitleSlide />;
@@ -72,7 +72,6 @@ export default function App() {
       </div>
       <footer className="flex items-center gap-4 border-t border-slate-200 bg-white px-6 py-2 text-xs text-slate-500">
         <span className="font-semibold text-slate-700">SplitTrust</span>
-        <span className="flex gap-1.5">{Array.from({ length: total }, (_, i) => <button key={i} onClick={() => go(i)} className={`h-2.5 w-2.5 rounded-full ${i === slide ? "bg-slate-900" : "bg-slate-300"}`} aria-label={`slide ${i + 1}`} />)}</span>
         {scene && scene.id !== "real-replay" && (
           <span className="ml-4 inline-flex items-center gap-1">SecureCompany's device
             {(["validating-stub", "private-dns"] as Device[]).map((d, i) => (
@@ -81,7 +80,7 @@ export default function App() {
           </span>
         )}
         {slide >= appendixFrom && <span className="rounded bg-amber-100 px-2 py-0.5 font-semibold text-amber-800">Appendix</span>}
-        <span className="ml-auto">{slide + 1} / {total}<span className="kbd ml-4">←</span> <span className="kbd">→</span> slides{scene && <><span className="kbd ml-2">space</span> replay <span className="kbd ml-2">t</span> {evidence ? "back to the pages" : "show dig output"}</>}</span>
+        <span className="ml-auto">{slide + 1} / {total}<span className="kbd ml-4">←</span> <span className="kbd">→</span> slides{scene && <><span className="kbd ml-2">space</span> replay <span className="kbd ml-2">t</span> {evidence ? "hide details" : "details"}</>}</span>
       </footer>
     </div>
   );
@@ -139,9 +138,9 @@ function SceneSlide({ scene, device, evidence }: { scene: Scene; device: Device;
 
   return (
     <Slide section={scene.day} title={scene.headline} sub={scene.sub}
-      right={claim && <span className={`rounded-md px-2.5 py-1 text-sm font-semibold ${claim.decision === "accepted" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>SecureCompany: {REASONS[claim.reason] ?? claim.reason}</span>}>
+      right={claim && <span className={`rounded-md px-2.5 py-1 text-sm font-semibold ${claim.decision === "accepted" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>{REASONS[claim.reason] ?? claim.reason}</span>}>
 
-      {claim?.inspection && !recipe && (
+      {claim?.inspection && !recipe && evidence && (
         <div className="mt-1 truncate font-mono text-xs text-slate-500">
           claim: {claim.inspection.canonical_resolver.replace(/\.$/, "")} for {claim.inspection.scopes.map((x) => x.replace(/\.$/, "")).join(", ")}; expected {claim.inspection.record_owner.replace(/\.$/, "")} TXT "token={claim.inspection.token.slice(0, 16)}..."
         </div>
@@ -149,13 +148,13 @@ function SceneSlide({ scene, device, evidence }: { scene: Scene; device: Device;
       {error && <div className="mt-6 rounded-xl border border-red-300 bg-red-50 p-4 text-red-800">{error}</div>}
 
       {recipe ? (
-        <Recipe live={live} claim={claim ?? null} />
+        <Recipe live={live} claim={claim ?? null} details={evidence} />
       ) : (
         <>
           <div className="mt-1 flex min-h-0 flex-1 items-center justify-center">
-            <SceneArt place={scene.place} device={device} steps={steps} at={at} resolverName="dns.splittrust.zivkovic.me" />
+            <SceneArt place={scene.place} device={device} steps={steps} at={at} />
           </div>
-          {claim && <StageStrip claim={claim} steps={steps} at={at} />}
+          {claim && evidence && <StageStrip claim={claim} steps={steps} at={at} />}
           {evidence ? (
             <div className="h-64 pb-3">
               <DigPanel leftTitle={`UnsecureCompany's laptop asks the network's resolver (${scene.betaDNS})`} left={beta?.naive ?? null}
@@ -199,37 +198,38 @@ function StageStrip({ claim, steps, at }: { claim: Run["claims"][number]; steps:
 }
 
 /* Slide 4: the three things SecureCompany did, with the real zone's records as they are right now. */
-function Recipe({ live, claim }: { live: LiveRecord | null; claim: Run["claims"][number] | null }) {
+function Recipe({ live, claim, details }: { live: LiveRecord | null; claim: Run["claims"][number] | null; details: boolean }) {
   const txt = live?.txt.answer?.[0]?.split(/\s+/).slice(-1)[0]?.replace(/"/g, "");
   const ds = live?.ds.answer?.[0]?.split(/\s+/).slice(3).join(" ");
-  const tile = (icon: React.ReactNode, title: string, sub: React.ReactNode) => (
+  const state = (ok: boolean | undefined, text: string) => <span className={`rounded px-2 py-0.5 text-sm font-semibold ${ok === undefined ? "bg-slate-100 text-slate-500" : ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>{text}</span>;
+  const tile = (icon: React.ReactNode, title: string, status: React.ReactNode, raw?: React.ReactNode) => (
     <div className="flex flex-col items-center rounded-2xl border-2 border-slate-200 bg-white p-5 text-center shadow-sm">
       <svg viewBox="-64 -56 128 112" className="h-20 w-24 lg:h-24 lg:w-28">{icon}</svg>
       <div className="mt-2 text-xl font-bold lg:text-2xl">{title}</div>
-      <div className="mt-2 w-full break-all font-mono text-[11px] leading-relaxed text-slate-500">{sub}</div>
+      <div className="mt-3">{status}</div>
+      {details && raw && <div className="mt-3 w-full break-all font-mono text-[11px] leading-relaxed text-slate-500">{raw}</div>}
     </div>
   );
   return (
     <div className="mt-5 flex flex-1 flex-col">
       <div className="grid gap-4 md:grid-cols-3 lg:gap-6">
-        {tile(<><g transform="translate(0,4) scale(1.6)"><Lock tone={GREEN} /></g><g transform="translate(26,-22)"><Mark ok size={10} /></g></>, "Sign the zone",
-          live ? <>DNSSEC at Cloudflare, DS at the .me registry<br />{live.ds.security}: {ds ?? "no DS"}</> : "checking the real zone...")}
-        {tile(<g transform="scale(1.3)"><Doc tone={BLUE} /></g>, "Publish one record",
-          live ? <>{live.record_owner}<br />TXT "token={txt ?? "?"}"<br />{live.txt.security}</> : "...")}
+        {tile(<><g transform="translate(0,4) scale(1.6)"><Lock tone={GREEN} /></g><g transform="translate(26,-22)"><Mark ok size={10} /></g></>, "Signed the zone",
+          live ? state(live.ds.security === "secure", `zivkovic.me: DS at .me, ${live.ds.security}`) : state(undefined, "checking the real zone..."), ds && <>DS {ds}</>)}
+        {tile(<g transform="scale(1.3)"><Doc tone={BLUE} /></g>, "Published one record",
+          live ? state(live.txt.security === "secure", `TXT record live, ${live.txt.security}`) : state(undefined, "..."), live && <>{live.record_owner}<br />TXT "token={txt ?? "?"}"</>)}
         {tile(<><g transform="translate(-6,8) scale(0.9)"><Laptop tone={BLUE} /></g><g transform="translate(30,-18)"><Shield /></g></>, "Devices that check",
-          <>DNR/PvD claim, DoT identity (RFC 9525), DNSSEC-validated TXT, token match, then a scoped grant;<br />here: the SplitTrust proxy as the laptop's resolver</>)}
+          state(true, "the SplitTrust proxy is the laptop's resolver"), <>TLS name, DNSSEC-validated TXT, token match, then a scoped grant</>)}
       </div>
       <div className="mt-5 flex items-center gap-6 rounded-2xl border-2 border-slate-200 bg-white p-5 shadow-sm">
         <svg viewBox="-160 -70 320 140" className="h-32 w-72 shrink-0 lg:h-36 lg:w-80">
           <g transform="translate(-40,0)"><Resolver hostile /></g>
-          <text x={-40} y={-48} textAnchor="middle" fontSize={11} fontWeight={700} fill={INK}>announced as dns.splittrust.zivkovic.me</text>
-          <text x={-40} y={46} textAnchor="middle" fontSize={11} fill={RED} fontFamily="ui-monospace, Menlo, monospace">TLS cert SAN: dns.hotel.lab</text>
+          <text x={-40} y={-48} textAnchor="middle" fontSize={12} fontWeight={700} fill={INK}>claims to be dns.splittrust.zivkovic.me</text>
+          <text x={-40} y={46} textAnchor="middle" fontSize={12} fill={RED}>certificate is for dns.hotel.lab</text>
           <g transform="translate(80,-10)"><Mark ok={false} size={16} /></g>
-          <text x={80} y={30} textAnchor="middle" fontSize={10} fontWeight={700} fill={RED}>TLS_IDENTITY_FAILED</text>
         </svg>
         <div>
-          <div className="text-xl font-bold lg:text-2xl">The record is public. Can it be copied?</div>
-          <p className="mt-1 text-base text-slate-700 lg:text-lg">Yes. A hotel copied SecureCompany's claim word for word (same resolver name, same salt, same token). SecureCompany's laptop opens DoT to the announced address with SNI <code>dns.splittrust.zivkovic.me</code> and checks the certificate first (RFC 9525): {claim ? <b className={claim.decision === "rejected" ? "text-red-700" : "text-green-700"}>{REASONS[claim.reason] ?? claim.reason}</b> : "..."}. No DNS query was ever sent to it.</p>
+          <div className="text-xl font-bold lg:text-2xl">The record is public. What if the hotel copies the claim?</div>
+          <p className="mt-1 text-lg text-slate-700">Same resolver name, same salt, same token. The laptop opens TLS to the announced resolver and checks the certificate first: {claim ? <b className={claim.decision === "rejected" ? "text-red-700" : "text-green-700"}>{claim.decision === "rejected" ? "name mismatch, rejected" : REASONS[claim.reason] ?? claim.reason}</b> : "..."}. No DNS query is sent to it.</p>
         </div>
       </div>
       <p className="mt-auto py-4 text-center text-lg font-medium text-slate-800 lg:text-xl">{SCENES[2].takeaway}</p>

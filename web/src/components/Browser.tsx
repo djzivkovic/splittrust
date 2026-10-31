@@ -22,7 +22,7 @@ export function BrowserFrame({ who, url, l, tone }: { who: string; url: string; 
         ) : failed ? (
           <div>
             <div className="text-lg font-semibold text-slate-700">This site can't be reached</div>
-            <div className="mt-1 text-sm text-slate-500">The name did not resolve. Nothing was sent anywhere.</div>
+            <div className="mt-1 text-sm text-slate-500">The name did not resolve. No connection was made to the requested site.</div>
             <div className="mt-2 truncate font-mono text-xs text-slate-400" title={l.ede ?? l.error ?? l.rcode}>{(l.ede ?? l.error ?? l.rcode)?.split(":")[0]}</div>
           </div>
         ) : fake ? (
@@ -35,7 +35,7 @@ export function BrowserFrame({ who, url, l, tone }: { who: string; url: string; 
           <div>
             <div className="text-lg font-semibold text-green-800">The real site</div>
             <div className="mt-1 truncate text-sm text-slate-700" title={l.page}>{l.page ?? l.page_error}</div>
-            <div className="mt-2 font-mono text-xs text-slate-400">{l.answers[0]} via dns.quad9.net</div>
+            <div className="mt-2 font-mono text-xs text-slate-400">{l.answers[0]}; DNS answered by dns.quad9.net</div>
           </div>
         ) : (
           <div>

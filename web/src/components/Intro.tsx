@@ -1,6 +1,5 @@
 /* Introduction and closing slides: who we are, the problem, how RFC 9704 answers it, the two companies. */
 
-import { ALFA, BETA } from "../lib/deck";
 import { BLUE, Cloud, Doc, GREEN, INK, Laptop, Lock, Mark, Mask, MUTED, RED, Resolver, Router, Server, Shield } from "./Art";
 import { Canvas, Slide } from "./Slide";
 
@@ -19,7 +18,7 @@ export function TitleSlide() {
       <div className="text-sm font-semibold uppercase tracking-widest text-blue-700">DNS SEC(urity) Hackathon 2026</div>
       <h1 className="mt-3 text-5xl font-bold tracking-tight lg:text-6xl xl:text-7xl">SplitTrust</h1>
       <p className="mt-4 text-2xl text-slate-700 lg:text-3xl">Who may answer for your domain inside a network?</p>
-      <p className="mt-2 text-lg text-slate-500 lg:text-xl">An implementation of RFC 9704, a lab to attack it, and what we learned on the way.</p>
+      <p className="mt-2 text-lg text-slate-500 lg:text-xl">RFC 9704 verification, tested against a hostile resolver.</p>
       <div className="mt-12 text-base font-semibold text-slate-800">Team NXDOMAIN</div>
       <svg viewBox="-40 -50 520 130" className="mt-10 h-28 w-[520px] max-w-full">
         <g transform="translate(40,10)"><Laptop tone={BLUE} /></g>
@@ -35,8 +34,8 @@ export function TitleSlide() {
 
 export function ProblemSlide() {
   return (
-    <Slide section="The problem" title="Any network can say: my resolver answers for your domain" sub="Nothing lets a device check that the domain owner agreed."
-      takeaway="Split-horizon DNS is normal and useful. The lie has exactly the same shape as the truth.">
+    <Slide section="The problem" title="Any network can say: my resolver answers for your domain" sub="The device has no way to check that the domain owner agreed."
+      takeaway={<span className="text-base text-slate-600">DNS interception was found in 259 of 3,047 networks measured (Liu et al., USENIX Security 2018). Hotel networks rewriting DNS are documented since 2013.</span>}>
       <Canvas viewBox="0 -10 1200 480" label="A hotel network claims a bank's domain">
         <rect x={60} y={300} width={1080} height={140} rx={24} fill="#fff7ed" />
         <text x={600} y={428} textAnchor="middle" fontSize={14} fontWeight={600} fill="#9a3412">Hotel Wi-Fi</text>
@@ -57,11 +56,6 @@ export function ProblemSlide() {
         <text x={200} y={296} textAnchor="middle" fontSize={40} fontWeight={800} fill={INK}>?</text>
         <g transform="translate(1040, 54)"><Mark ok={false} size={16} /></g>
       </Canvas>
-      <div className="grid grid-cols-3 gap-5 pb-2 text-base text-slate-700 lg:text-lg">
-        <div className="rounded-xl bg-white p-4 shadow-sm"><b>Today:</b> the device takes the network's word for it. DHCP says "use this resolver", and it does. Encrypting the queries to that resolver is a private conversation with the attacker.</div>
-        <div className="rounded-xl bg-white p-4 shadow-sm"><b>Not hypothetical:</b> DNS interception was measured in 259 of 3,047 networks probed (USENIX Security 2018); a hotel in Amsterdam was documented rewriting DNS answers and stripping DNSSEC signatures (2013); DarkHotel delivered malware over hotel networks (Kaspersky, 2014).</div>
-        <div className="rounded-xl bg-white p-4 shadow-sm"><b>RFC 9704 (January 2025)</b> gives the domain owner a way to say who may answer for which names, and the device a way to check. Its authors reported no known implementation in February 2025.</div>
-      </div>
     </Slide>
   );
 }
@@ -75,8 +69,8 @@ export function HowSlide() {
     </g>
   );
   return (
-    <Slide section="RFC 9704" title="How it works, in three steps" sub="The owner publishes, the network claims, the device checks."
-      takeaway="The token can be copied by anyone. The owner's signature (or a trusted resolver's word) and the resolver's certificate cannot.">
+    <Slide section="RFC 9704" title="How it works, in three steps"
+      takeaway="Copying the record is not enough: the resolver must also prove the claimed name over TLS.">
       <Canvas viewBox="0 0 1240 440" label="The three steps of RFC 9704">
         <line x1={300} y1={300} x2={470} y2={300} stroke="#cbd5e1" strokeWidth={2.5} strokeDasharray="6 6" />
         <line x1={700} y1={300} x2={840} y2={300} stroke="#cbd5e1" strokeWidth={2.5} strokeDasharray="6 6" />
@@ -87,29 +81,29 @@ export function HowSlide() {
         {/* 1: zone with lock and the TXT record */}
         <g transform="translate(200, 230)"><Cloud /></g>
         <text x={194} y={226} textAnchor="middle" fontSize={15} fontWeight={700} fill={INK}>alfa.example zone</text>
-        <text x={194} y={246} textAnchor="middle" fontSize={11} fill={MUTED}>DNSSEC-signed, or reached via a trusted resolver</text>
+        <text x={194} y={246} textAnchor="middle" fontSize={12} fill={MUTED}>DNSSEC-signed</text>
         <g transform="translate(262, 190)"><Lock tone={GREEN} /></g>
         <g transform="translate(200, 350)"><Doc tone={BLUE} /></g>
         <text x={200} y={404} textAnchor="middle" fontSize={12} fontFamily="ui-monospace, Menlo, monospace" fill={INK}>dns.alfa.example._splitdns-challenge.alfa.example</text>
-        <text x={200} y={422} textAnchor="middle" fontSize={12} fontFamily="ui-monospace, Menlo, monospace" fill={BLUE}>TXT "token=&lt;hash(salt, claim)&gt;"</text>
+        <text x={200} y={422} textAnchor="middle" fontSize={12} fontFamily="ui-monospace, Menlo, monospace" fill={BLUE}>TXT "token=&lt;hash(salt, subdomains)&gt;"</text>
 
         {/* 2: router announcing */}
         <g transform="translate(600, 330)"><Router tone={BLUE} /></g>
         <Bubble x={600} y={230} w={400} text="dns.alfa.example answers for internal.alfa.example" tone={BLUE} />
-        <text x={600} y={404} textAnchor="middle" fontSize={12} fill={MUTED}>plus the salt the owner used</text>
+        <text x={600} y={404} textAnchor="middle" fontSize={13} fill={MUTED}>plus the salt</text>
 
         {/* 3: laptop with shield and three checks */}
         <g transform="translate(880, 340)"><Laptop tone={BLUE} /></g>
         <g transform="translate(924, 300)"><Shield /></g>
         {[
-          ["the resolver proves its name", "DNS over TLS, certificate (RFC 9525)"],
-          ["the owner's record validates", "DNSSEC locally, or via a resolver the device trusts"],
-          ["the token matches the claim", "only then route those names there"],
+          ["TLS: the certificate matches the name", ""],
+          ["DNSSEC: the owner's record validates", ""],
+          ["the token matches the claim", "only then are those names routed there"],
         ].map(([t, s], i) => (
           <g key={t} transform={`translate(975, ${190 + i * 62})`}>
             <Mark ok size={11} />
-            <text x={20} y={-2} fontSize={14} fontWeight={600} fill={INK}>{t}</text>
-            <text x={20} y={16} fontSize={12} fill={MUTED}>{s}</text>
+            <text x={20} y={4} fontSize={16} fontWeight={600} fill={INK}>{t}</text>
+            {s && <text x={20} y={24} fontSize={13} fill={MUTED}>{s}</text>}
           </g>
         ))}
 
@@ -118,62 +112,19 @@ export function HowSlide() {
   );
 }
 
-export function CompaniesSlide() {
-  return (
-    <Slide section="The demo" title="Two companies, one week" sub="Same employees, same habits, different outcomes."
-      takeaway="Every verdict and every page that follows is computed live: SecureCompany's zone is our real, DNSSEC-signed zivkovic.me.">
-      <div className="grid flex-1 content-center gap-8 md:grid-cols-2">
-        <Company name={BETA.name} domain={BETA.domain} adopted={false} line="Trusts whatever resolver the network hands out. Most companies today." />
-        <Company name={ALFA.name} domain={ALFA.domain} adopted line="Signed its zone, published one record, and its devices check before trusting a resolver." />
-      </div>
-    </Slide>
-  );
-}
-
-function Company({ name, domain, adopted, line }: { name: string; domain: string; adopted: boolean; line: string }) {
-  return (
-    <div className={`flex items-center gap-6 rounded-2xl border-2 bg-white p-6 shadow-sm ${adopted ? "border-blue-300" : "border-slate-200"}`}>
-      <svg viewBox="-70 -60 140 120" className="h-28 w-32 shrink-0">
-        <g transform="translate(0,6)"><Laptop tone={adopted ? BLUE : INK} /></g>
-        {adopted && <g transform="translate(44,-30)"><Shield /></g>}
-      </svg>
-      <div>
-        <div className="flex flex-wrap items-baseline gap-x-3"><span className="text-3xl font-bold">{name}</span><code className="text-sm text-slate-500">{domain}</code></div>
-        <div className={`mt-1 text-sm font-semibold ${adopted ? "text-blue-700" : "text-slate-500"}`}>{adopted ? "uses SplitTrust" : "no SplitTrust"}</div>
-        <p className="mt-2 text-lg text-slate-700">{line}</p>
-      </div>
+export function ClosingSlide() {
+  const row = (label: string, text: string, tone: string) => (
+    <div className="flex items-baseline gap-6 rounded-2xl border-2 border-slate-200 bg-white px-8 py-5 shadow-sm">
+      <span className={`w-28 shrink-0 text-xl font-bold ${tone}`}>{label}</span>
+      <span className="text-xl text-slate-800">{text}</span>
     </div>
   );
-}
-
-export function ClosingSlide() {
   return (
-    <Slide section="Closing" title="What this is, what it is not, and what we ask" takeaway={<>github.com/djzivkovic/splittrust <span className="ml-4 text-sm font-normal text-slate-500">Appendix follows: who it is for, today's options, what changes for a company, try the owner tool, roadmap.</span></>}>
-      <div className="grid flex-1 content-center gap-6 lg:grid-cols-3">
-        <div className="rounded-2xl border-2 border-green-200 bg-white p-6 shadow-sm">
-          <div className="text-xl font-bold text-green-800">Real</div>
-          <ul className="mt-3 space-y-2 text-base text-slate-700">
-            <li>The RFC 9704 device-side pipeline, verification and enforcement, plus the owner's tool</li>
-            <li>A DNS proxy any ordinary client can use today</li>
-            <li>Tested live against the public DNS with our own signed zone</li>
-          </ul>
-        </div>
-        <div className="rounded-2xl border-2 border-slate-200 bg-white p-6 shadow-sm">
-          <div className="text-xl font-bold text-slate-700">Not yet</div>
-          <ul className="mt-3 space-y-2 text-base text-slate-700">
-            <li>Not an OS integration: protection applies to clients that use the proxy; a product would drive systemd-resolved or Windows NRPT</li>
-            <li>Discovery is pre-configured; the DHCP option is encoded, not sent</li>
-            <li>Unsigned zones are verified only through an external resolver the device already trusts (s.6.1); that trust is then the whole story</li>
-          </ul>
-        </div>
-        <div className="rounded-2xl border-2 border-blue-200 bg-white p-6 shadow-sm">
-          <div className="text-xl font-bold text-blue-800">Ask</div>
-          <ul className="mt-3 space-y-2 text-base text-slate-700">
-            <li>One OS or resolver vendor to try it</li>
-            <li>One company with split-horizon DNS for a managed-device pilot</li>
-            <li>Sign your zone</li>
-          </ul>
-        </div>
+    <Slide section="Closing" title="What this is, what it is not, what we ask" takeaway="github.com/djzivkovic/splittrust">
+      <div className="flex flex-1 flex-col justify-center gap-4">
+        {row("Built", "the RFC 9704 check, a DNS proxy that enforces it, the owner's record tool; tested against our own signed zone", "text-green-800")}
+        {row("Not yet", "OS integration, and claims arriving over DHCP or PvD on the wire. Unsigned zones depend on a resolver the device already trusts (RFC 9704 §6.1)", "text-slate-600")}
+        {row("Ask", "one OS or resolver vendor to try it, one company with split-horizon DNS for a managed-device pilot", "text-blue-800")}
       </div>
     </Slide>
   );
