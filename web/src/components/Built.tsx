@@ -52,17 +52,12 @@ export function BuiltSlide() {
         <text x={905} y={395} textAnchor="middle" fontSize={13} fill={INK}>13 scenarios, 3 device profiles, 46 generated checks and 5 end-to-end tests</text>
 
         {/* the real world */}
-        <g transform="translate(180, 480)"><Cloud /></g>
-        <text x={174} y={478} textAnchor="middle" fontSize={14} fontWeight={700} fill={INK}>zivkovic.me</text>
-        <text x={174} y={496} textAnchor="middle" fontSize={11} fill={MUTED}>real zone, DNSSEC, record live</text>
-        <g transform="translate(238, 452)"><Lock tone={GREEN} /></g>
-        {[["20 test vectors", 480], ["draft erratum, RFC 9704 s.5.1", 700], ["8 implementer decisions", 920], ["architecture, demo, lab docs", 1110]].map(([t, x]) => (
-          <g key={t as string} transform={`translate(${x as number}, 480)`}>
-            <rect x={-105} y={-18} width={210} height={36} rx={18} fill="#fff" stroke="#e2e8f0" strokeWidth={2} />
-            <text y={5} textAnchor="middle" fontSize={12} fontWeight={600} fill={INK}>{t}</text>
-          </g>
-        ))}
-        <text x={360} y={485} textAnchor="middle" fontSize={11} fontWeight={700} fill={MUTED}>published:</text>
+        <g transform="translate(600, 480)"><Cloud /></g>
+        <text x={594} y={478} textAnchor="middle" fontSize={14} fontWeight={700} fill={INK}>zivkovic.me</text>
+        <text x={594} y={496} textAnchor="middle" fontSize={11} fill={MUTED}>our real zone: DNSSEC-signed, record published, verified live</text>
+        <g transform="translate(662, 452)"><Lock tone={GREEN} /></g>
+        <line x1={310} y1={420} x2={540} y2={470} stroke="#cbd5e1" strokeWidth={2} strokeDasharray="6 6" />
+        <line x1={905} y1={420} x2={660} y2={470} stroke="#cbd5e1" strokeWidth={2} strokeDasharray="6 6" />
       </Canvas>
     </Slide>
   );

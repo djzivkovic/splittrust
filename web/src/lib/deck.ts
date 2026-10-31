@@ -15,7 +15,7 @@ export interface Scene {
   takeaway: string;        // one line, appears when the animation is done
 }
 
-export const ALFA = { name: "SecureCompany", domain: "zivkovic.me", site: "zivkovic.me" };
+export const ALFA = { name: "SecureCompany", domain: "zivkovic.me", site: "zivkovic.me", intranet: "host.internal.splittrust.zivkovic.me" };
 export const BETA = { name: "UnsecureCompany", domain: "unsecure.example" };
 
 export const SCENES: Scene[] = [

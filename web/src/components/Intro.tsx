@@ -156,7 +156,6 @@ export function ClosingSlide() {
             <li>The RFC 9704 device-side pipeline, verification and enforcement, plus the owner's tool</li>
             <li>A DNS proxy any ordinary client can use today</li>
             <li>Tested live against the public DNS with our own signed zone</li>
-            <li>Published test vectors and a draft erratum</li>
           </ul>
         </div>
         <div className="rounded-2xl border-2 border-slate-200 bg-white p-6 shadow-sm">
@@ -170,9 +169,8 @@ export function ClosingSlide() {
         <div className="rounded-2xl border-2 border-blue-200 bg-white p-6 shadow-sm">
           <div className="text-xl font-bold text-blue-800">Ask</div>
           <ul className="mt-3 space-y-2 text-base text-slate-700">
-            <li>File the erratum for section 5.1</li>
-            <li>Publish the vectors to the ADD working group</li>
-            <li>Get one resolver vendor to try it</li>
+            <li>One OS or resolver vendor to try it</li>
+            <li>One company with split-horizon DNS for a managed-device pilot</li>
             <li>Sign your zone</li>
           </ul>
         </div>

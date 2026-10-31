@@ -72,7 +72,7 @@ const FEATURES: { icon: React.ReactNode; title: string; lines: string[] }[] = [
   { icon: <g transform="scale(1.3)"><Lock tone={RED} /></g>, title: "Fails safe and explains itself",
     lines: ["rejected claims never route a query", "SERVFAIL instead of a wrong address", "nine-stage trace with evidence per verdict", "grey (cannot decide) is never red or green"] },
   { icon: <g transform="scale(1.1)"><Doc tone={BLUE} /></g>, title: "The owner's side too",
-    lines: ["build-record: claim in, TXT record out", "DHCP option 90/11 codec, PvD documents", "test vectors for the next implementer", "an erratum for the RFC's worked example"] },
+    lines: ["build-record: claim in, TXT record out", "rotate the salt to revoke", "DHCP option 90/11 codec, PvD documents", "ds: delegate a key so local answers validate"] },
   { icon: <g transform="scale(0.9)"><Resolver tone={GREEN} /></g>, title: "Tested live against the public DNS",
     lines: ["a real zone: zivkovic.me, DNSSEC at Cloudflare", "validated under the IANA root, live", "phone profile through the real dns.quad9.net", "the hotel's forgery fails exactly as the RFC says"] },
   { icon: <g transform="scale(0.9)"><Server /></g>, title: "A lab that attacks it",
@@ -197,14 +197,14 @@ export function ImpactSlide() {
 
 export function RoadmapSlide() {
   const steps: [string, string, string][] = [
-    ["Now", "Verifier, proxy, owner tool, lab, vectors, erratum draft", "done"],
+    ["Now", "Verifier, proxy, owner tool, lab, tested against our real zone", "done"],
     ["Next", "Pilot on managed devices: the proxy as a local service, claims delivered by MDM or VPN config (no DNR or PvD needed); a CoreDNS plugin for the office side", "planned"],
     ["Then", "OS integration: systemd-resolved (DNR parsed since 257), Windows DNS client and NRPT, Apple NetworkExtension; DHCP option 90 and RA on the wire", "planned"],
-    ["Standards", "Erratum drafted, to be filed; vectors and implementer notes to the ADD working group; one resolver vendor trying it", "ask"],
+    ["Partners", "One OS or resolver vendor trying it; a managed-device pilot with a company that has split-horizon DNS", "ask"],
   ];
   return (
     <Slide section="What's next" title="From a working verifier to something your laptop ships with"
-      takeaway="The protocol is published. What it lacked was running code, test vectors and a reproducible example. This repository has all three; the erratum is drafted.">
+      takeaway="The protocol is published. What it lacked was running code. Now it has some.">
       <div className="flex flex-1 flex-col justify-center gap-6">
         <svg viewBox="0 0 1200 120" className="h-28 w-full">
           <line x1={80} y1={60} x2={1120} y2={60} stroke="#cbd5e1" strokeWidth={4} />

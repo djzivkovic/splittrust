@@ -22,7 +22,7 @@ type LabProbe struct {
 	Addr   string `json:"addr"`
 	Kind   string `json:"kind"` // dns, dot, http, https, control
 	OK     bool   `json:"ok"`
-	Millis int64  `json:"millis"`
+	Micros int64  `json:"micros"`
 	Detail string `json:"detail,omitempty"`
 }
 
@@ -87,7 +87,7 @@ func labRoots() *x509.CertPool {
 func probe(ctx context.Context, t labTarget, roots *x509.CertPool) LabProbe {
 	p := LabProbe{Name: t.name, Group: t.group, Role: t.role, Addr: t.addr, Kind: t.kind}
 	start := time.Now()
-	defer func() { p.Millis = time.Since(start).Milliseconds() }()
+	defer func() { p.Micros = time.Since(start).Microseconds() }()
 	d := net.Dialer{Timeout: 3 * time.Second}
 	switch t.kind {
 	case "dns":

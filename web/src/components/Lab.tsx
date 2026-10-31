@@ -35,7 +35,7 @@ export function LabSlide() {
                     <span className={`h-3 w-3 shrink-0 rounded-full ${p.ok ? "bg-green-500" : "bg-red-500"}`} />
                     <span className="w-32 shrink-0 truncate text-sm font-semibold">{p.name}</span>
                     <span className="min-w-0 flex-1 truncate text-sm text-slate-600">{p.role.replace(/^[A-Za-z]+: /, "")}</span>
-                    <span className="shrink-0 font-mono text-xs text-slate-400">{p.millis} ms</span>
+                    <span className="shrink-0 font-mono text-xs text-slate-400">{p.micros < 1000 ? "<1" : (p.micros / 1000).toFixed(p.micros < 10000 ? 1 : 0)} ms</span>
                   </div>
                 ))}
                 {!probes && <div className="animate-pulse text-sm text-slate-400">probing...</div>}
@@ -43,7 +43,7 @@ export function LabSlide() {
             </div>
           ))}
         </div>
-        <ProxyDecisions since={0} limit={12} />
+        <ProxyDecisions since={0} limit={12} warm />
       </div>
     </Slide>
   );
