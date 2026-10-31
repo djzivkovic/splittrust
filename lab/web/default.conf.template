@@ -1,0 +1,9 @@
+# One static page per lab web server; the page says who answered.
+# Rendered by the nginx image's envsubst entrypoint (SITE_BANNER from compose).
+server {
+    listen 80 default_server;
+    location / {
+        default_type text/plain;
+        return 200 "${SITE_BANNER}\n";
+    }
+}

@@ -71,8 +71,8 @@ func (e *Engine) Profile(id string) (lab.Profile, error) {
 	return p, nil
 }
 
-// verifier builds a Verifier with real dependencies for a profile.
-func (e *Engine) verifier(p lab.Profile) (*verify.Verifier, error) {
+// Verifier builds a Verifier with real dependencies for a profile.
+func (e *Engine) Verifier(p lab.Profile) (*verify.Verifier, error) {
 	pool, err := e.pool(p.CAFile)
 	if err != nil {
 		return nil, err
@@ -95,7 +95,7 @@ func (e *Engine) Verify(ctx context.Context, scenarioID string, inline *claim.Ra
 	if err != nil {
 		return verify.Run{}, err
 	}
-	v, err := e.verifier(p)
+	v, err := e.Verifier(p)
 	if err != nil {
 		return verify.Run{}, err
 	}
@@ -110,7 +110,7 @@ func (e *Engine) Resolve(ctx context.Context, scenarioID, qname string, opt veri
 	if err != nil {
 		return route.Report{}, err
 	}
-	v, err := e.verifier(p)
+	v, err := e.Verifier(p)
 	if err != nil {
 		return route.Report{}, err
 	}

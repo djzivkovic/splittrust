@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"net/http"
 	"strings"
@@ -37,13 +38,20 @@ type Service interface {
 }
 
 type handler struct {
-	svc Service
+	svc      Service
+	proxyURL string // control endpoint of the lab's DNS proxy, "" when absent
 }
 
 // NewHandler builds the HTTP handler: /api/* plus the console at /.
-func NewHandler(svc Service) http.Handler {
-	h := &handler{svc: svc}
+func NewHandler(svc Service) http.Handler { return NewHandlerWithProxy(svc, "") }
+
+// NewHandlerWithProxy also exposes the lab DNS proxy's control API under
+// /api/client/* so the console can move the simulated client between networks.
+func NewHandlerWithProxy(svc Service, proxyURL string) http.Handler {
+	h := &handler{svc: svc, proxyURL: strings.TrimSuffix(proxyURL, "/")}
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/client/status", h.clientStatus)
+	mux.HandleFunc("POST /api/client/join", h.clientJoin)
 	mux.HandleFunc("GET /api/health", h.health)
 	mux.HandleFunc("GET /api/capabilities", h.capabilities)
 	mux.HandleFunc("GET /api/scenarios", h.scenarios)
@@ -220,6 +228,53 @@ func (h *handler) build(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, b)
+}
+
+func (h *handler) clientStatus(w http.ResponseWriter, r *http.Request) {
+	if h.proxyURL == "" {
+		writeError(w, http.StatusNotFound, "no DNS proxy configured (SPLITTRUST_PROXY)")
+		return
+	}
+	h.relay(w, r, http.MethodGet, "/status", nil)
+}
+
+func (h *handler) clientJoin(w http.ResponseWriter, r *http.Request) {
+	if h.proxyURL == "" {
+		writeError(w, http.StatusNotFound, "no DNS proxy configured (SPLITTRUST_PROXY)")
+		return
+	}
+	var req struct {
+		ScenarioID string `json:"scenario_id"`
+		Device     string `json:"device"`
+		Resolution string `json:"resolution"`
+	}
+	if !decode(w, r, &req) {
+		return
+	}
+	body, _ := json.Marshal(req)
+	h.relay(w, r, http.MethodPost, "/join", bytes.NewReader(body))
+}
+
+func (h *handler) relay(w http.ResponseWriter, r *http.Request, method, path string, body *bytes.Reader) {
+	var rd io.Reader
+	if body != nil {
+		rd = body
+	}
+	req, err := http.NewRequestWithContext(r.Context(), method, h.proxyURL+path, rd)
+	if err != nil {
+		writeError(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := (&http.Client{Timeout: 15 * time.Second}).Do(req)
+	if err != nil {
+		writeError(w, http.StatusBadGateway, "DNS proxy unreachable: "+err.Error())
+		return
+	}
+	defer resp.Body.Close()
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(resp.StatusCode)
+	_, _ = io.Copy(w, io.LimitReader(resp.Body, MaxBody))
 }
 
 func (h *handler) serviceError(w http.ResponseWriter, err error) {

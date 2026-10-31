@@ -30,6 +30,17 @@
     </table>
   </section>
 
+  <section id="client">
+    <h2>Client on the network: <span id="client-net" class="muted">…</span></h2>
+    <p class="hint">A plain client container (no SplitTrust inside) resolves through the SplitTrust DNS proxy. Move it between networks; then in a terminal: <code>docker compose -f lab/compose.yaml exec client curl -s http://host.internal.corp.lab</code> or <code>… http://www.banka.lab</code>. Its naive twin uses the hotel's DNS directly: <code>docker compose -f lab/compose.yaml exec naive curl -s http://www.banka.lab</code>.</p>
+    <div class="controls">
+      <label>Network <select id="client-scenario"></select></label>
+      <label>Device <select id="client-device"><option>validating-stub</option><option>private-dns</option><option>hybrid</option></select></label>
+      <button id="client-join">Join</button>
+    </div>
+    <div id="client-grants" class="muted"></div>
+  </section>
+
   <section id="trace">
     <h2>2. Verification trace</h2>
     <p class="hint" id="trace-hint">Run a scenario to see the ordered stages the device went through.</p>

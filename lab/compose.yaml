@@ -87,6 +87,8 @@ services:
       args:
         LIBUNBOUND: "1"
     command: ["serve", "--addr", "0.0.0.0:8000"]
+    environment:
+      SPLITTRUST_PROXY: http://172.30.97.60:8001
     <<: *labgen
     ports:
       - "127.0.0.1:8000:8000"
@@ -115,6 +117,87 @@ services:
       splitlab:
         ipv4_address: 172.30.97.50
       console: {}
+
+  # The DNS front door: ordinary stubs point here. Starts on the company network;
+  # the console (or POST /join on :8001) moves it to another network.
+  proxy:
+    build:
+      context: ..
+      dockerfile: lab/app/Dockerfile
+      args:
+        LIBUNBOUND: "1"
+    command: ["proxy", "--scenario", "legit", "--listen", "0.0.0.0:53", "--control", "0.0.0.0:8001"]
+    <<: *labgen
+    extra_hosts: *pvdhosts
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+      public-dns:
+        condition: service_started
+      local-dot:
+        condition: service_started
+      hotel-dot:
+        condition: service_started
+      pvd:
+        condition: service_started
+      external:
+        condition: service_started
+    networks:
+      splitlab:
+        ipv4_address: 172.30.97.60
+
+  # A plain client with no SplitTrust code: its DNS server is the proxy.
+  #   docker compose -f lab/compose.yaml exec client curl -s http://host.internal.corp.lab
+  client:
+    build:
+      context: ./client
+    dns: [172.30.97.60]
+    depends_on:
+      proxy:
+        condition: service_started
+    networks:
+      splitlab:
+        ipv4_address: 172.30.97.61
+
+  # The same client on the hotel Wi-Fi without SplitTrust: DNS straight from the hotel.
+  naive:
+    build:
+      context: ./client
+    dns: [172.30.97.21]
+    depends_on:
+      hotel-dot:
+        condition: service_started
+    networks:
+      splitlab:
+        ipv4_address: 172.30.97.62
+
+  # Web servers behind the names in play: the company intranet host, the real bank, the hotel's fake bank.
+  intranet:
+    build:
+      context: ./web
+    environment:
+      SITE_BANNER: "Hello from host.internal.corp.lab - the company intranet (172.30.97.70). You reached me through a resolver the domain owner authorised."
+    networks:
+      splitlab:
+        ipv4_address: 172.30.97.70
+
+  bank:
+    build:
+      context: ./web
+    environment:
+      SITE_BANNER: "REAL www.banka.lab (172.30.97.80). Your money is where you left it."
+    networks:
+      splitlab:
+        ipv4_address: 172.30.97.80
+
+  fake-bank:
+    build:
+      context: ./web
+    environment:
+      SITE_BANNER: "FAKE www.banka.lab served by the hotel (172.30.97.66). Please enter your password :)"
+    networks:
+      splitlab:
+        ipv4_address: 172.30.97.66
 
   # The one container allowed to reach the Internet: runs the real-DNS scenario
   # (IANA root anchor, Cloudflare-hosted zone, real dns.quad9.net). Same image as
