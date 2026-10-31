@@ -15,7 +15,7 @@ const P: Record<NodeId, { x: number; y: number }> = {
   betaSrv: { x: 150, y: 90 }, fakeSrv: { x: 470, y: 90 }, alfaSrv: { x: 1050, y: 90 }, cloud: { x: 770, y: 80 },
 };
 
-export interface Beat { from: NodeId; to: NodeId; side: "alfa" | "beta"; label?: string; mark?: { node: NodeId; ok: boolean; text?: string } }
+export interface Beat { from: NodeId; to: NodeId; side: "alfa" | "beta"; label?: string; stages?: string[]; mark?: { node: NodeId; ok: boolean; text?: string } }
 export interface Step { alfa?: Beat; beta?: Beat }
 
 /* Build the parallel sequence from the real verification report and the real browse results. */
@@ -24,38 +24,49 @@ export function stepsFor(place: Place, run: Run | null, alfaReached: boolean | n
   const betaRes: NodeId = place === "office" ? "betaRes" : "hotelRes";
   const betaSrv: NodeId = place === "office" ? "betaSrv" : "fakeSrv";
   const beta: Beat[] = [
-    { side: "beta", from: "beta", to: betaRes, label: BETA.domain },
+    { side: "beta", from: "beta", to: betaRes, label: `A intranet.${BETA.domain}?` },
     { side: "beta", from: betaRes, to: betaSrv },
-    { side: "beta", from: betaSrv, to: "beta", mark: { node: "beta", ok: true, text: place === "office" ? "page" : "page (hotel's)" } },
+    { side: "beta", from: betaSrv, to: "beta", mark: { node: "beta", ok: place === "office", text: place === "office" ? "A record, no checks" : "A record from the hotel" } },
   ];
   const alfa: Beat[] = [];
   const c = run?.claims[0];
   if (c) {
     const st = (id: string) => c.stages.find((s) => s.id === id);
+    const ev = (id: string) => (st(id)?.evidence ?? {}) as Record<string, unknown>;
     const tls = st("resolver_tls");
-    if (tls && tls.status !== "skipped") alfa.push({ side: "alfa", from: "alfa", to: res, label: "who are you?", mark: { node: res, ok: tls.status === "pass", text: tls.status === "pass" ? "certificate ok" : "wrong certificate" } });
+    if (tls && tls.status !== "skipped") {
+      const cert = ev("resolver_tls").certificate as { sans?: string[] } | undefined;
+      const san = cert?.sans?.[0] ?? "?";
+      alfa.push({ side: "alfa", from: "alfa", to: res, label: "DoT: prove your name", stages: ["pvd", "claim", "token", "resolver_tls"],
+        mark: { node: res, ok: tls.status === "pass", text: tls.status === "pass" ? `cert SAN ${san}` : `cert is ${san}, not ${c.resolver.replace(/\.$/, "")}` } });
+    }
     const pub = st("public_dnssec");
     if (pub && pub.status !== "skipped" && pub.code !== "NOT_APPLICABLE") {
       const ok = pub.code === "DNSSEC_SECURE";
-      alfa.push({ side: "alfa", from: res, to: "cloud", label: "owner's record?" });
-      alfa.push({ side: "alfa", from: "cloud", to: res, mark: { node: "cloud", ok, text: ok ? "signed by the owner" : pub.code === "DNSSEC_BOGUS" ? "signatures missing" : "unsigned" } });
+      alfa.push({ side: "alfa", from: res, to: "cloud", label: "TXT _splitdns-challenge?", stages: ["public_dnssec"] });
+      alfa.push({ side: "alfa", from: "cloud", to: res, stages: ["public_dnssec"],
+        mark: { node: "cloud", ok, text: ok ? "DNSSEC Secure, AD=1" : pub.code === "DNSSEC_BOGUS" ? "DNSSEC Bogus: no signed chain from .me" : pub.code === "DNSSEC_INSECURE" || pub.code === "DNSSEC_INSECURE_NO_FALLBACK" ? "Insecure: zone unsigned" : pub.code ?? "failed" } });
     }
     const ext = st("external_resolver");
     if (ext && ext.status === "pass") {
       const rec = st("record");
       const ok = rec?.status === "pass";
-      alfa.push({ side: "alfa", from: "alfa", to: "cloud", label: "ask Quad9" });
-      alfa.push({ side: "alfa", from: "cloud", to: "alfa", mark: { node: "cloud", ok, text: ok ? "record found" : "no record" } });
+      alfa.push({ side: "alfa", from: "alfa", to: "cloud", label: "DoT to dns.quad9.net", stages: ["external_resolver"] });
+      alfa.push({ side: "alfa", from: "cloud", to: "alfa", stages: ["external_resolver", "record"],
+        mark: { node: "cloud", ok, text: ok ? `TXT found, AD=${String(!!ev("external_resolver").ad)}` : rec?.code === "RECORD_MISSING" ? "NXDOMAIN: no such record" : rec?.code ?? "no record" } });
     }
     const accepted = c.decision === "accepted";
-    alfa.push({ side: "alfa", from: "alfa", to: "alfa", mark: { node: "alfa", ok: accepted, text: accepted ? "resolver verified" : "resolver rejected" } });
+    alfa.push({ side: "alfa", from: "alfa", to: "alfa", stages: ["record", "ds", "grant"],
+      mark: { node: "alfa", ok: accepted, text: accepted ? `${c.reason}: token match` : c.reason } });
     if (accepted) {
-      alfa.push({ side: "alfa", from: "alfa", to: res, label: ALFA.domain });
+      alfa.push({ side: "alfa", from: "alfa", to: res, label: `A ${ALFA.domain}?` });
       alfa.push({ side: "alfa", from: res, to: "alfaSrv" });
-      alfa.push({ side: "alfa", from: "alfaSrv", to: "alfa", mark: { node: "alfa", ok: alfaReached !== false, text: "page" } });
+      alfa.push({ side: "alfa", from: "alfaSrv", to: "alfa", mark: { node: "alfa", ok: alfaReached !== false, text: alfaReached === false ? "no answer" : "intranet reached" } });
     } else if (alfaOffNetwork) {
-      alfa.push({ side: "alfa", from: "alfa", to: "cloud", label: ALFA.site });
+      alfa.push({ side: "alfa", from: "alfa", to: "cloud", label: `A ${ALFA.site}? (Quad9)` });
       alfa.push({ side: "alfa", from: "cloud", to: "alfa", mark: { node: "alfa", ok: true, text: "real site, via Quad9" } });
+    } else {
+      alfa.push({ side: "alfa", from: "alfa", to: "alfa", mark: { node: "alfa", ok: false, text: "SERVFAIL, EDE 6: fails safe" } });
     }
   }
   const n = Math.max(beta.length, alfa.length);
@@ -136,11 +147,12 @@ export function SceneArt({ place, device, steps, at, resolverName }: { place: Pl
         const nth = marks.slice(0, i).filter((o) => o.node === m.node).length; // later marks on the same actor stack upwards
         const off = m.node === "cloud" ? { x: -70, y: 44 + nth * 30 } : m.node === "alfa" || m.node === "beta" ? { x: left ? -62 : 62, y: -44 - nth * 30 } : { x: left ? -66 : 66, y: -30 - nth * 30 };
         return (
-          <motion.g key={i} initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 300, damping: 16 }}
-            transform={`translate(${P[m.node].x + off.x}, ${P[m.node].y + off.y})`}>
-            <Mark ok={m.ok} />
-            {m.text && <text x={left ? -20 : 20} y={5} textAnchor={left ? "end" : "start"} fontSize={13} fontWeight={600} fill={m.ok ? GREEN : RED}>{m.text}</text>}
-          </motion.g>
+          <g key={i} transform={`translate(${P[m.node].x + off.x}, ${P[m.node].y + off.y})`}>
+            <motion.g initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 300, damping: 16 }}>
+              <Mark ok={m.ok} />
+              {m.text && <text x={left ? -20 : 20} y={5} textAnchor={left ? "end" : "start"} fontSize={13} fontWeight={600} fill={m.ok ? GREEN : RED}>{m.text}</text>}
+            </motion.g>
+          </g>
         );
       })}
     </svg>

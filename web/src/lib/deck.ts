@@ -24,14 +24,14 @@ export const SCENES: Scene[] = [
     headline: "At the office",
     sub: "Both employees open their company intranet.",
     alfaName: "host.internal.splittrust.zivkovic.me", betaName: "intranet.beta.example", betaDNS: "172.30.97.20:53",
-    takeaway: "Both work. Only Alfa's laptop checked that the office resolver was allowed to answer.",
+    takeaway: "Both work. Only Alfa's laptop verified the resolver first: DoT identity, DNSSEC-validated TXT, token match.",
   },
   {
     id: "real-hotel-forged", place: "hotel", day: "Tuesday",
     headline: "At the hotel",
-    sub: "Same employees, same habit, hotel Wi-Fi. The hotel claims both domains.",
+    sub: "Same employees, same habit, hotel Wi-Fi. The hotel's resolver claims both domains and serves forged copies.",
     alfaName: "host.internal.splittrust.zivkovic.me", betaName: "intranet.beta.example", betaDNS: "172.30.97.21:53",
-    takeaway: "Beta's login goes to the hotel. Alfa's laptop refuses the forged answer and fails safely.",
+    takeaway: "Beta's login goes to the hotel's server. Alfa's laptop: Bogus record, SERVFAIL with EDE 6, nothing sent. Fails safe.",
   },
   {
     id: "real-replay", place: "hotel", day: "What Alfa did",

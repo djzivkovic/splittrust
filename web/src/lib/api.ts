@@ -6,7 +6,8 @@ export type Decision = "accepted" | "rejected" | "indeterminate";
 export interface Summary { id: string; title: string; default_device: Device; trust_context: string; requires_internet: boolean }
 export interface Stage { id: string; status: "pass" | "fail" | "error" | "skipped"; code?: string; message?: string; evidence?: unknown }
 export interface Grant { resolver: string; scopes: string[]; path: "dnssec" | "external"; local_dnssec_mode: string; external_ad: boolean }
-export interface ClaimReport { index: number; resolver: string; decision: Decision; reason: string; stages: Stage[]; grant?: Grant }
+export interface Inspection { canonical_resolver: string; canonical_parent: string; scopes: string[]; token: string; record_owner: string; algorithm: string; salt_length: number }
+export interface ClaimReport { index: number; resolver: string; decision: Decision; reason: string; stages: Stage[]; inspection?: Inspection; grant?: Grant }
 export interface Run { scenario_id: string; device: Device; trust_context: string; decision: Decision; claims: ClaimReport[] }
 
 export interface Lookup { via: string; rcode: string; ad: boolean; answers: string[]; ede?: string; page?: string; page_url?: string; page_error?: string; error?: string; millis: number }

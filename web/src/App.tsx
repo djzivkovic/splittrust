@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { api, type BrowseResult, type Device, type LiveRecord, type Run, type Summary } from "./lib/api";
 import { ALFA, BETA, REASONS, SCENES, type Scene } from "./lib/deck";
-import { SceneArt, stepsFor } from "./components/SceneArt";
+import { SceneArt, stepsFor, type Step } from "./components/SceneArt";
 import { BrowserFrame } from "./components/Browser";
 import { BLUE, Doc, GREEN, INK, Laptop, Lock, Mark, RED, Resolver, Shield } from "./components/Art";
 
@@ -72,6 +72,7 @@ function TitleSlide() {
       <div className="text-sm font-semibold uppercase tracking-widest text-blue-700">RFC 9704, implemented</div>
       <h1 className="mt-3 text-4xl font-bold tracking-tight lg:text-5xl xl:text-6xl">Who may answer for your domain<br />inside a network?</h1>
       <p className="mt-5 text-xl text-slate-600 lg:text-2xl">Two companies, one week.</p>
+      <p className="mt-4 max-w-4xl text-base text-slate-500 lg:text-lg">RFC 9704: the domain owner publishes <code className="text-slate-700">TXT &lt;resolver&gt;._splitdns-challenge.&lt;zone&gt;</code> carrying a salted hash of the network's claim; a device validates it with DNSSEC, over the network's own resolver, before letting that resolver answer for those names.</p>
       <div className="mt-10 grid gap-6 md:grid-cols-2 lg:gap-8">
         <Company name={BETA.name} domain={BETA.domain} adopted={false} line="Trusts whatever resolver the network hands out." />
         <Company name={ALFA.name} domain={ALFA.domain} adopted line="Checks, against the real DNS, that the resolver is allowed to answer." />
@@ -152,6 +153,11 @@ function SceneSlide({ scene, device, evidence }: { scene: Scene; device: Device;
         {claim && <span className={`ml-auto rounded-md px-2.5 py-1 text-sm font-semibold ${claim.decision === "accepted" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>Alfa: {REASONS[claim.reason] ?? claim.reason}</span>}
       </div>
 
+      {claim?.inspection && !recipe && (
+        <div className="mt-1 truncate font-mono text-xs text-slate-500">
+          claim: {claim.inspection.canonical_resolver.replace(/\.$/, "")} for {claim.inspection.scopes.map((x) => x.replace(/\.$/, "")).join(", ")}; expected {claim.inspection.record_owner.replace(/\.$/, "")} TXT "token={claim.inspection.token.slice(0, 16)}..."
+        </div>
+      )}
       {error && <div className="mt-6 rounded-xl border border-red-300 bg-red-50 p-4 text-red-800">{error}</div>}
 
       {recipe ? (
@@ -161,6 +167,7 @@ function SceneSlide({ scene, device, evidence }: { scene: Scene; device: Device;
           <div className="mt-1 flex min-h-0 flex-1 items-center justify-center">
             <SceneArt place={scene.place} device={device} steps={steps} at={at} resolverName="dns.splittrust.zivkovic.me" />
           </div>
+          {claim && <StageStrip claim={claim} steps={steps} at={at} />}
           <div className="grid grid-cols-2 gap-4 pb-3 lg:gap-6">
             <div className={`transition-opacity ${done ? "opacity-100" : "opacity-0"}`}>
               <BrowserFrame who={`${BETA.name}'s laptop`} url={`http://${scene.betaName}/`} l={beta?.naive ?? null} tone="beta" />
@@ -176,6 +183,22 @@ function SceneSlide({ scene, device, evidence }: { scene: Scene; device: Device;
       )}
 
       {evidence && claim && <Evidence claim={claim} />}
+    </div>
+  );
+}
+
+/* The RFC 9704 pipeline as the engine ran it, revealed as the drawing reaches each stage. */
+function StageStrip({ claim, steps, at }: { claim: Run["claims"][number]; steps: Step[]; at: number }) {
+  const reached = new Set<string>();
+  steps.slice(0, at + 1).forEach((s) => s.alfa?.stages?.forEach((id) => reached.add(id)));
+  const colour = (s: Run["claims"][number]["stages"][number]) =>
+    !reached.has(s.id) ? "bg-slate-100 text-slate-400" : s.status === "pass" ? "bg-green-100 text-green-800" : s.status === "skipped" ? "bg-slate-100 text-slate-400" : s.status === "error" ? "bg-amber-100 text-amber-800" : "bg-red-100 text-red-800";
+  return (
+    <div className="mb-2 flex flex-wrap items-center gap-1.5 font-mono text-[11px]">
+      <span className="mr-1 text-slate-500">Alfa's device:</span>
+      {claim.stages.map((s) => (
+        <span key={s.id} className={`rounded px-1.5 py-0.5 transition-colors ${colour(s)}`} title={s.message}>{s.id}{reached.has(s.id) && s.code && s.status !== "skipped" ? `=${s.code}` : ""}</span>
+      ))}
     </div>
   );
 }
@@ -199,18 +222,19 @@ function Recipe({ live, claim }: { live: LiveRecord | null; claim: Run["claims"]
         {tile(<g transform="scale(1.3)"><Doc tone={BLUE} /></g>, "Publish one record",
           live ? <>{live.record_owner}<br />TXT "token={txt ?? "?"}"<br />{live.txt.security}</> : "...")}
         {tile(<><g transform="translate(-6,8) scale(0.9)"><Laptop tone={BLUE} /></g><g transform="translate(30,-18)"><Shield /></g></>, "Devices that check",
-          <>a resolver that verifies the network's claim<br />before trusting it with the company's names</>)}
+          <>DNR/PvD claim, DoT identity (RFC 9525), DNSSEC-validated TXT, token match, then a scoped grant;<br />here: the SplitTrust proxy as the laptop's resolver</>)}
       </div>
       <div className="mt-5 flex items-center gap-6 rounded-2xl border-2 border-slate-200 bg-white p-5 shadow-sm">
-        <svg viewBox="-80 -50 160 100" className="h-24 w-40 shrink-0 lg:h-28 lg:w-48">
-          <g transform="translate(-20,0)"><Resolver hostile /></g>
-          <text x={-20} y={-36} textAnchor="middle" fontSize={11} fontWeight={700} fill={INK}>"I am dns.splittrust.zivkovic.me"</text>
-          <text x={-20} y={44} textAnchor="middle" fontSize={11} fill={RED} fontFamily="ui-monospace, Menlo, monospace">certificate: dns.hotel.lab</text>
-          <g transform="translate(58,0)"><Mark ok={false} size={16} /></g>
+        <svg viewBox="-150 -60 300 120" className="h-28 w-72 shrink-0 lg:h-32 lg:w-80">
+          <g transform="translate(-30,0)"><Resolver hostile /></g>
+          <text x={-30} y={-42} textAnchor="middle" fontSize={11} fontWeight={700} fill={INK}>announced as dns.splittrust.zivkovic.me</text>
+          <text x={-30} y={48} textAnchor="middle" fontSize={11} fill={RED} fontFamily="ui-monospace, Menlo, monospace">TLS cert SAN: dns.hotel.lab</text>
+          <g transform="translate(70,0)"><Mark ok={false} size={16} /></g>
+          <text x={96} y={5} fontSize={11} fontWeight={700} fill={RED}>TLS_IDENTITY_FAILED</text>
         </svg>
         <div>
           <div className="text-xl font-bold lg:text-2xl">The record is public. Can it be copied?</div>
-          <p className="mt-1 text-base text-slate-700 lg:text-lg">Yes. A hotel copied Alfa's claim word for word. Alfa's laptop asked the resolver to prove its name first: {claim ? <b className={claim.decision === "rejected" ? "text-red-700" : "text-green-700"}>{REASONS[claim.reason] ?? claim.reason}</b> : "..."}. No DNS query was ever sent to it.</p>
+          <p className="mt-1 text-base text-slate-700 lg:text-lg">Yes. A hotel copied Alfa's claim word for word (same resolver name, same salt, same token). Alfa's laptop opens DoT to the announced address with SNI <code>dns.splittrust.zivkovic.me</code> and checks the certificate first (RFC 9525): {claim ? <b className={claim.decision === "rejected" ? "text-red-700" : "text-green-700"}>{REASONS[claim.reason] ?? claim.reason}</b> : "..."}. No DNS query was ever sent to it.</p>
         </div>
       </div>
       <p className="mt-auto py-4 text-center text-lg font-medium text-slate-800 lg:text-xl">{SCENES[2].takeaway}</p>
