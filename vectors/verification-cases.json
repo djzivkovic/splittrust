@@ -1,0 +1,161 @@
+{
+  "cases": [
+    {
+      "scenario": "legit",
+      "title": "Company network, authorised claims",
+      "device": "validating-stub",
+      "decision": "accepted",
+      "reason": "AUTHORIZED",
+      "exercises": "RFC 9704 s5 token, s6.2 Secure, s7 ds binding (claim 1) and token-only authority (claim 2)",
+      "explanation": "corp.lab is signed and publishes Verification Records for dns.corp.lab (internal, with a ds key binding) and dns2.corp.lab (mail, token-only). Both claims are accepted; only the first one establishes local DNSSEC."
+    },
+    {
+      "scenario": "legit",
+      "title": "Company network, authorised claims",
+      "device": "hybrid",
+      "decision": "accepted",
+      "reason": "AUTHORIZED",
+      "exercises": "RFC 9704 s5 token, s6.2 Secure, s7 ds binding (claim 1) and token-only authority (claim 2)",
+      "explanation": "corp.lab is signed and publishes Verification Records for dns.corp.lab (internal, with a ds key binding) and dns2.corp.lab (mail, token-only). Both claims are accepted; only the first one establishes local DNSSEC."
+    },
+    {
+      "scenario": "hotel",
+      "title": "Hotel claims the bank (honest relay)",
+      "device": "validating-stub",
+      "decision": "rejected",
+      "reason": "RECORD_MISSING",
+      "exercises": "s6.2 authenticated denial relayed by the hostile network -\u003e RECORD_MISSING",
+      "explanation": "The hotel announces dns.hotel.lab as authoritative for all of banka.lab. Its resolver overrides www.banka.lab but relays everything else. The bank never published a record: the signed denial comes back through the hotel and the claim is rejected."
+    },
+    {
+      "scenario": "hotel",
+      "title": "Hotel claims the bank (honest relay)",
+      "device": "private-dns",
+      "decision": "rejected",
+      "reason": "RECORD_MISSING",
+      "exercises": "s6.2 authenticated denial relayed by the hostile network -\u003e RECORD_MISSING",
+      "explanation": "The hotel announces dns.hotel.lab as authoritative for all of banka.lab. Its resolver overrides www.banka.lab but relays everything else. The bank never published a record: the signed denial comes back through the hotel and the claim is rejected."
+    },
+    {
+      "scenario": "hotel-forged",
+      "title": "Hotel forges the Verification Record",
+      "device": "validating-stub",
+      "decision": "rejected",
+      "reason": "DNSSEC_BOGUS",
+      "exercises": "s6.2 Bogus: correct token in a record the parent zone never signed",
+      "explanation": "Same claim, but the hotel resolver now serves its own banka.lab view including dns.hotel.lab._splitdns-challenge.banka.lab TXT with the correct token. The token matches; the signature chain says the bank never signed it. Bogus, rejected."
+    },
+    {
+      "scenario": "stale-salt",
+      "title": "Claim changed before the record",
+      "device": "validating-stub",
+      "decision": "rejected",
+      "reason": "TOKEN_MISMATCH",
+      "exercises": "s11 ordering: record must change before the claim -\u003e TOKEN_MISMATCH",
+      "explanation": "IT changed the salt in the announced claim but the zone still carries the record for the old salt. Expected token differs from the published one."
+    },
+    {
+      "scenario": "expired-signature",
+      "title": "Zone signatures expired",
+      "device": "validating-stub",
+      "decision": "rejected",
+      "reason": "DNSSEC_BOGUS",
+      "exercises": "s6.2 Bogus: RRSIG validity ended",
+      "explanation": "expired.lab is signed, but its RRSIGs expired an hour ago. The record is Bogus and the claim is rejected."
+    },
+    {
+      "scenario": "unsigned",
+      "title": "Unsigned parent zone",
+      "device": "validating-stub",
+      "decision": "rejected",
+      "reason": "DNSSEC_INSECURE_NO_FALLBACK",
+      "exercises": "s6.2 Insecure -\u003e fail without policy; s6.1 external path for devices that have one",
+      "explanation": "unsigned.lab publishes a correct record but is not DNSSEC-signed. A validating device has no fallback and rejects; a device whose default resolver is an external encrypted resolver verifies through it (RFC 9704 section 6.1) and accepts, with its security resting on that resolver."
+    },
+    {
+      "scenario": "unsigned",
+      "title": "Unsigned parent zone",
+      "device": "private-dns",
+      "decision": "accepted",
+      "reason": "EXTERNAL_TOKEN_MATCH",
+      "exercises": "s6.2 Insecure -\u003e fail without policy; s6.1 external path for devices that have one",
+      "explanation": "unsigned.lab publishes a correct record but is not DNSSEC-signed. A validating device has no fallback and rejects; a device whose default resolver is an external encrypted resolver verifies through it (RFC 9704 section 6.1) and accepts, with its security resting on that resolver."
+    },
+    {
+      "scenario": "unsigned",
+      "title": "Unsigned parent zone",
+      "device": "hybrid",
+      "decision": "accepted",
+      "reason": "EXTERNAL_TOKEN_MATCH",
+      "exercises": "s6.2 Insecure -\u003e fail without policy; s6.1 external path for devices that have one",
+      "explanation": "unsigned.lab publishes a correct record but is not DNSSEC-signed. A validating device has no fallback and rejects; a device whose default resolver is an external encrypted resolver verifies through it (RFC 9704 section 6.1) and accepts, with its security resting on that resolver."
+    },
+    {
+      "scenario": "wrong-ds",
+      "title": "Wrong ds key binding",
+      "device": "validating-stub",
+      "decision": "rejected",
+      "reason": "DS_MISMATCH",
+      "exercises": "s7: ds RDATA must equal a DS computed over resolver.arpa. for a presented DNSKEY",
+      "explanation": "wrongds.lab publishes a record whose token matches but whose ds value does not correspond to the DNSKEY the resolver presents for resolver.arpa. Rejected."
+    },
+    {
+      "scenario": "replay",
+      "title": "Hotel replays the company's claim",
+      "device": "validating-stub",
+      "decision": "rejected",
+      "reason": "TLS_IDENTITY_FAILED",
+      "exercises": "s5: resolver must present a certificate for the claimed ADN (RFC 9525)",
+      "explanation": "The hotel copies corp.lab's real claim and announces its own resolver under the name dns.corp.lab. The record exists and the token matches, but the resolver cannot present a certificate for dns.corp.lab."
+    },
+    {
+      "scenario": "hotel-blocks-external",
+      "title": "Hotel blocks the external resolver",
+      "device": "private-dns",
+      "decision": "rejected",
+      "reason": "EXTERNAL_TIMEOUT",
+      "exercises": "s6.1: no response from the external resolver -\u003e verification failed",
+      "explanation": "A device whose default resolver is quad9.lab tries to verify the hotel's claim through it, but the hotel blocks encrypted DNS egress. RFC 9704 section 6.1: no response means verification failed. The hotel gains only denial of service."
+    },
+    {
+      "scenario": "special-use",
+      "title": "Claim for a Special-Use name",
+      "device": "validating-stub",
+      "decision": "rejected",
+      "reason": "SPECIAL_USE_NAME",
+      "exercises": "s3: Special-Use Domain Names MUST NOT be validated",
+      "explanation": "A network claims home.arpa. RFC 9704 section 3: Special-Use Domain Names MUST NOT be validated. Rejected without any network traffic."
+    }
+  ],
+  "description": "Expected verdicts of the SplitTrust lab scenarios per simulated device. trust_context is always \"lab\": a private root, not the global DNS.",
+  "devices": {
+    "hybrid": "validating-stub that retries through the external resolver on Insecure",
+    "private-dns": "external encrypted resolver by default; RFC 9704 section 6.1",
+    "validating-stub": "validates DNSSEC locally, network resolver as DoT forwarder, no external policy"
+  },
+  "reason_codes": [
+    "AUTHORIZED",
+    "CLAIM_RESOLVER_MISMATCH",
+    "DNSSEC_BOGUS",
+    "DNSSEC_INDETERMINATE",
+    "DNSSEC_INSECURE_NO_FALLBACK",
+    "DNS_LOOKUP_FAILED",
+    "DS_MISMATCH",
+    "EXTERNAL_TIMEOUT",
+    "EXTERNAL_TOKEN_MATCH",
+    "GRANT_EXPIRED",
+    "INVALID_CLAIM",
+    "LOCAL_DNSSEC_NOT_ESTABLISHED",
+    "LOCAL_RESPONSE_UNSUPPORTED",
+    "LOCAL_SIGNATURE_INVALID",
+    "OUT_OF_LAB_SCOPE",
+    "PVD_EXPIRED",
+    "PVD_INVALID",
+    "RECORD_INVALID",
+    "RECORD_MISSING",
+    "RESOLVER_UNREACHABLE",
+    "SPECIAL_USE_NAME",
+    "TLS_IDENTITY_FAILED",
+    "TOKEN_MISMATCH"
+  ]
+}

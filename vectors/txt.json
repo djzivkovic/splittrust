@@ -1,0 +1,46 @@
+{
+  "cases": [
+    {
+      "name": "fragments-within-one-rr",
+      "character_strings": [
+        "token=PJv5v0eMID1V22B3Cp2bw1ge0yxBGVMtNaMatP_7HBuNyQn4Xu8WlsnYOI9v7z2E,ds=AAEN",
+        ",future=ignored,ds=AAIN"
+      ],
+      "valid": true,
+      "token": "PJv5v0eMID1V22B3Cp2bw1ge0yxBGVMtNaMatP_7HBuNyQn4Xu8WlsnYOI9v7z2E",
+      "ds": [
+        "AAEN",
+        "AAIN"
+      ],
+      "note": "character-strings of one RR are concatenated; unknown keys are ignored; multiple ds values are kept"
+    },
+    {
+      "name": "duplicate-token",
+      "character_strings": [
+        "token=PJv5v0eMID1V22B3Cp2bw1ge0yxBGVMtNaMatP_7HBuNyQn4Xu8WlsnYOI9v7z2E,token=PJv5v0eMID1V22B3Cp2bw1ge0yxBGVMtNaMatP_7HBuNyQn4Xu8WlsnYOI9v7z2E"
+      ],
+      "valid": false,
+      "error": "duplicate token key in one RR",
+      "note": "two token keys in one RR are ambiguous; the RR is ignored for matching"
+    },
+    {
+      "name": "token-47-octets",
+      "character_strings": [
+        "token=PJv5v0eMID1V22B3Cp2bw1ge0yxBGVMtNaMatP_7HBuNyQn4Xu8WlsnYOI9v7z2"
+      ],
+      "valid": false,
+      "error": "token decodes to 47 octets; SHA-384 gives 48 and SHA-512 gives 64",
+      "note": "the RFC's own printed example would be rejected by this rule"
+    },
+    {
+      "name": "no-token",
+      "character_strings": [
+        "ds=AAEN"
+      ],
+      "valid": false,
+      "error": "no token key in RR",
+      "note": "a Verification Record without a token authorises nothing"
+    }
+  ],
+  "description": "Verification Record TXT parsing cases (RFC 9704 sections 5, 6 and 7)."
+}

@@ -1,0 +1,134 @@
+{
+  "description": "RFC 8801 PvD Additional Information documents carrying RFC 9704 splitDnsClaims.",
+  "vectors": [
+    {
+      "name": "valid-one-claim",
+      "document": {
+        "expires": "2026-11-02T06:00:00Z",
+        "identifier": "pvd.firma.rs",
+        "prefixes": [
+          "2001:db8:1::/48"
+        ],
+        "splitDnsClaims": [
+          {
+            "algorithm": "SHA384",
+            "parent": "firma.rs",
+            "resolver": "dns.firma.rs",
+            "salt": "Vn3kQ2r9bXz0pLm4Yt8wHA",
+            "subdomains": [
+              "intranet",
+              "mail"
+            ]
+          }
+        ]
+      },
+      "valid": true,
+      "note": "mandatory keys present; one claim"
+    },
+    {
+      "name": "valid-two-claims",
+      "document": {
+        "expires": "2026-11-02T06:00:00Z",
+        "identifier": "pvd.firma.rs",
+        "prefixes": [
+          "2001:db8:1::/48"
+        ],
+        "splitDnsClaims": [
+          {
+            "algorithm": "SHA384",
+            "parent": "firma.rs",
+            "resolver": "dns.firma.rs",
+            "salt": "Vn3kQ2r9bXz0pLm4Yt8wHA",
+            "subdomains": [
+              "intranet",
+              "mail"
+            ]
+          },
+          {
+            "algorithm": "SHA384",
+            "parent": "firma.rs",
+            "resolver": "dns2.firma.rs",
+            "salt": "AAECAwQFBgcICQoLDA0ODw",
+            "subdomains": [
+              "mail"
+            ]
+          }
+        ]
+      },
+      "valid": true,
+      "note": "RFC 9704 section 5: one or more claims; each is verified independently"
+    },
+    {
+      "name": "missing-prefixes",
+      "document": {
+        "expires": "2026-11-02T06:00:00Z",
+        "identifier": "pvd.firma.rs",
+        "splitDnsClaims": [
+          {
+            "algorithm": "SHA384",
+            "parent": "firma.rs",
+            "resolver": "dns.firma.rs",
+            "salt": "Vn3kQ2r9bXz0pLm4Yt8wHA",
+            "subdomains": [
+              "intranet",
+              "mail"
+            ]
+          }
+        ]
+      },
+      "valid": false,
+      "error": "PVD_INVALID",
+      "note": "RFC 8801 section 4.3: identifier, expires and prefixes are mandatory"
+    },
+    {
+      "name": "expired",
+      "document": {
+        "expires": "2020-01-01T00:00:00Z",
+        "identifier": "pvd.firma.rs",
+        "prefixes": [
+          "2001:db8:1::/48"
+        ],
+        "splitDnsClaims": [
+          {
+            "algorithm": "SHA384",
+            "parent": "firma.rs",
+            "resolver": "dns.firma.rs",
+            "salt": "Vn3kQ2r9bXz0pLm4Yt8wHA",
+            "subdomains": [
+              "intranet",
+              "mail"
+            ]
+          }
+        ]
+      },
+      "valid": false,
+      "error": "PVD_EXPIRED",
+      "note": "RFC 8801 section 4.1: an object whose expiry has passed MUST be ignored"
+    },
+    {
+      "name": "wrong-identifier",
+      "document": {
+        "expires": "2026-11-02T06:00:00Z",
+        "identifier": "pvd.hotel.example",
+        "prefixes": [
+          "2001:db8:1::/48"
+        ],
+        "splitDnsClaims": [
+          {
+            "algorithm": "SHA384",
+            "parent": "firma.rs",
+            "resolver": "dns.firma.rs",
+            "salt": "Vn3kQ2r9bXz0pLm4Yt8wHA",
+            "subdomains": [
+              "intranet",
+              "mail"
+            ]
+          }
+        ]
+      },
+      "valid": false,
+      "error": "PVD_INVALID",
+      "note": "fetched as pvd.firma.rs: identifier MUST match the PvD ID"
+    }
+  ]
+}

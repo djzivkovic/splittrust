@@ -1,0 +1,248 @@
+{
+  "description": "RFC 9704 section 5 Verification Token vectors. token = base64url(hash(len(salt) || salt || X)) without padding; X = canonical relative wire names, each terminated by a zero octet, in RFC 4034 section 6.1 order.",
+  "rfc9704_section_5_1_forensics": {
+    "printed_token": "z1qyK7QWwQPkT-ZmVW-tAQbsNyYenTNBPp5ogYB8S1wesVCR-KJDv2eFwfJcWQM",
+    "printed_token_chars": 63,
+    "printed_token_octets": 47,
+    "correct_token_for_printed_salt": "wA1lI3Tdnm2z3rbjAa6A998luwSDTU9LU45SoruhsTBtmcdL5BhalHS2v5UCSzal",
+    "correct_token_for_draft07_salt": "z1qyK7QWwQPkT-ZmVW-tAQbsNyYenTNBPp5ogYB8AEtcHrFQkfiiQ79nhcHyXFkD",
+    "draft07_digest_hex": "cf5ab22bb416c103e44fe666556fad0106ec37261e9d33413e9e6881807c004b5c1eb15091f8a243bf6785c1f25c5903",
+    "nul_offset_in_draft07_digest": 30,
+    "draft07_digest_with_nul_removed_b64url": "z1qyK7QWwQPkT-ZmVW-tAQbsNyYenTNBPp5ogYB8S1wesVCR-KJDv2eFwfJcWQM",
+    "reproduces_printed_token": true,
+    "explanation": "The printed token is the SHA-384 digest for the draft-07 salt with its single 0x00 octet removed before base64url encoding (a NUL-terminated string bug in the helper that produced the example), and the salt text was later reworded from \"bytes\" to \"octets\" without recomputing the token."
+  },
+  "vectors": [
+    {
+      "name": "rfc9704-5.1-printed-salt",
+      "parent": "parent.example",
+      "subdomains_input": [
+        "payroll.parent.example",
+        "secret.project.parent.example"
+      ],
+      "salt_b64url": "ZXhhbXBsZSBzYWx0IG9jdGV0cyAoc2hvdWxkIGJlIHJhbmRvbSk",
+      "salt_ascii": "example salt octets (should be random)",
+      "algorithm": "SHA384",
+      "resolver": "resolver17.parent.example",
+      "canonical_relative": [
+        "payroll",
+        "secret.project"
+      ],
+      "scopes": [
+        "payroll.parent.example.",
+        "secret.project.parent.example."
+      ],
+      "pseudo_wire_hex": "07706179726f6c6c00067365637265740770726f6a65637400",
+      "token_input_hex": "266578616d706c652073616c74206f6374657473202873686f756c642062652072616e646f6d2907706179726f6c6c00067365637265740770726f6a65637400",
+      "token": "wA1lI3Tdnm2z3rbjAa6A998luwSDTU9LU45SoruhsTBtmcdL5BhalHS2v5UCSzal",
+      "record_owner": "resolver17.parent.example._splitdns-challenge.parent.example.",
+      "warnings": [
+        "parent parent.example. is a Special-Use Domain Name (RFC 6761); RFC 9704 section 3 says such claims MUST NOT be validated"
+      ],
+      "note": "the RFC 9704 section 5.1 claim with the salt exactly as printed; the RFC prints a different (63-character) token, see forensics"
+    },
+    {
+      "name": "rfc9704-5.1-draft07-salt",
+      "parent": "parent.example",
+      "subdomains_input": [
+        "payroll.parent.example",
+        "secret.project.parent.example"
+      ],
+      "salt_b64url": "ZXhhbXBsZSBzYWx0IGJ5dGVzIChzaG91bGQgYmUgcmFuZG9tKQ",
+      "salt_ascii": "example salt bytes (should be random)",
+      "algorithm": "SHA384",
+      "resolver": "resolver17.parent.example",
+      "canonical_relative": [
+        "payroll",
+        "secret.project"
+      ],
+      "scopes": [
+        "payroll.parent.example.",
+        "secret.project.parent.example."
+      ],
+      "pseudo_wire_hex": "07706179726f6c6c00067365637265740770726f6a65637400",
+      "token_input_hex": "256578616d706c652073616c74206279746573202873686f756c642062652072616e646f6d2907706179726f6c6c00067365637265740770726f6a65637400",
+      "token": "z1qyK7QWwQPkT-ZmVW-tAQbsNyYenTNBPp5ogYB8AEtcHrFQkfiiQ79nhcHyXFkD",
+      "record_owner": "resolver17.parent.example._splitdns-challenge.parent.example.",
+      "warnings": [
+        "parent parent.example. is a Special-Use Domain Name (RFC 6761); RFC 9704 section 3 says such claims MUST NOT be validated"
+      ],
+      "note": "the same claim with the draft-07 salt string; its first 40 characters equal the printed token"
+    },
+    {
+      "name": "firma-rs",
+      "parent": "firma.rs",
+      "subdomains_input": [
+        "mail",
+        "intranet"
+      ],
+      "salt_b64url": "Vn3kQ2r9bXz0pLm4Yt8wHA",
+      "algorithm": "SHA384",
+      "resolver": "dns.firma.rs",
+      "canonical_relative": [
+        "intranet",
+        "mail"
+      ],
+      "scopes": [
+        "intranet.firma.rs.",
+        "mail.firma.rs."
+      ],
+      "pseudo_wire_hex": "08696e7472616e657400046d61696c00",
+      "token_input_hex": "10567de4436afd6d7cf4a4b9b862df301c08696e7472616e657400046d61696c00",
+      "token": "PJv5v0eMID1V22B3Cp2bw1ge0yxBGVMtNaMatP_7HBuNyQn4Xu8WlsnYOI9v7z2E",
+      "record_owner": "dns.firma.rs._splitdns-challenge.firma.rs.",
+      "warnings": [
+        "subdomains were not supplied in canonical order (RFC 4034 section 6.1); re-sorted before hashing"
+      ],
+      "note": "two relative names supplied out of canonical order; the verifier re-sorts (intranet, mail) before hashing"
+    },
+    {
+      "name": "canonical-not-alphabetical",
+      "parent": "firma.rs",
+      "subdomains_input": [
+        "intranet",
+        "mail",
+        "vpn.intranet"
+      ],
+      "salt_b64url": "Vn3kQ2r9bXz0pLm4Yt8wHA",
+      "algorithm": "SHA384",
+      "resolver": "dns.firma.rs",
+      "canonical_relative": [
+        "intranet",
+        "vpn.intranet",
+        "mail"
+      ],
+      "scopes": [
+        "intranet.firma.rs.",
+        "vpn.intranet.firma.rs.",
+        "mail.firma.rs."
+      ],
+      "pseudo_wire_hex": "08696e7472616e6574000376706e08696e7472616e657400046d61696c00",
+      "token_input_hex": "10567de4436afd6d7cf4a4b9b862df301c08696e7472616e6574000376706e08696e7472616e657400046d61696c00",
+      "token": "oBAmDEGau4IBs4j1-bdpE_rNq-Wmong8yQSSRRSQXD_2aIin8raBdp32mhipGXNf",
+      "record_owner": "dns.firma.rs._splitdns-challenge.firma.rs.",
+      "warnings": [
+        "subdomains were not supplied in canonical order (RFC 4034 section 6.1); re-sorted before hashing"
+      ],
+      "note": "RFC 4034 s6.1 order is intranet, vpn.intranet, mail: labels compare right to left"
+    },
+    {
+      "name": "uppercase-normalised",
+      "parent": "Firma.RS",
+      "subdomains_input": [
+        "INTRANET",
+        "Mail"
+      ],
+      "salt_b64url": "Vn3kQ2r9bXz0pLm4Yt8wHA",
+      "algorithm": "SHA384",
+      "resolver": "dns.firma.rs",
+      "canonical_relative": [
+        "intranet",
+        "mail"
+      ],
+      "scopes": [
+        "intranet.firma.rs.",
+        "mail.firma.rs."
+      ],
+      "pseudo_wire_hex": "08696e7472616e657400046d61696c00",
+      "token_input_hex": "10567de4436afd6d7cf4a4b9b862df301c08696e7472616e657400046d61696c00",
+      "token": "PJv5v0eMID1V22B3Cp2bw1ge0yxBGVMtNaMatP_7HBuNyQn4Xu8WlsnYOI9v7z2E",
+      "record_owner": "dns.firma.rs._splitdns-challenge.firma.rs.",
+      "warnings": [],
+      "note": "must equal firma-rs: canonical form is lowercase"
+    },
+    {
+      "name": "whole-zone-star",
+      "parent": "banka.lab",
+      "subdomains_input": [
+        "*"
+      ],
+      "salt_b64url": "AAECAwQFBgcICQoLDA0ODw",
+      "algorithm": "SHA384",
+      "resolver": "dns.hotel.lab",
+      "canonical_relative": [
+        "*"
+      ],
+      "scopes": [
+        "banka.lab."
+      ],
+      "pseudo_wire_hex": "012a00",
+      "token_input_hex": "10000102030405060708090a0b0c0d0e0f012a00",
+      "token": "9-HnyhDM_B27C98dkKRyEh7hf-5AmnfczEY6zxV1oF-BZ2WlBshc2h5On-JxZLSF",
+      "record_owner": "dns.hotel.lab._splitdns-challenge.banka.lab.",
+      "warnings": [],
+      "note": "implementation choice documented in the design: '*' is hashed as the literal label \\x01* (RFC 4034 s6.2 item 4), the only form the DHCP encoding can carry"
+    },
+    {
+      "name": "idn-srb",
+      "parent": "фирма.срб",
+      "subdomains_input": [
+        "интранет"
+      ],
+      "salt_b64url": "AAECAwQFBgcICQoLDA0ODw",
+      "algorithm": "SHA384",
+      "resolver": "dns.firma.rs",
+      "canonical_relative": [
+        "xn--80akhubqne"
+      ],
+      "scopes": [
+        "xn--80akhubqne.xn--80apmps.xn--90a3ac."
+      ],
+      "pseudo_wire_hex": "0e786e2d2d3830616b687562716e6500",
+      "token_input_hex": "10000102030405060708090a0b0c0d0e0f0e786e2d2d3830616b687562716e6500",
+      "token": "-5Rv_3o1Ibw8plTfnafxrTVi28j2012nMBMJTlvYLS6GzeJ1DEfQpUwmoLbFqGI-",
+      "record_owner": "dns.firma.rs._splitdns-challenge.xn--80apmps.xn--90a3ac.",
+      "warnings": [],
+      "note": "U-labels are converted to A-labels before hashing; RFC 9704 does not mention IDNA"
+    },
+    {
+      "name": "sha512",
+      "parent": "firma.rs",
+      "subdomains_input": [
+        "intranet",
+        "mail"
+      ],
+      "salt_b64url": "Vn3kQ2r9bXz0pLm4Yt8wHA",
+      "algorithm": "SHA512",
+      "resolver": "dns.firma.rs",
+      "canonical_relative": [
+        "intranet",
+        "mail"
+      ],
+      "scopes": [
+        "intranet.firma.rs.",
+        "mail.firma.rs."
+      ],
+      "pseudo_wire_hex": "08696e7472616e657400046d61696c00",
+      "token_input_hex": "10567de4436afd6d7cf4a4b9b862df301c08696e7472616e657400046d61696c00",
+      "token": "_YSpJx7AMUTsDLZJtir_QKjwKzfiRqpLdmT16ppBbk2VyjPjX-bKiewIt583PEZnc_Fk6_IzBxYTE8m8tktbEg",
+      "record_owner": "dns.firma.rs._splitdns-challenge.firma.rs.",
+      "warnings": [],
+      "note": "ZONEMD hash algorithm 2; 64-octet digest, 86 base64url characters"
+    },
+    {
+      "name": "empty-salt",
+      "parent": "firma.rs",
+      "subdomains_input": [
+        "intranet"
+      ],
+      "salt_b64url": "",
+      "algorithm": "SHA384",
+      "resolver": "dns.firma.rs",
+      "canonical_relative": [
+        "intranet"
+      ],
+      "scopes": [
+        "intranet.firma.rs."
+      ],
+      "pseudo_wire_hex": "08696e7472616e657400",
+      "token_input_hex": "0008696e7472616e657400",
+      "token": "lid8k8K7tj1hX3O6tCtPAb7n2pHfqqTv3kIyimUL3rF7NUiD-Bxj3s6V9UZ3k25Y",
+      "record_owner": "dns.firma.rs._splitdns-challenge.firma.rs.",
+      "warnings": [
+        "salt is only 0 octets; RFC 9704 asks for a high-entropy salt (16 or more recommended)"
+      ],
+      "note": "a zero-length salt is allowed by the text (up to 255 octets); the verifier warns"
+    }
+  ]
+}

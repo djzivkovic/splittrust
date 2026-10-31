@@ -1,0 +1,66 @@
+{
+  "description": "RFC 9704 section 5.2.1: DHCPv4 option 90 / DHCPv6 option 11 Authentication option payload, Protocol 4. Header: protocol, algorithm (ZONEMD value), RDM 0, 64-bit replay detection; body: ADN wire, parent wire, salt length, salt, X.",
+  "notes": [
+    "RFC 8415 section 20.2 forbids more than one Authentication option per DHCPv6 message and RFC 3396 concatenates repeated DHCPv4 option 90 instances, so a DHCP message carries exactly one claim.",
+    "RFC 9704 fixes RDM to 0 but does not say what the 64-bit replay detection field holds; RFC 3118/8415 require a strictly increasing counter for RDM 0."
+  ],
+  "vectors": [
+    {
+      "name": "firma-rs",
+      "claim": {
+        "algorithm": "SHA384",
+        "parent": "firma.rs",
+        "resolver": "dns.firma.rs",
+        "salt": "Vn3kQ2r9bXz0pLm4Yt8wHA",
+        "subdomains": [
+          "intranet",
+          "mail"
+        ]
+      },
+      "replay_detection": 0,
+      "payload_hex": "040100000000000000000003646e73056669726d6102727300056669726d610272730010567de4436afd6d7cf4a4b9b862df301c08696e7472616e657400046d61696c00",
+      "payload_octets": 68,
+      "dhcpv4_rfc3396_chunk_octets": [
+        68
+      ],
+      "note": "fits one DHCPv4 option"
+    },
+    {
+      "name": "sixteen-long-subdomains",
+      "claim": {
+        "algorithm": "SHA384",
+        "parent": "firma.rs",
+        "resolver": "dns.firma.rs",
+        "salt": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+        "subdomains": [
+          "department-00-very-long-label-for-splitting",
+          "department-01-very-long-label-for-splitting",
+          "department-02-very-long-label-for-splitting",
+          "department-03-very-long-label-for-splitting",
+          "department-04-very-long-label-for-splitting",
+          "department-05-very-long-label-for-splitting",
+          "department-06-very-long-label-for-splitting",
+          "department-07-very-long-label-for-splitting",
+          "department-08-very-long-label-for-splitting",
+          "department-09-very-long-label-for-splitting",
+          "department-10-very-long-label-for-splitting",
+          "department-11-very-long-label-for-splitting",
+          "department-12-very-long-label-for-splitting",
+          "department-13-very-long-label-for-splitting",
+          "department-14-very-long-label-for-splitting",
+          "department-15-very-long-label-for-splitting"
+        ]
+      },
+      "replay_detection": 72623859790382856,
+      "payload_hex": "040100010203040506070803646e73056669726d6102727300056669726d610272730020000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f2b6465706172746d656e742d30302d766572792d6c6f6e672d6c6162656c2d666f722d73706c697474696e67002b6465706172746d656e742d30312d766572792d6c6f6e672d6c6162656c2d666f722d73706c697474696e67002b6465706172746d656e742d30322d766572792d6c6f6e672d6c6162656c2d666f722d73706c697474696e67002b6465706172746d656e742d30332d766572792d6c6f6e672d6c6162656c2d666f722d73706c697474696e67002b6465706172746d656e742d30342d766572792d6c6f6e672d6c6162656c2d666f722d73706c697474696e67002b6465706172746d656e742d30352d766572792d6c6f6e672d6c6162656c2d666f722d73706c697474696e67002b6465706172746d656e742d30362d766572792d6c6f6e672d6c6162656c2d666f722d73706c697474696e67002b6465706172746d656e742d30372d766572792d6c6f6e672d6c6162656c2d666f722d73706c697474696e67002b6465706172746d656e742d30382d766572792d6c6f6e672d6c6162656c2d666f722d73706c697474696e67002b6465706172746d656e742d30392d766572792d6c6f6e672d6c6162656c2d666f722d73706c697474696e67002b6465706172746d656e742d31302d766572792d6c6f6e672d6c6162656c2d666f722d73706c697474696e67002b6465706172746d656e742d31312d766572792d6c6f6e672d6c6162656c2d666f722d73706c697474696e67002b6465706172746d656e742d31322d766572792d6c6f6e672d6c6162656c2d666f722d73706c697474696e67002b6465706172746d656e742d31332d766572792d6c6f6e672d6c6162656c2d666f722d73706c697474696e67002b6465706172746d656e742d31342d766572792d6c6f6e672d6c6162656c2d666f722d73706c697474696e67002b6465706172746d656e742d31352d766572792d6c6f6e672d6c6162656c2d666f722d73706c697474696e6700",
+      "payload_octets": 788,
+      "dhcpv4_rfc3396_chunk_octets": [
+        255,
+        255,
+        255,
+        23
+      ],
+      "note": "exceeds 255 octets: DHCPv4 MUST split per RFC 3396 section 8"
+    }
+  ]
+}
