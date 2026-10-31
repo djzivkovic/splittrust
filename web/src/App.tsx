@@ -8,6 +8,8 @@ import { ALFA, BETA, REASONS, SCENES, type Scene } from "./lib/deck";
 import { SceneArt, stepsFor, type Step } from "./components/SceneArt";
 import { BrowserFrame } from "./components/Browser";
 import { BuiltSlide, FoundSlide } from "./components/Built";
+import { ClosingSlide, CompaniesSlide, HowSlide, ProblemSlide, TitleSlide } from "./components/Intro";
+import { Slide } from "./components/Slide";
 import { BLUE, Doc, GREEN, INK, Laptop, Lock, Mark, RED, Resolver, Shield } from "./components/Art";
 
 const BEAT_MS = 1500;
@@ -20,7 +22,10 @@ export default function App() {
   const [evidence, setEvidence] = useState(false);
   useEffect(() => { api.scenarios().then(setSummaries).catch((e) => setErr((e as Error).message)); }, []);
 
-  const total = SCENES.length + 3; // title, scenes, what we built, what we found
+  // title, problem, how it works, the two companies, three scenes, what we built, what we found, closing
+  const order: ("title" | "problem" | "how" | "companies" | "scene" | "built" | "found" | "close")[] = ["title", "problem", "how", "companies", ...SCENES.map(() => "scene" as const), "built", "found", "close"];
+  const total = order.length;
+  const sceneIndex = (n: number) => n - order.indexOf("scene");
   const go = useCallback((n: number) => { setSlide(Math.max(0, Math.min(total - 1, n))); setDevice("validating-stub"); }, [total]);
 
   useEffect(() => {
@@ -39,14 +44,17 @@ export default function App() {
   if (err) return <Center><div className="text-red-700">Cannot reach the API: {err}</div></Center>;
   if (!summaries) return <Center><div className="text-slate-400">Loading...</div></Center>;
 
-  const scene = slide > 0 && slide <= SCENES.length ? SCENES[slide - 1] : null;
-  const extra = slide === SCENES.length + 1 ? <BuiltSlide /> : slide === SCENES.length + 2 ? <FoundSlide /> : null;
+  const kind = order[slide];
+  const scene = kind === "scene" ? SCENES[sceneIndex(slide)] : null;
+  const content = scene ? <SceneSlide scene={scene} device={device} evidence={evidence} />
+    : kind === "problem" ? <ProblemSlide /> : kind === "how" ? <HowSlide /> : kind === "companies" ? <CompaniesSlide />
+    : kind === "built" ? <BuiltSlide /> : kind === "found" ? <FoundSlide /> : kind === "close" ? <ClosingSlide /> : <TitleSlide />;
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-slate-100 text-slate-900">
       <div className="min-h-0 flex-1 overflow-y-auto">
         <AnimatePresence mode="wait">
           <motion.div key={slide} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.25 }} className="h-full">
-            {scene ? <SceneSlide scene={scene} device={device} evidence={evidence} /> : extra ?? <TitleSlide />}
+            {content}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -60,44 +68,13 @@ export default function App() {
             ))}
           </span>
         )}
-        <span className="ml-auto"><span className="kbd">←</span> <span className="kbd">→</span> slides <span className="kbd ml-2">space</span> replay <span className="kbd ml-2">e</span> evidence</span>
+        <span className="ml-auto">{slide + 1} / {total}<span className="kbd ml-4">←</span> <span className="kbd">→</span> slides{scene && <><span className="kbd ml-2">space</span> replay <span className="kbd ml-2">e</span> evidence</>}</span>
       </footer>
     </div>
   );
 }
 
 function Center({ children }: { children: React.ReactNode }) { return <div className="flex h-screen items-center justify-center bg-slate-100 text-lg">{children}</div>; }
-
-function TitleSlide() {
-  return (
-    <div className="mx-auto flex h-full max-w-6xl flex-col justify-center px-10">
-      <div className="text-sm font-semibold uppercase tracking-widest text-blue-700">RFC 9704, implemented</div>
-      <h1 className="mt-3 text-4xl font-bold tracking-tight lg:text-5xl xl:text-6xl">Who may answer for your domain<br />inside a network?</h1>
-      <p className="mt-5 text-xl text-slate-600 lg:text-2xl">Two companies, one week.</p>
-      <p className="mt-4 max-w-4xl text-base text-slate-500 lg:text-lg">RFC 9704: the domain owner publishes <code className="text-slate-700">TXT &lt;resolver&gt;._splitdns-challenge.&lt;zone&gt;</code> carrying a salted hash of the network's claim; a device validates it with DNSSEC, over the network's own resolver, before letting that resolver answer for those names.</p>
-      <div className="mt-10 grid gap-6 md:grid-cols-2 lg:gap-8">
-        <Company name={BETA.name} domain={BETA.domain} adopted={false} line="Trusts whatever resolver the network hands out." />
-        <Company name={ALFA.name} domain={ALFA.domain} adopted line="Checks, against the real DNS, that the resolver is allowed to answer." />
-      </div>
-    </div>
-  );
-}
-
-function Company({ name, domain, adopted, line }: { name: string; domain: string; adopted: boolean; line: string }) {
-  return (
-    <div className={`flex items-center gap-5 rounded-2xl border-2 bg-white p-5 shadow-sm ${adopted ? "border-blue-300" : "border-slate-200"}`}>
-      <svg viewBox="-70 -60 140 120" className="h-24 w-28 shrink-0">
-        <g transform="translate(0,6)"><Laptop tone={adopted ? BLUE : INK} /></g>
-        {adopted && <g transform="translate(44,-30)"><Shield /></g>}
-      </svg>
-      <div>
-        <div className="flex flex-wrap items-baseline gap-x-3"><span className="text-2xl font-bold lg:text-3xl">{name}</span><code className="text-sm text-slate-500">{domain}</code></div>
-        <div className={`mt-1 text-sm font-semibold ${adopted ? "text-blue-700" : "text-slate-500"}`}>{adopted ? "uses SplitTrust" : "no SplitTrust"}</div>
-        <p className="mt-2 text-base text-slate-700 lg:text-lg">{line}</p>
-      </div>
-    </div>
-  );
-}
 
 /* A scene: headline, the drawing animating the real checks, then what each employee sees. */
 function SceneSlide({ scene, device, evidence }: { scene: Scene; device: Device; evidence: boolean }) {
@@ -147,13 +124,8 @@ function SceneSlide({ scene, device, evidence }: { scene: Scene; device: Device;
   const claim = run?.claims[0];
 
   return (
-    <div className="mx-auto flex h-full max-w-7xl flex-col px-6 pt-4 lg:px-8">
-      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        <span className="rounded-md bg-slate-900 px-2.5 py-1 text-sm font-bold text-white">{scene.day}</span>
-        <h2 className="text-2xl font-bold tracking-tight lg:text-3xl">{scene.headline}</h2>
-        <span className="text-base text-slate-500 lg:text-lg">{scene.sub}</span>
-        {claim && <span className={`ml-auto rounded-md px-2.5 py-1 text-sm font-semibold ${claim.decision === "accepted" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>Alfa: {REASONS[claim.reason] ?? claim.reason}</span>}
-      </div>
+    <Slide section={scene.day} title={scene.headline} sub={scene.sub}
+      right={claim && <span className={`rounded-md px-2.5 py-1 text-sm font-semibold ${claim.decision === "accepted" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>Alfa: {REASONS[claim.reason] ?? claim.reason}</span>}>
 
       {claim?.inspection && !recipe && (
         <div className="mt-1 truncate font-mono text-xs text-slate-500">
@@ -185,7 +157,7 @@ function SceneSlide({ scene, device, evidence }: { scene: Scene; device: Device;
       )}
 
       {evidence && claim && <Evidence claim={claim} />}
-    </div>
+    </Slide>
   );
 }
 

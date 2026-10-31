@@ -28,9 +28,9 @@ vectors, and a worked example that cannot be reproduced. SplitTrust provides all
 
 ## The console
 
-`http://127.0.0.1:8000` is the demo deck: a title, three scenes with two companies side by side, then
-"What we built" (the architecture) and "What we found" (the RFC's broken example recomputed live by the
-engine). **Alfa**
+`http://127.0.0.1:8000` is the presentation: ten slides. An introduction (the problem, how RFC 9704
+works in three steps, the two companies), three live scenes, "What we built" (the architecture), "What we
+found" (the RFC's worked example recomputed live by the engine) and a closing slide. **Alfa**
 adopted RFC 9704 (its zone is the real `zivkovic.me`); **Beta** did not. *Monday, at the office*: both
 intranets load; only Alfa's laptop checked that the resolver was allowed to answer. *Tuesday, at the
 hotel*: the hotel claims both domains; Beta's laptop gets the hotel's login page, Alfa's laptop refuses

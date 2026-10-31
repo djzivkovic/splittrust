@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { BLUE, Cloud, GREEN, INK, Laptop, Lock, MUTED, RED, Resolver, Router, Server, Shield } from "./Art";
+import { Canvas, Slide } from "./Slide";
 
 const LINE2 = "#93c5fd";
 
@@ -17,13 +18,9 @@ const box = (x: number, y: number, w: number, h: number, title: string, lines: s
 
 export function BuiltSlide() {
   return (
-    <div className="mx-auto flex h-full max-w-7xl flex-col px-6 pt-4 lg:px-8">
-      <div className="flex flex-wrap items-baseline gap-x-4">
-        <span className="rounded-md bg-slate-900 px-2.5 py-1 text-sm font-bold text-white">What we built</span>
-        <h2 className="text-2xl font-bold tracking-tight lg:text-3xl">An RFC 9704 verifier, a DNS front door, and a lab to attack it</h2>
-      </div>
-      <div className="mt-1 flex min-h-0 flex-1 items-center justify-center">
-        <svg viewBox="0 0 1200 520" className="h-full w-full select-none" role="img" aria-label="Architecture">
+    <Slide section="What we built" title="An RFC 9704 verifier, a DNS front door, and a lab to attack it"
+      takeaway="Every verdict in this deck came out of that binary, against that lab and that zone, while you watched.">
+      <Canvas viewBox="0 0 1200 520" label="Architecture">
           {/* the binary */}
           <rect x={30} y={30} width={560} height={460} rx={18} fill="#eff6ff" stroke={BLUE} strokeWidth={2.5} />
           <text x={50} y={60} fontSize={18} fontWeight={800} fill={BLUE}>splittrust</text>
@@ -61,10 +58,8 @@ export function BuiltSlide() {
           <text x={734} y={434} textAnchor="middle" fontSize={11} fill={MUTED}>DNSSEC at Cloudflare, DS at .me</text>
           <text x={734} y={450} textAnchor="middle" fontSize={11} fill={MUTED}>record published, verified live</text>
           {box(900, 370, 270, 110, "published", ["5 vector files, 20 test vectors", "erratum report for RFC 9704 s.5.1", "8 implementer decisions", "docs: architecture, demo, lab"], INK)}
-        </svg>
-      </div>
-      <p className="pb-3 text-center text-lg font-medium text-slate-800 lg:text-xl">Every verdict in this deck came out of that binary, against that lab and that zone, while you watched.</p>
-    </div>
+      </Canvas>
+    </Slide>
   );
 }
 
@@ -83,37 +78,42 @@ export function FoundSlide() {
   }, []);
   const common = draftSalt ? commonPrefix(draftSalt, PRINTED) : 0;
   return (
-    <div className="mx-auto flex h-full max-w-7xl flex-col px-6 pt-4 lg:px-8">
-      <div className="flex flex-wrap items-baseline gap-x-4">
-        <span className="rounded-md bg-slate-900 px-2.5 py-1 text-sm font-bold text-white">What we found</span>
-        <h2 className="text-2xl font-bold tracking-tight lg:text-3xl">The RFC's only worked example cannot be reproduced</h2>
-      </div>
-      <div className="mt-5 grid flex-1 gap-5 lg:grid-cols-[3fr_2fr]">
+    <Slide section="What we found" title="The RFC's worked example does not add up" sub="and we can show exactly why"
+      takeaway="A worked example is the one thing an implementer can test against. This one would have told a correct implementation it was wrong.">
+      <div className="grid flex-1 gap-5 lg:grid-cols-[3fr_2fr]">
         <div className="rounded-2xl border-2 border-slate-200 bg-white p-5 shadow-sm">
-          <div className="text-sm text-slate-500">RFC 9704 section 5.1, salt <code>"example salt octets (should be random)"</code>, SHA-384</div>
-          <Row label="printed in the RFC" value={PRINTED} note={`${PRINTED.length} chars = 47 octets. SHA-384 produces 48.`} tone={RED} />
-          <Row label="our engine, printed salt" value={printedSalt} note="64 chars, 48 octets. Does not match." tone={INK} />
-          <Row label='our engine, draft-07 salt ("bytes")' value={draftSalt} highlight={common} note={`first ${common} characters match the printed token`} tone={GREEN} />
-          <p className="mt-4 text-base text-slate-700">The digest for the draft-07 salt contains a single <code>0x00</code> octet at offset 30. Drop it, re-encode, and the result is exactly the printed token: the example was produced by code that treated the digest as a C string, and the salt was reworded afterwards without recomputing. Two independent implementations (Go here, Python in the repo) agree to the bit.</p>
-          <p className="mt-2 text-sm text-slate-500">Draft erratum in <code>docs/rfc9704-example-erratum.md</code>, going to the organisers first, then the RFC Editor.</p>
+          <p className="text-base text-slate-700">RFC 9704 shows one complete example: a claim, a salt, and the token the owner should publish. The names are <code>parent.example</code> on purpose, so nobody can use the example in production. The token printed next to it should still be the result of the procedure in the RFC. It is not.</p>
+          <Row label="1. The token printed in the RFC" value={PRINTED} note="63 characters, which is 47 bytes. SHA-384 always produces 48 bytes. So this cannot be the output of the procedure for any input." tone={RED} />
+          <Row label="2. Our engine, following the RFC literally, with the printed salt" value={printedSalt} note="64 characters, 48 bytes. A valid token, but a different one." tone={INK} />
+          <Row label='3. Our engine with the salt from an earlier draft ("bytes" instead of "octets")' value={draftSalt} highlight={common} note={`the first ${common} characters are identical to the printed token`} tone={GREEN} />
+          <p className="mt-4 text-base text-slate-700">The digest in row 3 contains one zero byte, at position 30. Remove it and re-encode: the result is the printed token, character for character. So the example was computed for the earlier salt by a program that stopped at the zero byte (a C-string bug), and when the salt text was later changed from "bytes" to "octets", the token was not recomputed. Two independent implementations, our Go engine and a stand-alone Python script, agree on every byte.</p>
         </div>
-        <div className="rounded-2xl border-2 border-slate-200 bg-white p-5 shadow-sm">
-          <div className="text-lg font-bold">Eight decisions the RFC leaves to implementers</div>
-          <ul className="mt-3 space-y-1.5 text-sm text-slate-700">
-            <li><b>'*' in $X</b>: encoded as the label <code>\x01*\x00</code>, not expanded.</li>
-            <li><b>Record syntax</b>: <code>token=...</code> and <code>ds=...</code> only ever from the same RR.</li>
-            <li><b>DHCP</b>: one claim per message (RFC 8415 s.20.2, RFC 3396 concatenation).</li>
-            <li><b>RDM field</b>: a strictly increasing counter, as RFC 3118 requires for RDM 0.</li>
-            <li><b>ds owner name</b>: the DS digest is computed over <code>resolver.arpa.</code></li>
-            <li><b>IDNA</b>: U-labels in PvD are converted to A-labels before hashing.</li>
-            <li><b>Canonical order</b>: the device re-sorts; a network's order never changes the token.</li>
-            <li><b>Insecure zones</b>: the external path is a property of the device, not of the run.</li>
-          </ul>
-          <p className="mt-3 text-sm text-slate-500">Each one is a test vector in <code>vectors/</code> and a scenario in the lab.</p>
+        <div className="flex flex-col gap-5">
+          <div className="rounded-2xl border-2 border-slate-200 bg-white p-5 shadow-sm">
+            <div className="text-lg font-bold">What we did with it</div>
+            <ul className="mt-2 space-y-1.5 text-base text-slate-700">
+              <li>Wrote the erratum with both consistent fixes (new token, or old salt) and every intermediate value.</li>
+              <li>Published 20 test vectors, including the example under both salts, so the next implementer has something that adds up.</li>
+              <li>Per the hackathon rules it goes to the organisers first, then to the RFC Editor.</li>
+            </ul>
+          </div>
+          <div className="rounded-2xl border-2 border-slate-200 bg-white p-5 shadow-sm">
+            <div className="text-lg font-bold">Eight more things the RFC leaves open</div>
+            <p className="mt-1 text-sm text-slate-500">each decided, documented, and covered by a vector and a lab scenario</p>
+            <ul className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-slate-700">
+              <li>how '*' is encoded in the hash</li>
+              <li>record syntax (token and ds in one RR)</li>
+              <li>one claim per DHCP message</li>
+              <li>the replay-detection counter</li>
+              <li>the owner name for the ds digest</li>
+              <li>IDNA: U-labels become A-labels</li>
+              <li>canonical order is re-sorted by the device</li>
+              <li>unsigned zones and the external resolver</li>
+            </ul>
+          </div>
         </div>
       </div>
-      <p className="py-3 text-center text-lg font-medium text-slate-800 lg:text-xl">Ask: file the erratum, publish the vectors to the ADD working group, get one resolver vendor to try it.</p>
-    </div>
+    </Slide>
   );
 }
 

@@ -15,6 +15,11 @@ export interface Scene {
   takeaway: string;        // one line, appears when the animation is done
 }
 
+export const TEAM: { name: string; role: string }[] = [
+  { name: "Ilija Radosavljevic", role: "implementation" },
+  { name: "Djordje Zivkovic", role: "spec and zone" },
+];
+
 export const ALFA = { name: "Alfa", domain: "zivkovic.me", site: "zivkovic.me" };
 export const BETA = { name: "Beta", domain: "beta.example" };
 
