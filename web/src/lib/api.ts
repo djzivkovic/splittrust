@@ -12,7 +12,8 @@ export interface Run { scenario_id: string; device: Device; trust_context: strin
 
 export interface Lookup { via: string; rcode: string; ad: boolean; answers: string[]; ede?: string; dig?: string; page?: string; page_url?: string; page_error?: string; error?: string; millis: number }
 export interface ProxyEvent { time: string; kind: "join" | "verify" | "query"; scenario?: string; device?: string; resolver?: string; decision?: string; reason?: string; name?: string; qtype?: string; rcode?: string; ad?: boolean; ede?: number; ede_name?: string; text?: string }
-export interface LabProbe { name: string; group: string; role: string; addr: string; kind: string; ok: boolean; millis: number; detail?: string }
+export interface LabProbe { name: string; group: string; role: string; addr: string; kind: string; ok: boolean; micros: number; detail?: string }
+export interface ClientStatus { scenario_id: string; title: string; device: string; queries: number; grants: { resolver: string; decision: string; reason: string }[] }
 export interface BrowseResult { name: string; device: Lookup; naive?: Lookup }
 
 export interface LiveRecord {
@@ -37,6 +38,7 @@ export const api = {
   live: (scenario_id: string) => call<LiveRecord>("/api/live", { scenario_id }),
   clientJoin: (scenario_id: string, device: Device) => call<unknown>("/api/client/join", { scenario_id, device, resolution: "" }),
   clientLog: () => call<{ lines: string[] }>("/api/client/log"),
+  clientStatus: () => call<ClientStatus>("/api/client/status"),
   clientEvents: () => call<{ events: ProxyEvent[] }>("/api/client/events"),
   labStatus: () => call<{ checked_at: string; probes: LabProbe[] }>("/api/lab/status"),
   build: (req: { resolver: string; parent: string; subdomains: string[]; algorithm: string; salt: string; ds: string[] }) => call<{ zone_line: string; token: string; record_owner: string; txt: string; warnings: string[]; error?: string; detail?: string }>("/api/records/build", req),

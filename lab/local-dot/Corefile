@@ -28,8 +28,8 @@ tls://.:853 {
     errors
     log
 }
-# Company Beta's office resolver: plain DNS, no DNSSEC, no claims, nothing to
-# verify. Serves Beta's internal zone and relays everything else, like most
+# Company UnsecureCompany's office resolver: plain DNS, no DNSSEC, no claims, nothing to
+# verify. Serves UnsecureCompany's internal zone and relays everything else, like most
 # office resolvers today.
 lab:53 {
     forward . 172.30.97.10
@@ -37,7 +37,7 @@ lab:53 {
     log
 }
 .:53 {
-    file /gen/local-dot/beta.example.zone beta.example
+    file /gen/local-dot/unsecure.example.zone unsecure.example
     forward . 9.9.9.9 1.1.1.1
     errors
     log

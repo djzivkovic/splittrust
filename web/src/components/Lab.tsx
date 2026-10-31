@@ -17,29 +17,31 @@ export function LabSlide() {
   }, []);
   const ok = probes?.filter((p) => p.ok).length ?? 0;
   return (
-    <Slide section="Evidence" title="The network the laptops were on, probed from this page right now"
-      sub="14 endpoints across the lab's services: DNS queries, TLS handshakes, HTTP requests, every four seconds"
-      right={probes && <span className={`rounded-md px-2.5 py-1 text-sm font-semibold ${ok === probes.length ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"}`}>{ok} / {probes.length} answering{at && `, ${new Date(at).toLocaleTimeString()}`}</span>}
-      takeaway="This is the network the two laptops were on. Nothing in the scenes was recorded or mocked.">
-      <div className="grid min-h-0 flex-1 gap-5 lg:grid-cols-[3fr_2fr]">
-        <div className="grid content-start gap-2 md:grid-cols-2">
+    <Slide section="Evidence" title="Live checks: the lab and the proxy" sub="every four seconds, from this page"
+      right={probes && <span className={`rounded-md px-2.5 py-1 text-sm font-semibold ${ok === probes.length ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"}`}>{ok} / {probes.length} answering{at && `, ${new Date(at).toLocaleTimeString()}`}</span>}>
+      <div className="grid min-h-0 min-w-0 flex-1 gap-5 lg:grid-cols-[3fr_2fr]">
+        <div className="flex min-w-0 flex-col gap-4">
           {(["demo", "testbed"] as const).map((g) => (
-            <div key={g} className="md:col-span-2 mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {g === "demo" ? "Runs the scenes: the two networks' resolvers, the PvD server, the proxy, the pages" : "Test bed: the RFC's corner cases (private root, lab zones, quad9.lab, banka.lab) and the integration suite"}
-            </div>
-          )).flatMap((hdr, gi) => [hdr, ...(probes ?? []).filter((p) => p.group === (gi === 0 ? "demo" : "testbed")).map((p) => (
-            <div key={p.name} className={`flex items-start gap-3 rounded-xl border bg-white px-3 py-2 shadow-sm ${p.ok ? "border-slate-200" : "border-red-300"}`}>
-              <span className={`mt-1.5 h-3 w-3 shrink-0 rounded-full ${p.ok ? "bg-green-500" : "bg-red-500"}`} />
-              <div className="min-w-0">
-                <div className="flex items-baseline gap-2"><span className="font-semibold">{p.name}</span><code className="text-xs text-slate-500">{p.addr}</code><span className="ml-auto text-xs text-slate-400">{p.millis} ms</span></div>
-                <div className="text-sm text-slate-600">{p.role}</div>
-                <div className="truncate font-mono text-[11px] text-slate-500" title={p.detail}>{p.detail}</div>
+            <div key={g} className="rounded-2xl border-2 border-slate-200 bg-white p-4 shadow-sm">
+              <div className="mb-2 flex items-baseline gap-3">
+                <span className="text-sm font-bold">{g === "demo" ? "Runs the scenes" : "Test bed"}</span>
+                <span className="text-xs text-slate-500">{g === "demo" ? "the two networks' resolvers, the PvD server, the proxy, the pages" : "the RFC's corner cases: private root, lab zones, quad9.lab, banka.lab"}</span>
+              </div>
+              <div className="grid gap-x-6 gap-y-1.5 md:grid-cols-2">
+                {(probes ?? []).filter((p) => p.group === g).map((p) => (
+                  <div key={p.name} className="flex min-w-0 items-center gap-3" title={`${p.addr}: ${p.detail ?? ""}`}>
+                    <span className={`h-3 w-3 shrink-0 rounded-full ${p.ok ? "bg-green-500" : "bg-red-500"}`} />
+                    <span className="w-32 shrink-0 truncate text-sm font-semibold">{p.name}</span>
+                    <span className="min-w-0 flex-1 truncate text-sm text-slate-600">{p.role.replace(/^[A-Za-z]+: /, "")}</span>
+                    <span className="shrink-0 font-mono text-xs text-slate-400">{p.micros < 1000 ? "<1" : (p.micros / 1000).toFixed(p.micros < 10000 ? 1 : 0)} ms</span>
+                  </div>
+                ))}
+                {!probes && <div className="animate-pulse text-sm text-slate-400">probing...</div>}
               </div>
             </div>
-          ))])}
-          {!probes && <div className="animate-pulse text-slate-400">probing...</div>}
+          ))}
         </div>
-        <ProxyDecisions since={0} limit={12} />
+        <ProxyDecisions since={0} limit={12} warm />
       </div>
     </Slide>
   );

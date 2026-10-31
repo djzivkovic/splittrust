@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/miekg/dns"
@@ -65,6 +66,9 @@ func (r *libunboundResolver) configText() string {
 	return b.String()
 }
 
+// setupMu guards libunbound context creation and configuration (see Resolve).
+var setupMu sync.Mutex
+
 func (r *libunboundResolver) Resolve(ctx context.Context, qname string, qtype uint16) (Evidence, error) {
 	resolution, fwd := r.cfg.describe()
 	ev := Evidence{QName: dns.Fqdn(qname), QType: typeName(qtype), Resolution: resolution, Forwarder: fwd, ObservedAt: time.Now().UTC(), Security: ErrorState}
@@ -91,9 +95,14 @@ func (r *libunboundResolver) Resolve(ctx context.Context, qname string, qtype ui
 	done := make(chan outcome, 1)
 	cfgPath := f.Name()
 	go func() {
+		// libunbound's config parser (flex/bison) keeps global state: creating and
+		// configuring two contexts at the same time crashes the process ("fatal
+		// flex scanner internal error"). Serialise setup; resolution runs in parallel.
+		setupMu.Lock()
 		u := unbound.New()
-		defer u.Destroy()
 		err := u.Config(cfgPath)
+		setupMu.Unlock()
+		defer u.Destroy()
 		os.Remove(cfgPath)
 		if err != nil {
 			done <- outcome{nil, fmt.Errorf("libunbound config: %v", err)}

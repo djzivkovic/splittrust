@@ -2,57 +2,57 @@
   "cases": [
     {
       "scenario": "real-office",
-      "title": "Alfa's office Wi-Fi",
+      "title": "SecureCompany's office Wi-Fi",
       "device": "validating-stub",
       "decision": "accepted",
       "reason": "AUTHORIZED",
       "exercises": "",
-      "explanation": "Company Alfa adopted RFC 9704: its zone zivkovic.me is DNSSEC-signed at Cloudflare and publishes a Verification Record authorising dns.splittrust.zivkovic.me for internal.splittrust.zivkovic.me. Alfa's devices verify the office network's claim against the real DNS before using the office resolver for those names."
+      "explanation": "Company SecureCompany adopted RFC 9704: its zone zivkovic.me is DNSSEC-signed at Cloudflare and publishes a Verification Record authorising dns.splittrust.zivkovic.me for internal.splittrust.zivkovic.me. SecureCompany's devices verify the office network's claim against the real DNS before using the office resolver for those names."
     },
     {
       "scenario": "real-office",
-      "title": "Alfa's office Wi-Fi",
+      "title": "SecureCompany's office Wi-Fi",
       "device": "private-dns",
       "decision": "accepted",
       "reason": "EXTERNAL_TOKEN_MATCH",
       "exercises": "",
-      "explanation": "Company Alfa adopted RFC 9704: its zone zivkovic.me is DNSSEC-signed at Cloudflare and publishes a Verification Record authorising dns.splittrust.zivkovic.me for internal.splittrust.zivkovic.me. Alfa's devices verify the office network's claim against the real DNS before using the office resolver for those names."
+      "explanation": "Company SecureCompany adopted RFC 9704: its zone zivkovic.me is DNSSEC-signed at Cloudflare and publishes a Verification Record authorising dns.splittrust.zivkovic.me for internal.splittrust.zivkovic.me. SecureCompany's devices verify the office network's claim against the real DNS before using the office resolver for those names."
     },
     {
       "scenario": "real-office",
-      "title": "Alfa's office Wi-Fi",
+      "title": "SecureCompany's office Wi-Fi",
       "device": "hybrid",
       "decision": "accepted",
       "reason": "AUTHORIZED",
       "exercises": "",
-      "explanation": "Company Alfa adopted RFC 9704: its zone zivkovic.me is DNSSEC-signed at Cloudflare and publishes a Verification Record authorising dns.splittrust.zivkovic.me for internal.splittrust.zivkovic.me. Alfa's devices verify the office network's claim against the real DNS before using the office resolver for those names."
+      "explanation": "Company SecureCompany adopted RFC 9704: its zone zivkovic.me is DNSSEC-signed at Cloudflare and publishes a Verification Record authorising dns.splittrust.zivkovic.me for internal.splittrust.zivkovic.me. SecureCompany's devices verify the office network's claim against the real DNS before using the office resolver for those names."
     },
     {
       "scenario": "real-hotel-forged",
-      "title": "Hotel Wi-Fi claims Alfa's domain",
+      "title": "Hotel Wi-Fi claims SecureCompany's domain",
       "device": "validating-stub",
       "decision": "rejected",
       "reason": "DNSSEC_BOGUS",
       "exercises": "",
-      "explanation": "A hotel network claims all of zivkovic.me and its resolver serves a forged copy of the zone: every name points at the hotel's page and the Verification Record carries the correct token for the hotel's claim. Alfa's device validates against the real DNSSEC chain (root, .me, Cloudflare) and rejects the claim; the hotel cannot produce Cloudflare's signatures."
+      "explanation": "A hotel network claims all of zivkovic.me and its resolver serves a forged copy of the zone: every name points at the hotel's page and the Verification Record carries the correct token for the hotel's claim. SecureCompany's device validates against the real DNSSEC chain (root, .me, Cloudflare) and rejects the claim; the hotel cannot produce Cloudflare's signatures."
     },
     {
       "scenario": "real-hotel-forged",
-      "title": "Hotel Wi-Fi claims Alfa's domain",
+      "title": "Hotel Wi-Fi claims SecureCompany's domain",
       "device": "private-dns",
       "decision": "rejected",
       "reason": "RECORD_MISSING",
       "exercises": "",
-      "explanation": "A hotel network claims all of zivkovic.me and its resolver serves a forged copy of the zone: every name points at the hotel's page and the Verification Record carries the correct token for the hotel's claim. Alfa's device validates against the real DNSSEC chain (root, .me, Cloudflare) and rejects the claim; the hotel cannot produce Cloudflare's signatures."
+      "explanation": "A hotel network claims all of zivkovic.me and its resolver serves a forged copy of the zone: every name points at the hotel's page and the Verification Record carries the correct token for the hotel's claim. SecureCompany's device validates against the real DNSSEC chain (root, .me, Cloudflare) and rejects the claim; the hotel cannot produce Cloudflare's signatures."
     },
     {
       "scenario": "real-replay",
-      "title": "Hotel replays Alfa's claim",
+      "title": "Hotel replays SecureCompany's claim",
       "device": "validating-stub",
       "decision": "rejected",
       "reason": "TLS_IDENTITY_FAILED",
       "exercises": "",
-      "explanation": "The hotel copies Alfa's real claim word for word and announces its own resolver under Alfa's resolver name. The certificate is for dns.hotel.lab, so TLS identity fails before any DNS query."
+      "explanation": "The hotel copies SecureCompany's real claim word for word and announces its own resolver under SecureCompany's resolver name. The certificate is for dns.hotel.lab, so TLS identity fails before any DNS query."
     },
     {
       "scenario": "legit",

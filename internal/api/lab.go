@@ -22,7 +22,7 @@ type LabProbe struct {
 	Addr   string `json:"addr"`
 	Kind   string `json:"kind"` // dns, dot, http, https, control
 	OK     bool   `json:"ok"`
-	Millis int64  `json:"millis"`
+	Micros int64  `json:"micros"`
 	Detail string `json:"detail,omitempty"`
 }
 
@@ -34,15 +34,15 @@ type labTarget struct {
 // "demo" group is what the scenes use; "testbed" serves the RFC's corner-case
 // scenarios, the plain clients used from the CLI, and the integration suite.
 var labTargets = []labTarget{
-	{"local-dot", "demo", "CoreDNS: Alfa's office resolver (DoT)", "172.30.97.20:853", "dot", "dns.splittrust.zivkovic.me", "internal.splittrust.zivkovic.me."},
-	{"local-dot :53", "demo", "CoreDNS: Beta's plain office resolver", "172.30.97.20:53", "dns", "", "intranet.beta.example."},
+	{"local-dot", "demo", "CoreDNS: SecureCompany's office resolver (DoT)", "172.30.97.20:853", "dot", "dns.splittrust.zivkovic.me", "internal.splittrust.zivkovic.me."},
+	{"local-dot :53", "demo", "CoreDNS: UnsecureCompany's plain office resolver", "172.30.97.20:53", "dns", "", "intranet.unsecure.example."},
 	{"hotel-dot :8853", "demo", "CoreDNS: the hotel's forging resolver (DoT)", "172.30.97.21:8853", "dot", "dns.hotel.lab", "zivkovic.me."},
-	{"hotel-dot :53", "demo", "CoreDNS: the hotel's plain DNS for guests", "172.30.97.21:53", "dns", "", "intranet.beta.example."},
+	{"hotel-dot :53", "demo", "CoreDNS: the hotel's plain DNS for guests", "172.30.97.21:53", "dns", "", "intranet.unsecure.example."},
 	{"pvd", "demo", "nginx: the networks' PvD documents (HTTPS)", "172.30.97.30:443", "https", "pvd.splittrust.zivkovic.me", ""},
-	{"proxy", "demo", "splittrust proxy: Alfa's laptop's DNS server", "172.30.97.60:53", "dns", "", "lab."},
+	{"proxy", "demo", "splittrust proxy: SecureCompany's laptop's DNS server", "172.30.97.60:53", "dns", "", "lab."},
 	{"proxy control", "demo", "splittrust proxy: control API (join, status, log)", "172.30.97.60:8001", "control", "", ""},
-	{"intranet", "demo", "nginx: Alfa's intranet", "172.30.97.70:80", "http", "host.internal.splittrust.zivkovic.me", ""},
-	{"beta-intranet", "demo", "nginx: Beta's intranet", "172.30.97.71:80", "http", "intranet.beta.example", ""},
+	{"intranet", "demo", "nginx: SecureCompany's intranet", "172.30.97.70:80", "http", "host.internal.splittrust.zivkovic.me", ""},
+	{"unsecure-intranet", "demo", "nginx: UnsecureCompany's intranet", "172.30.97.71:80", "http", "intranet.unsecure.example", ""},
 	{"fake-bank", "demo", "nginx: the hotel's page", "172.30.97.66:80", "http", "www.zivkovic.me", ""},
 	{"public-dns", "testbed", "BIND: private root, lab TLD, 7 parent zones (1 unsigned)", "172.30.97.10:53", "dns", "", "lab."},
 	{"hotel-dot :853", "testbed", "CoreDNS: the hotel's honest view (lab scenario)", "172.30.97.21:853", "dot", "dns.hotel.lab", "banka.lab."},
@@ -84,10 +84,10 @@ func labRoots() *x509.CertPool {
 	return pool
 }
 
-func probe(ctx context.Context, t labTarget, roots *x509.CertPool) LabProbe {
-	p := LabProbe{Name: t.name, Group: t.group, Role: t.role, Addr: t.addr, Kind: t.kind}
+func probe(ctx context.Context, t labTarget, roots *x509.CertPool) (p LabProbe) {
+	p = LabProbe{Name: t.name, Group: t.group, Role: t.role, Addr: t.addr, Kind: t.kind}
 	start := time.Now()
-	defer func() { p.Millis = time.Since(start).Milliseconds() }()
+	defer func() { p.Micros = time.Since(start).Microseconds() }() // named result: the deferred write reaches the caller
 	d := net.Dialer{Timeout: 3 * time.Second}
 	switch t.kind {
 	case "dns":

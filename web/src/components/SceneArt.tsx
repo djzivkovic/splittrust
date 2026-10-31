@@ -1,4 +1,4 @@
-/* One drawing per scene: Beta on the left, Alfa on the right, the network in the middle, the real
+/* One drawing per scene: UnsecureCompany on the left, SecureCompany on the right, the network in the middle, the real
    DNS above. Packets travel along the lines; marks appear where the real verification said so. */
 
 import { AnimatePresence, motion } from "framer-motion";
@@ -24,9 +24,9 @@ export function stepsFor(place: Place, run: Run | null, alfaReached: boolean | n
   const betaRes: NodeId = place === "office" ? "betaRes" : "hotelRes";
   const betaSrv: NodeId = place === "office" ? "betaSrv" : "fakeSrv";
   const beta: Beat[] = [
-    { side: "beta", from: "beta", to: betaRes, label: `A intranet.${BETA.domain}?` },
+    { side: "beta", from: "beta", to: betaRes, label: "intranet?" },
     { side: "beta", from: betaRes, to: betaSrv },
-    { side: "beta", from: betaSrv, to: "beta", mark: { node: "beta", ok: place === "office", text: place === "office" ? "A record, no checks" : "A record from the hotel" } },
+    { side: "beta", from: betaSrv, to: "beta", mark: { node: "beta", ok: place === "office", text: place === "office" ? "intranet loads, nothing verified" : "the hotel's page loads" } },
   ];
   const alfa: Beat[] = [];
   const c = run?.claims[0];
@@ -37,43 +37,43 @@ export function stepsFor(place: Place, run: Run | null, alfaReached: boolean | n
     if (tls && tls.status !== "skipped") {
       const cert = ev("resolver_tls").certificate as { sans?: string[] } | undefined;
       const san = cert?.sans?.[0] ?? "?";
-      alfa.push({ side: "alfa", from: "alfa", to: res, label: "DoT: prove your name", stages: ["pvd", "claim", "token", "resolver_tls"],
-        mark: { node: res, ok: tls.status === "pass", text: tls.status === "pass" ? `cert SAN ${san}` : `cert is ${san}, not ${c.resolver.replace(/\.$/, "")}` } });
+      alfa.push({ side: "alfa", from: "alfa", to: res, label: "who are you? (TLS)", stages: ["pvd", "claim", "token", "resolver_tls"],
+        mark: { node: res, ok: tls.status === "pass", text: tls.status === "pass" ? "certificate matches" : `certificate is for ${san}` } });
     }
     const pub = st("public_dnssec");
     if (pub && pub.status !== "skipped" && pub.code !== "NOT_APPLICABLE") {
       const ok = pub.code === "DNSSEC_SECURE";
-      alfa.push({ side: "alfa", from: res, to: "cloud", label: "TXT _splitdns-challenge?", stages: ["public_dnssec"] });
+      alfa.push({ side: "alfa", from: res, to: "cloud", label: "owner's record?", stages: ["public_dnssec"] });
       alfa.push({ side: "alfa", from: "cloud", to: res, stages: ["public_dnssec"],
-        mark: { node: "cloud", ok, text: ok ? "DNSSEC Secure (validated locally)" : pub.code === "DNSSEC_BOGUS" ? "DNSSEC Bogus: no signed chain from .me" : pub.code === "DNSSEC_INSECURE" || pub.code === "DNSSEC_INSECURE_NO_FALLBACK" ? "Insecure: zone unsigned" : pub.code ?? "failed" } });
+        mark: { node: "cloud", ok, text: ok ? "record validates (DNSSEC)" : pub.code === "DNSSEC_BOGUS" ? "record does not validate: Bogus" : pub.code === "DNSSEC_INSECURE" || pub.code === "DNSSEC_INSECURE_NO_FALLBACK" ? "zone is unsigned" : pub.code ?? "failed" } });
     }
     const ext = st("external_resolver");
     if (ext && ext.status === "pass") {
       const rec = st("record");
       const ok = rec?.status === "pass";
-      alfa.push({ side: "alfa", from: "alfa", to: "cloud", label: "DoT to dns.quad9.net", stages: ["external_resolver"] });
+      alfa.push({ side: "alfa", from: "alfa", to: "cloud", label: "ask Quad9", stages: ["external_resolver"] });
       alfa.push({ side: "alfa", from: "cloud", to: "alfa", stages: ["external_resolver", "record"],
-        mark: { node: "cloud", ok, text: ok ? `TXT found, AD=${String(!!ev("external_resolver").ad)}` : rec?.code === "RECORD_MISSING" ? "NXDOMAIN: no such record" : rec?.code ?? "no record" } });
+        mark: { node: "cloud", ok, text: ok ? "record found" : rec?.code === "RECORD_MISSING" ? "no such record" : rec?.code ?? "no record" } });
     }
     const accepted = c.decision === "accepted";
     alfa.push({ side: "alfa", from: "alfa", to: "alfa", stages: ["record", "ds", "grant"],
-      mark: { node: "alfa", ok: accepted, text: accepted ? `${c.reason}: identity, signatures, token` : c.reason } });
+      mark: { node: "alfa", ok: accepted, text: accepted ? "resolver trusted for these names" : "resolver rejected" } });
     if (accepted) {
-      alfa.push({ side: "alfa", from: "alfa", to: res, label: `A ${ALFA.domain}?` });
+      alfa.push({ side: "alfa", from: "alfa", to: res, label: "intranet?" });
       alfa.push({ side: "alfa", from: res, to: "alfaSrv" });
-      alfa.push({ side: "alfa", from: "alfaSrv", to: "alfa", mark: { node: "alfa", ok: alfaReached !== false, text: alfaReached === false ? "no answer" : "intranet reached" } });
+      alfa.push({ side: "alfa", from: "alfaSrv", to: "alfa", mark: { node: "alfa", ok: alfaReached !== false, text: alfaReached === false ? "no answer" : "intranet loads" } });
     } else if (alfaOffNetwork) {
-      alfa.push({ side: "alfa", from: "alfa", to: "cloud", label: `A ${ALFA.site}? (Quad9)` });
-      alfa.push({ side: "alfa", from: "cloud", to: "alfa", mark: { node: "alfa", ok: true, text: "real site, via Quad9" } });
+      alfa.push({ side: "alfa", from: "alfa", to: "cloud", label: "public site, via Quad9" });
+      alfa.push({ side: "alfa", from: "cloud", to: "alfa", mark: { node: "alfa", ok: true, text: "real site; DNS answered by Quad9" } });
     } else {
-      alfa.push({ side: "alfa", from: "alfa", to: "alfa", mark: { node: "alfa", ok: false, text: "SERVFAIL, EDE 6: fails safe" } });
+      alfa.push({ side: "alfa", from: "alfa", to: "alfa", mark: { node: "alfa", ok: false, text: "name does not resolve (SERVFAIL)" } });
     }
   }
   const n = Math.max(beta.length, alfa.length);
   return Array.from({ length: n }, (_, i) => ({ beta: beta[i], alfa: alfa[i] }));
 }
 
-export function SceneArt({ place, device, steps, at, resolverName }: { place: Place; device: Device; steps: Step[]; at: number; resolverName: string }) {
+export function SceneArt({ place, device, steps, at }: { place: Place; device: Device; steps: Step[]; at: number }) {
   const marks: { node: NodeId; ok: boolean; text?: string; side: "alfa" | "beta" }[] = [];
   steps.slice(0, at + 1).forEach((s) => [s.beta, s.alfa].forEach((b) => { if (b?.mark) marks.push({ ...b.mark, side: b.side }); }));
   const current = at >= 0 ? steps[Math.min(at, steps.length - 1)] : undefined;
@@ -86,13 +86,13 @@ export function SceneArt({ place, device, steps, at, resolverName }: { place: Pl
 
   const label = (id: NodeId, text: string, sub?: string, dy = 58) => (
     <g transform={`translate(${P[id].x}, ${P[id].y + dy})`}>
-      <text textAnchor="middle" fontSize={15} fontWeight={600} fill={INK}>{text}</text>
-      {sub && <text y={18} textAnchor="middle" fontSize={12} fill={MUTED} fontFamily="ui-monospace, Menlo, monospace">{sub}</text>}
+      <text textAnchor="middle" fontSize={17} fontWeight={600} fill={INK}>{text}</text>
+      {sub && <text y={20} textAnchor="middle" fontSize={13} fill={MUTED}>{sub}</text>}
     </g>
   );
 
   return (
-    <svg viewBox="0 0 1200 520" className="h-full w-full select-none" role="img" aria-label="Scene">
+    <svg viewBox="0 0 1200 520" className="h-full w-full min-w-0 max-w-full select-none" role="img" aria-label="Scene">
       {/* network area */}
       <rect x={60} y={350} width={1080} height={150} rx={24} fill={hotel ? "#fff7ed" : "#eff6ff"} />
       <text x={600} y={500} textAnchor="middle" fontSize={14} fontWeight={600} fill={hotel ? "#9a3412" : "#1e40af"}>{hotel ? "Hotel Wi-Fi" : "Office Wi-Fi"}</text>
@@ -102,32 +102,32 @@ export function SceneArt({ place, device, steps, at, resolverName }: { place: Pl
       {/* actors */}
       <g transform={`translate(${P.router.x}, ${P.router.y})`}><Router tone={hotel ? "#9a3412" : "#1e40af"} /></g>
       <g transform={`translate(${P.beta.x}, ${P.beta.y})`}><Laptop /></g>
-      {label("beta", `${BETA.name}'s laptop`, "no SplitTrust")}
+      {label("beta", `${BETA.name}'s laptop`)}
       <g transform={`translate(${P.alfa.x}, ${P.alfa.y})`}><Dev tone={BLUE} /></g>
-      {label("alfa", `${ALFA.name}'s ${device === "private-dns" ? "phone" : "laptop"}`, "SplitTrust")}
+      {label("alfa", `${ALFA.name}'s ${device === "private-dns" ? "phone" : "laptop"}`)}
 
       {hotel ? (
         <>
           <g transform={`translate(${P.hotelRes.x}, ${P.hotelRes.y})`}><Resolver hostile /></g>
-          {label("hotelRes", "the hotel's resolver", `claims ${BETA.domain} and ${ALFA.domain}`, 46)}
+          {label("hotelRes", "the hotel's resolver", "claims both domains", 46)}
           <g transform={`translate(${P.fakeSrv.x}, ${P.fakeSrv.y})`}><Server tone={RED} fill="#fef2f2" /><Mask x={0} y={-50} /></g>
-          {label("fakeSrv", "the hotel's page", "looks like the intranet login")}
+          {label("fakeSrv", "the hotel's page")}
         </>
       ) : (
         <>
           <g transform={`translate(${P.betaRes.x}, ${P.betaRes.y})`}><Resolver /></g>
-          {label("betaRes", `${BETA.name}'s resolver`, "plain DNS", 46)}
+          {label("betaRes", `${BETA.name}'s resolver`, undefined, 46)}
           <g transform={`translate(${P.alfaRes.x}, ${P.alfaRes.y})`}><Resolver tone={BLUE} /></g>
-          {label("alfaRes", `${ALFA.name}'s resolver`, resolverName, 46)}
+          {label("alfaRes", `${ALFA.name}'s resolver`, undefined, 46)}
           <g transform={`translate(${P.betaSrv.x}, ${P.betaSrv.y})`}><Server /></g>
           {label("betaSrv", `${BETA.name} intranet`)}
         </>
       )}
       <g transform={`translate(${P.alfaSrv.x}, ${P.alfaSrv.y})`}><Server tone={BLUE} /></g>
-      {label("alfaSrv", `${ALFA.name} intranet`, hotel ? "unreachable from here" : undefined)}
+      {label("alfaSrv", `${ALFA.name} intranet`)}
       <g transform={`translate(${P.cloud.x}, ${P.cloud.y})`}><Cloud /></g>
-      <text x={P.cloud.x - 6} y={P.cloud.y + 2} textAnchor="middle" fontSize={15} fontWeight={700} fill={INK}>the real DNS</text>
-      <text x={P.cloud.x - 6} y={P.cloud.y + 22} textAnchor="middle" fontSize={11} fill={MUTED}>root, .me, Cloudflare, dns.quad9.net</text>
+      <text x={P.cloud.x - 6} y={P.cloud.y + 2} textAnchor="middle" fontSize={16} fontWeight={700} fill={INK}>public DNS</text>
+      <text x={P.cloud.x - 6} y={P.cloud.y + 22} textAnchor="middle" fontSize={12} fill={MUTED}>root, .me, zivkovic.me (and Quad9)</text>
       <g transform={`translate(${P.cloud.x + 62}, ${P.cloud.y - 22})`}><Lock tone={GREEN} /></g>
 
       {/* packets */}
@@ -136,7 +136,7 @@ export function SceneArt({ place, device, steps, at, resolverName }: { place: Pl
           <motion.g key={`${at}-${i}`} initial={{ x: P[b.from].x, y: P[b.from].y, opacity: 0 }} animate={{ x: P[b.to].x, y: P[b.to].y, opacity: [0, 1, 1, 0.6] }}
             exit={{ opacity: 0 }} transition={{ duration: 1.2, ease: "easeInOut" }}>
             <circle r={9} fill={b.side === "alfa" ? BLUE : INK} />
-            {b.label && <text y={-16} textAnchor="middle" fontSize={12} fontWeight={600} fill={b.side === "alfa" ? BLUE : INK}>{b.label}</text>}
+            {b.label && <text y={-16} textAnchor="middle" fontSize={14} fontWeight={600} fill={b.side === "alfa" ? BLUE : INK}>{b.label}</text>}
           </motion.g>
         ))}
       </AnimatePresence>
@@ -150,7 +150,7 @@ export function SceneArt({ place, device, steps, at, resolverName }: { place: Pl
           <g key={i} transform={`translate(${P[m.node].x + off.x}, ${P[m.node].y + off.y})`}>
             <motion.g initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 300, damping: 16 }}>
               <Mark ok={m.ok} />
-              {m.text && <text x={left ? -20 : 20} y={5} textAnchor={left ? "end" : "start"} fontSize={13} fontWeight={600} fill={m.ok ? GREEN : RED}>{m.text}</text>}
+              {m.text && <text x={left ? -20 : 20} y={5} textAnchor={left ? "end" : "start"} fontSize={15} fontWeight={600} fill={m.ok ? GREEN : RED}>{m.text}</text>}
             </motion.g>
           </g>
         );

@@ -89,6 +89,7 @@ services:
       context: ..
       dockerfile: lab/app/Dockerfile
     command: ["serve", "--addr", "0.0.0.0:8000"]
+    restart: unless-stopped
     environment:
       SPLITTRUST_PROXY: http://172.30.97.60:8001
       SPLITTRUST_PROXY_DNS: 172.30.97.60:53
@@ -132,6 +133,7 @@ services:
       context: ..
       dockerfile: lab/app/Dockerfile
     command: ["proxy", "--scenario", "legit", "--listen", "0.0.0.0:53", "--control", "0.0.0.0:8001"]
+    restart: unless-stopped
     <<: *labgen
     extra_hosts: *pvdhosts
     depends_on:
@@ -182,16 +184,16 @@ services:
     build:
       context: ./web
     environment:
-      SITE_BANNER: "INTRANET (172.30.97.70): company Alfa's internal host. Reached through the resolver the domain owner authorised."
+      SITE_BANNER: "INTRANET (172.30.97.70): company SecureCompany's internal host. Reached through the resolver the domain owner authorised."
     networks:
       splitlab:
         ipv4_address: 172.30.97.70
 
-  beta-intranet:
+  unsecure-intranet:
     build:
       context: ./web
     environment:
-      SITE_BANNER: "intranet.beta.example (172.30.97.71): company Beta's intranet. Beta never adopted RFC 9704; its devices trust whatever resolver the network hands them."
+      SITE_BANNER: "intranet.unsecure.example (172.30.97.71): company UnsecureCompany's intranet. UnsecureCompany never adopted RFC 9704; its devices trust whatever resolver the network hands them."
     networks:
       splitlab:
         ipv4_address: 172.30.97.71

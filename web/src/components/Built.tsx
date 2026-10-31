@@ -1,62 +1,64 @@
-/* What we built: the architecture drawing. */
+/* What we built: the architecture as icons with short labels. */
 
-import { BLUE, Cloud, GREEN, INK, Laptop, Lock, MUTED, Resolver, Router, Server, Shield } from "./Art";
+import { BLUE, Cloud, Doc, GREEN, INK, Laptop, Lock, Mark, MUTED, Resolver, Router, Server, Shield } from "./Art";
 import { Canvas, Slide } from "./Slide";
 
-const LINE2 = "#93c5fd";
-
-const box = (x: number, y: number, w: number, h: number, title: string, lines: string[], tone = INK, fill = "#fff") => (
+/* A tile: icon on top, one or two short lines below. */
+const tile = (x: number, y: number, icon: React.ReactNode, l1: string, l2?: string, tone = INK) => (
   <g transform={`translate(${x}, ${y})`}>
-    <rect width={w} height={h} rx={10} fill={fill} stroke={tone} strokeWidth={2.5} />
-    <text x={12} y={22} fontSize={14} fontWeight={700} fill={tone}>{title}</text>
-    {lines.map((l, i) => <text key={i} x={12} y={42 + i * 16} fontSize={12} fill={MUTED} fontFamily="ui-monospace, Menlo, monospace">{l}</text>)}
+    <rect x={-78} y={-54} width={156} height={118} rx={14} fill="#fff" stroke="#e2e8f0" strokeWidth={2} />
+    <g transform="translate(0,-14) scale(0.85)">{icon}</g>
+    <text y={34} textAnchor="middle" fontSize={13} fontWeight={700} fill={tone}>{l1}</text>
+    {l2 && <text y={52} textAnchor="middle" fontSize={11} fill={MUTED}>{l2}</text>}
   </g>
 );
 
 export function BuiltSlide() {
   return (
-    <Slide section="What we built" title="An RFC 9704 verifier, a DNS front door, and a lab to attack it"
-      takeaway="Every verdict in this deck came out of that binary, against that lab and that zone, while you watched.">
-      <Canvas viewBox="0 0 1200 520" label="Architecture">
-          {/* the binary */}
-          <rect x={30} y={30} width={560} height={460} rx={18} fill="#eff6ff" stroke={BLUE} strokeWidth={2.5} />
-          <line x1={310} y1={360} x2={310} y2={380} stroke={LINE2} strokeWidth={2} />
-          <line x1={130} y1={360} x2={130} y2={380} stroke={LINE2} strokeWidth={2} />
-          <line x1={490} y1={360} x2={490} y2={380} stroke={LINE2} strokeWidth={2} />
-          <line x1={50} y1={360} x2={570} y2={360} stroke={LINE2} strokeWidth={2} />
-          <text x={50} y={60} fontSize={18} fontWeight={800} fill={BLUE}>splittrust</text>
-          <text x={150} y={60} fontSize={13} fill={MUTED}>one Go binary, about 5,400 lines, libunbound in-process</text>
-          {box(50, 80, 250, 80, "claim and token (RFC 9704 s.5)", ["canonical order, $X, SHA-384/512", "IDNA, Special-Use names, '*'"], BLUE)}
-          {box(320, 80, 250, 80, "discovery", ["PvD (RFC 8801) over HTTPS", "DHCP option 90/11 codec, DNR"], BLUE)}
-          {box(50, 176, 250, 80, "resolver identity", ["DNS over TLS, RFC 9525 matching", "certificate kept as evidence"], BLUE)}
-          {box(320, 176, 250, 80, "DNSSEC validation", ["libunbound: Secure/Bogus/Insecure", "via the network's resolver (Fig. 4)"], BLUE)}
-          {box(50, 272, 250, 80, "record and ds (s.7)", ["token per RR, DS over resolver.arpa.", "no downgrade on DS mismatch"], BLUE)}
-          {box(320, 272, 250, 80, "grants", ["scope, TTL/RRSIG/PvD expiry", "external path (s.6.1) for phones"], BLUE)}
-          {box(50, 380, 160, 90, "CLI", ["verify, resolve, inspect", "build-record, vectors"], INK)}
-          {box(230, 380, 160, 90, "HTTP API", ["/api/verify, /api/browse", "this deck"], INK)}
-          {box(410, 380, 160, 90, "DNS proxy", ["Do53 front door for any stub", "verdict cache, EDE codes"], GREEN, "#f0fdf4")}
+    <Slide section="What we built" title="One Go binary, a lab that attacks it, a real zone"
+      takeaway="The scenes query this binary (the proxy), this lab and this zone.">
+      <Canvas viewBox="0 0 1200 540" label="Architecture">
+        {/* the binary */}
+        <rect x={20} y={20} width={580} height={400} rx={20} fill="#eff6ff" stroke={BLUE} strokeWidth={2.5} />
+        <text x={44} y={54} fontSize={18} fontWeight={800} fill={BLUE}>splittrust</text>
+        <text x={150} y={54} fontSize={13} fill={MUTED}>one Go binary, libunbound in-process</text>
+        {tile(120, 140, <Doc tone={BLUE} />, "Claim and token", "RFC 9704 §5", BLUE)}
+        {tile(310, 140, <Router tone={BLUE} />, "Discovery", "PvD, DHCP 90/11, DNR", BLUE)}
+        {tile(500, 140, <Lock tone={BLUE} />, "Resolver identity", "DoT, RFC 9525", BLUE)}
+        {tile(120, 280, <Shield tone={GREEN} />, "DNSSEC validation", "Secure, Bogus, Insecure", BLUE)}
+        {tile(310, 280, <Doc tone={BLUE} />, "Record and ds", "TXT token, §7 key", BLUE)}
+        {tile(500, 280, <Mark ok size={22} />, "Grants", "scoped, bounded expiry", BLUE)}
+        {/* outputs */}
+        <line x1={60} y1={352} x2={560} y2={352} stroke="#bfdbfe" strokeWidth={2} />
+        {[["CLI", "verify, resolve, build-record", 120], ["HTTP API", "this deck", 310], ["DNS proxy", "Do53 + EDE, any client", 500]].map(([t, s, x]) => (
+          <g key={t as string} transform={`translate(${x as number}, 352)`}>
+            <line x1={0} y1={0} x2={0} y2={14} stroke="#bfdbfe" strokeWidth={2} />
+            <rect x={-80} y={14} width={160} height={44} rx={10} fill={t === "DNS proxy" ? "#f0fdf4" : "#fff"} stroke={t === "DNS proxy" ? GREEN : INK} strokeWidth={2} />
+            <text y={32} textAnchor="middle" fontSize={13} fontWeight={700} fill={INK}>{t}</text>
+            <text y={48} textAnchor="middle" fontSize={10} fill={MUTED}>{s}</text>
+          </g>
+        ))}
 
-          {/* the lab */}
-          <rect x={620} y={30} width={550} height={300} rx={18} fill="#fafaf9" stroke={INK} strokeWidth={2.5} />
-          <text x={640} y={60} fontSize={18} fontWeight={800} fill={INK}>the lab</text>
-          <text x={716} y={60} fontSize={13} fill={MUTED}>Docker Compose: 8 containers run the demo, 5 are the test bed, plus bootstrap</text>
-          <g transform="translate(700, 130)"><Server /><text y={66} textAnchor="middle" fontSize={12} fill={INK}>BIND: private root</text><text y={82} textAnchor="middle" fontSize={11} fill={MUTED}>lab TLD, 7 zones (1 unsigned)</text></g>
-          <g transform="translate(830, 130)"><Resolver tone={BLUE} /><text y={56} textAnchor="middle" fontSize={12} fill={INK}>CoreDNS: office</text><text y={72} textAnchor="middle" fontSize={11} fill={MUTED}>DoT, split zones</text></g>
-          <g transform="translate(960, 130)"><Resolver hostile /><text y={56} textAnchor="middle" fontSize={12} fill={INK}>CoreDNS: hotel</text><text y={72} textAnchor="middle" fontSize={11} fill={MUTED}>honest, forging, plain</text></g>
-          <g transform="translate(1085, 130)"><Server /><text y={66} textAnchor="middle" fontSize={12} fill={INK}>nginx: PvD</text><text y={82} textAnchor="middle" fontSize={11} fill={MUTED}>and 4 web servers</text></g>
-          <g transform="translate(700, 262)"><Router /><text y={56} textAnchor="middle" fontSize={12} fill={INK}>unbound: quad9.lab</text></g>
-          <g transform="translate(850, 258)"><Laptop /><text y={58} textAnchor="middle" fontSize={12} fill={INK}>plain clients</text></g>
-          <g transform="translate(1000, 262)"><Shield /><text y={50} textAnchor="middle" fontSize={12} fill={INK}>integration suite</text><text y={66} textAnchor="middle" fontSize={11} fill={MUTED}>46 + 5 checks in the lab</text></g>
-          <g transform="translate(1100, 262)"><Lock tone={GREEN} /><text y={50} textAnchor="middle" fontSize={12} fill={INK}>bootstrap</text><text y={66} textAnchor="middle" fontSize={11} fill={MUTED}>keys, zones, certs</text></g>
+        {/* the lab */}
+        <rect x={630} y={20} width={550} height={400} rx={20} fill="#fafaf9" stroke={INK} strokeWidth={2.5} />
+        <text x={654} y={54} fontSize={18} fontWeight={800} fill={INK}>the lab</text>
+        <text x={730} y={54} fontSize={13} fill={MUTED}>Docker Compose, the two networks and their attackers</text>
+        {tile(722, 140, <Server />, "BIND", "private root, 7 zones")}
+        {tile(905, 140, <Resolver tone={BLUE} />, "Office resolver", "CoreDNS, DoT, split zones")}
+        {tile(1088, 140, <Resolver hostile />, "Hotel resolver", "honest, forging, plain")}
+        {tile(722, 280, <Router />, "quad9.lab", "unbound, validating")}
+        {tile(905, 280, <Server />, "PvD and pages", "nginx, 5 servers")}
+        {tile(1088, 280, <Laptop />, "Plain clients", "no SplitTrust code")}
+        <text x={905} y={395} textAnchor="middle" fontSize={13} fill={MUTED}>13 attack and corner-case scenarios, 3 device profiles</text>
 
-          {/* the real world */}
-          <g transform="translate(740, 420)"><Cloud /></g>
-          <text x={734} y={416} textAnchor="middle" fontSize={14} fontWeight={700} fill={INK}>zivkovic.me</text>
-          <text x={734} y={434} textAnchor="middle" fontSize={11} fill={MUTED}>DNSSEC at Cloudflare, DS at .me</text>
-          <text x={734} y={450} textAnchor="middle" fontSize={11} fill={MUTED}>record published, verified live</text>
-          {box(900, 370, 270, 110, "published", ["5 vector files, 20 test vectors", "draft erratum for RFC 9704 s.5.1", "8 implementer decisions", "docs: architecture, demo, lab"], INK)}
+        {/* the real world */}
+        <g transform="translate(600, 480)"><Cloud /></g>
+        <text x={594} y={478} textAnchor="middle" fontSize={14} fontWeight={700} fill={INK}>zivkovic.me</text>
+        <text x={594} y={496} textAnchor="middle" fontSize={11} fill={MUTED}>our real zone: DNSSEC-signed, record published, verified live</text>
+        <g transform="translate(662, 452)"><Lock tone={GREEN} /></g>
+        <line x1={310} y1={420} x2={540} y2={470} stroke="#cbd5e1" strokeWidth={2} strokeDasharray="6 6" />
+        <line x1={905} y1={420} x2={660} y2={470} stroke="#cbd5e1" strokeWidth={2} strokeDasharray="6 6" />
       </Canvas>
     </Slide>
   );
 }
-

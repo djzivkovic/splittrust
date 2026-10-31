@@ -22,8 +22,8 @@
         "addr": "9.9.9.9:853"
       },
       "id": "real-office",
-      "title": "Alfa's office Wi-Fi",
-      "explanation": "Company Alfa adopted RFC 9704: its zone zivkovic.me is DNSSEC-signed at Cloudflare and publishes a Verification Record authorising dns.splittrust.zivkovic.me for internal.splittrust.zivkovic.me. Alfa's devices verify the office network's claim against the real DNS before using the office resolver for those names.",
+      "title": "SecureCompany's office Wi-Fi",
+      "explanation": "Company SecureCompany adopted RFC 9704: its zone zivkovic.me is DNSSEC-signed at Cloudflare and publishes a Verification Record authorising dns.splittrust.zivkovic.me for internal.splittrust.zivkovic.me. SecureCompany's devices verify the office network's claim against the real DNS before using the office resolver for those names.",
       "discovery": "dnr",
       "parent": "zivkovic.me",
       "network_resolvers": [
@@ -71,8 +71,8 @@
         "addr": "9.9.9.9:853"
       },
       "id": "real-hotel-forged",
-      "title": "Hotel Wi-Fi claims Alfa's domain",
-      "explanation": "A hotel network claims all of zivkovic.me and its resolver serves a forged copy of the zone: every name points at the hotel's page and the Verification Record carries the correct token for the hotel's claim. Alfa's device validates against the real DNSSEC chain (root, .me, Cloudflare) and rejects the claim; the hotel cannot produce Cloudflare's signatures.",
+      "title": "Hotel Wi-Fi claims SecureCompany's domain",
+      "explanation": "A hotel network claims all of zivkovic.me and its resolver serves a forged copy of the zone: every name points at the hotel's page and the Verification Record carries the correct token for the hotel's claim. SecureCompany's device validates against the real DNSSEC chain (root, .me, Cloudflare) and rejects the claim; the hotel cannot produce Cloudflare's signatures.",
       "discovery": "dnr",
       "parent": "zivkovic.me",
       "network_resolvers": [
@@ -114,8 +114,8 @@
         "addr": "9.9.9.9:853"
       },
       "id": "real-replay",
-      "title": "Hotel replays Alfa's claim",
-      "explanation": "The hotel copies Alfa's real claim word for word and announces its own resolver under Alfa's resolver name. The certificate is for dns.hotel.lab, so TLS identity fails before any DNS query.",
+      "title": "Hotel replays SecureCompany's claim",
+      "explanation": "The hotel copies SecureCompany's real claim word for word and announces its own resolver under SecureCompany's resolver name. The certificate is for dns.hotel.lab, so TLS identity fails before any DNS query.",
       "discovery": "dnr",
       "parent": "zivkovic.me",
       "network_resolvers": [
@@ -503,6 +503,6 @@
     }
   ],
   "forged_zones": [
-    "beta.example"
+    "unsecure.example"
   ]
 }
