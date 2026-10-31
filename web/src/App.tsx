@@ -28,7 +28,9 @@ export default function App() {
 
   // the deck, in order
   type Kind = "title" | "problem" | "whynow" | "how" | "solution" | "companies" | "scene" | "tryit" | "audience" | "whynot" | "impact" | "built" | "lab" | "roadmap" | "close";
-  const order: Kind[] = ["title", "problem", "whynow", "how", "solution", "companies", ...SCENES.map(() => "scene" as const), "tryit", "audience", "whynot", "impact", "built", "lab", "roadmap", "close"];
+  // main run (fits five minutes), then an appendix for questions
+  const order: Kind[] = ["title", "problem", "whynow", "how", "solution", "companies", ...SCENES.map(() => "scene" as const), "built", "lab", "close", "audience", "whynot", "impact", "tryit", "roadmap"];
+  const appendixFrom = order.indexOf("close") + 1;
   const total = order.length;
   const sceneIndex = (n: number) => n - order.indexOf("scene");
   const go = useCallback((n: number) => { setSlide(Math.max(0, Math.min(total - 1, n))); setDevice("validating-stub"); }, [total]);
@@ -78,6 +80,7 @@ export default function App() {
             ))}
           </span>
         )}
+        {slide >= appendixFrom && <span className="rounded bg-amber-100 px-2 py-0.5 font-semibold text-amber-800">Appendix</span>}
         <span className="ml-auto">{slide + 1} / {total}<span className="kbd ml-4">←</span> <span className="kbd">→</span> slides{scene && <><span className="kbd ml-2">space</span> replay <span className="kbd ml-2">t</span> {evidence ? "back to the pages" : "show dig output"}</>}</span>
       </footer>
     </div>

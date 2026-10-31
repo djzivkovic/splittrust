@@ -59,32 +59,32 @@ export function WhyNowSlide() {
 /* ---------- Who buys, who ships ---------- */
 
 export function AudienceSlide() {
-  const col = (rank: string, title: string, pain: string, deploys: string[], tone: string) => (
+  const col = (rank: string, title: string, who: string[], deploys: string[], tone: string) => (
     <div className={`flex flex-col rounded-2xl border-2 bg-white p-5 shadow-sm ${tone}`}>
       <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{rank}</div>
       <div className="mt-1 text-xl font-bold leading-tight">{title}</div>
-      <p className="mt-2 text-sm text-slate-700">{pain}</p>
-      <div className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500">What they deploy</div>
+      <ul className="mt-3 space-y-1 text-sm text-slate-700">{who.map((d) => <li key={d}>{d}</li>)}</ul>
+      <div className="mt-4 text-xs font-semibold uppercase tracking-wide text-slate-500">They deploy</div>
       <ul className="mt-1 space-y-1 text-sm text-slate-800">{deploys.map((d) => <li key={d} className="flex gap-2"><span className="text-blue-600">+</span><span>{d}</span></li>)}</ul>
     </div>
   );
   return (
-    <Slide section="Who it is for" title="Who buys, who ships" sub="Ranked by who feels the pain first."
+    <Slide section="Who it is for" title="Who buys, who ships"
       takeaway="First pilots: managed laptops and phones where one organisation controls the domain, the certificate, the office resolver and the client.">
       <div className="grid flex-1 content-center gap-4 lg:grid-cols-3">
-        {col("1. Buys", "Organisations with split-horizon DNS and roaming devices",
-          "Banks, hospitals, public agencies, universities, branch-heavy companies, firms whose staff work from partner sites. They run Windows DNS or AD DNS, BIND, Infoblox or BlueCat, CoreDNS; today their devices either trust the local network's resolver or tunnel everything through a VPN.",
-          ["DNSSEC on the public parent zone (or a trusted external resolver, s.6.1)", "one Verification Record per claim, built with the owner tool", "DoT on the office resolver with a certificate for its announced name", "a client that checks: the SplitTrust proxy now, the OS later"], "border-blue-300")}
+        {col("1. Buys", "Companies with split-horizon DNS and roaming staff",
+          ["banks, hospitals, agencies, universities", "run Windows DNS, BIND, Infoblox, BlueCat", "today: trust the local resolver, or VPN everything"],
+          ["a signed zone (or a trusted resolver, s.6.1)", "one TXT record per claim", "DoT and a certificate on the office resolver", "a client that checks"], "border-blue-300")}
         {col("2. Ships", "OS and device-management vendors",
-          "The OS already discovers encrypted resolvers (DDR, DNR) and routes per domain (systemd-resolved, Windows NRPT, Apple NetworkExtension) but has no authorisation decision for split authority. This check belongs in the resolver stack, distributed by MDM or Group Policy.",
-          ["the RFC 9704 verification in the system resolver", "scoped routing, fail-closed, Extended DNS Errors to applications", "policy and telemetry through MDM, GPO, configuration profiles"], "border-slate-200")}
+          ["already discover resolvers: DDR, DNR", "already route per domain: resolved, NRPT, NetworkExtension", "missing: the authorisation check"],
+          ["the RFC 9704 check in the system resolver", "fail closed, Extended DNS Errors to apps", "policy through MDM or GPO"], "border-slate-200")}
         {col("3. Enables", "Resolver, DDI and ZTNA vendors",
-          "BIND 9.18, Unbound, Knot, CoreDNS (view plugin), Infoblox NIOS 8.5.2+, BlueCat Edge 26.1+ already serve inbound DoT with views. Cloudflare Gateway, Cisco Umbrella and Tailscale already route private names on the endpoint. None of them automates the claim or validates it.",
-          ["a certificate for the announced resolver name", "claim generation, TXT publication, salt rotation, expiry", "DHCP, RA or PvD emission of the claim (none ship this yet)"], "border-slate-200")}
+          ["BIND, Unbound, Knot, CoreDNS: inbound DoT, views", "Infoblox, BlueCat: inbound DoT shipped", "Cloudflare Gateway, Umbrella, Tailscale: endpoint routing"],
+          ["a certificate for the announced name", "claim and TXT automation, salt rotation", "DHCP, RA or PvD emission (none yet)"], "border-slate-200")}
       </div>
       <div className="grid gap-4 pb-2 md:grid-cols-2 text-sm text-slate-600">
-        <div className="rounded-xl bg-white p-3 shadow-sm"><b className="text-slate-900">Not the audience:</b> consumers directly (the value needs an owner, a network and a device policy acting together); hotels and cafes (they rarely own the domains being claimed); content filtering (RFC 9704 section 3 excludes it).</div>
-        <div className="rounded-xl bg-white p-3 shadow-sm"><b className="text-slate-900">Honest constraint:</b> DNSSEC covers only about 4 to 5 percent of .com (Verisign, 2023) and about 30 percent of users validate (APNIC, 2023). The external-resolver path (s.6.1) is what widens applicability; SplitTrust implements both.</div>
+        <div className="rounded-xl bg-white p-3 shadow-sm"><b className="text-slate-900">Not for:</b> consumers directly, hotels and cafes, content filtering (RFC 9704 s.3).</div>
+        <div className="rounded-xl bg-white p-3 shadow-sm"><b className="text-slate-900">Constraint:</b> about 5 percent of .com is DNSSEC-signed (Verisign, 2023). The s.6.1 path, also implemented, widens the reach.</div>
       </div>
     </Slide>
   );

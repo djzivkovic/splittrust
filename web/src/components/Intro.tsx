@@ -148,7 +148,7 @@ function Company({ name, domain, adopted, line }: { name: string; domain: string
 
 export function ClosingSlide() {
   return (
-    <Slide section="Closing" title="What this is, what it is not, and what we ask" takeaway="github.com/djzivkovic/splittrust">
+    <Slide section="Closing" title="What this is, what it is not, and what we ask" takeaway={<>github.com/djzivkovic/splittrust <span className="ml-4 text-sm font-normal text-slate-500">Appendix follows: who it is for, today's options, what changes for a company, try the owner tool, roadmap.</span></>}>
       <div className="grid flex-1 content-center gap-6 lg:grid-cols-3">
         <div className="rounded-2xl border-2 border-green-200 bg-white p-6 shadow-sm">
           <div className="text-xl font-bold text-green-800">Real</div>

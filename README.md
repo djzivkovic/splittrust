@@ -28,12 +28,13 @@ has no test vectors, and its worked example cannot be reproduced. SplitTrust pro
 
 ## The console
 
-`http://127.0.0.1:8000` is the presentation: seventeen slides in pitch order. The problem (with incident
-evidence); why now (a sourced timeline from DoT in 2016 to RFC 9704 in 2025, interactive); how RFC 9704
-works; what SplitTrust brings; the two companies; three live scenes with the proxy's decisions beside the
-browser frames (and the dig output of the real lookups on `t`); the owner tool live against the real zone
-(interactive); who buys and who ships; why encrypted DNS, VPNs and DNSSEC alone do not close the gap
-(interactive); what changes for a company; the architecture; the lab probed live; what is next; closing. **SecureCompany**
+`http://127.0.0.1:8000` is the presentation. A twelve-slide main run that fits five minutes: the problem
+(with incident evidence); why now (a sourced timeline from DoT in 2016 to RFC 9704 in 2025, interactive);
+how RFC 9704 works; what SplitTrust brings; the two companies; three live scenes with the proxy's
+decisions beside the browser frames (and the dig output of the real lookups on `t`); the architecture; the
+lab probed live; closing. Then an appendix for questions: who buys and who ships; why encrypted DNS, VPNs
+and DNSSEC alone do not close the gap (interactive); what changes for a company; the owner tool live
+against the real zone (interactive); roadmap and limits. **SecureCompany**
 adopted RFC 9704 (its zone is the real `zivkovic.me`); **UnsecureCompany** did not. *Monday, at the office*: both
 intranets load; only SecureCompany's laptop checked that the resolver was allowed to answer. *Tuesday, at the
 hotel*: the hotel claims both domains; UnsecureCompany's laptop gets the hotel's login page, SecureCompany's laptop refuses
