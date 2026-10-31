@@ -1,0 +1,7 @@
+{
+  "resolver": "dns.firma.rs",
+  "parent": "firma.rs",
+  "subdomains": ["intranet", "mail"],
+  "algorithm": "SHA384",
+  "salt": "Vn3kQ2r9bXz0pLm4Yt8wHA"
+}

@@ -1,0 +1,8 @@
+/bin/
+/lab/generated/
+/.superpowers/
+*.pem
+*.key
+*.private
+*.test
+*.out
