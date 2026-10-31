@@ -35,7 +35,7 @@ type Evidence struct {
 	TTL            uint32     `json:"ttl"`
 	RRSIGExpiresAt *time.Time `json:"rrsig_expires_at,omitempty"`
 	Answer         []string   `json:"answer,omitempty"`
-	Resolution     string     `json:"resolution"`           // "via-network" or "iterative"
+	Resolution     string     `json:"resolution"`          // "via-network" or "iterative"
 	Forwarder      string     `json:"forwarder,omitempty"` // "ip:port#adn" when via-network
 	WireB64        string     `json:"wire_b64,omitempty"`
 	ObservedAt     time.Time  `json:"observed_at"`

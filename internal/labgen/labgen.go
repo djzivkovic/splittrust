@@ -70,7 +70,7 @@ func Generate(outDir string, now time.Time) error {
 	localDS := dsB64(ksk)
 	wrongDS := dsB64(wrongKSK)
 
-	gens := map[string][]generated{} // scenario id -> claims
+	gens := map[string][]generated{}  // scenario id -> claims
 	txtLines := map[string][]string{} // parent zone -> TXT RR lines (relative owner)
 	localZones := map[string]bool{}
 	summary := &strings.Builder{}
