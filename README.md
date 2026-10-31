@@ -9,8 +9,10 @@ domain owner publish a signed statement of *which resolver may answer for which 
 check it in a way the local network cannot tamper with. The standard had no public implementation, no test
 vectors, and a worked example that cannot be reproduced. SplitTrust provides all three.
 
-> Every verdict carries `trust_context: "lab"`. The lab runs a private DNS root with a real DNSSEC chain;
-> the cryptography and the verdicts are real, the Internet is simulated. Nothing leaves the lab.
+> Every verdict carries `trust_context: "lab"` — the lab runs a private DNS root with a real DNSSEC chain;
+> the cryptography and the verdicts are real, the Internet is simulated and nothing leaves the lab — except
+> the one `real-zivkovic` scenario, which carries `trust_context: "global"` and runs in a separate
+> egress-enabled container against our own real zone.
 
 ## What is in the box
 
@@ -18,7 +20,7 @@ vectors, and a worked example that cannot be reproduced. SplitTrust provides all
 |---|---|
 | `splittrust` (one Go binary) | RFC 9704 verifier: claim canonicalisation, token, Verification Record lookup with local DNSSEC validation (libunbound) through the network's resolver or iteratively, the §6.1 external-resolver path for devices configured that way, resolver TLS identity (RFC 9525), §7 `ds` key binding over `resolver.arpa.`, grants with TTL/RRSIG/PvD-bounded expiry; scoped resolution; owner tool; DHCP option 90/11 codec; CLI, HTTP API and an embedded console |
 | `lab/` | Docker Compose lab: BIND serving a signed private root, `lab` TLD and seven parent zones (one expired, one unsigned); CoreDNS hybrid resolvers for the company (`dns.corp.lab`, DoT) and the hotel (`dns.hotel.lab`, honest and *forging* views); nginx PvD server; unbound as `quad9.lab`; a one-shot bootstrap that regenerates keys, zones and certificates relative to now |
-| Ten scenarios × three simulated devices | `legit`, `hotel`, `hotel-forged`, `stale-salt`, `expired-signature`, `unsigned`, `wrong-ds`, `replay`, `hotel-blocks-external`, `special-use`; devices `validating-stub`, `private-dns`, `hybrid` |
+| Ten lab scenarios + one real-DNS scenario × three simulated devices | `legit`, `hotel`, `hotel-forged`, `stale-salt`, `expired-signature`, `unsigned`, `wrong-ds`, `replay`, `hotel-blocks-external`, `special-use`, `real-zivkovic`; devices `validating-stub`, `private-dns`, `hybrid` |
 | `vectors/` | Published test vectors: token encoding (incl. the RFC example under both salts, `*`, IDN, SHA-512), TXT parsing, DHCP payloads, PvD documents, expected verdicts |
 | `docs/rfc9704-example-erratum.md` | The forensic explanation of the RFC's broken §5.1 example, a second erratum for Figure 1, and eight points the RFC leaves to implementers |
 | `docs/demo.md` | The 5-minute demo script and Q&A cards |
@@ -85,6 +87,28 @@ validated under the delegated keys; everything else takes the device's default p
 | `replay` | rejected `TLS_IDENTITY_FAILED` | | |
 | `hotel-blocks-external` | | rejected `EXTERNAL_TIMEOUT` | |
 | `special-use` | rejected `SPECIAL_USE_NAME`, no traffic | | |
+| `real-zivkovic` (real DNS, see below) | accepted `AUTHORIZED` once `zivkovic.me` is DNSSEC-signed; `DNSSEC_INSECURE_NO_FALLBACK` while it is not | accepted `EXTERNAL_TOKEN_MATCH` via the real `dns.quad9.net` | |
+
+## The one scenario that leaves the lab
+
+`real-zivkovic` verifies a Verification Record published in the **real** zone `zivkovic.me` (Cloudflare):
+
+```
+dns.splittrust.zivkovic.me._splitdns-challenge.zivkovic.me. 3600 IN TXT "token=BiwP_K0bA7xckVbslagu9l-Ku9PgYkSCem6r_GbySJHqpQF1gXmxOT0AjCFqOIGi"
+```
+
+The device validates under the IANA root trust anchor (`dns-root-data`), iterating from the real root
+because the lab's resolver has no Internet access, and the `private-dns` device asks the real
+`dns.quad9.net`. The announced resolver is still the lab's `dns.splittrust.zivkovic.me` (local-dot). It
+runs only in the egress-enabled `real` service — the console and the `app` container stay offline:
+
+```bash
+docker compose -f lab/compose.yaml --profile real run --rm real verify --scenario real-zivkovic
+docker compose -f lab/compose.yaml --profile real run --rm real verify --scenario real-zivkovic --device private-dns
+```
+
+Its reports carry `trust_context: "global"`. The claim's salt is fixed in the catalogue so the published
+record stays valid across lab rebuilds. Only ordinary DNS queries leave the machine; the zone is ours.
 
 ## What this is not
 

@@ -41,7 +41,7 @@ docker compose -f lab/compose.yaml down -v && docker compose -f lab/compose.yaml
 | "Can the hotel replay the company's claim?" | `replay` | It can announce `dns.corp.lab`, but it cannot present a certificate for it: `TLS_IDENTITY_FAILED` before a single DNS query (RFC 9704 §8 steps 3–5). |
 | "What if the hotel blocks Quad9?" | `hotel-blocks-external` | §6.1: no response ⇒ verification failed, `EXTERNAL_TIMEOUT`. The hotel gains only denial of service. |
 | "home.arpa?" | `special-use` | §3: MUST NOT be validated; rejected with zero network traffic. |
-| "Is this the global DNS?" | any | No — `trust_context: lab` on every report; a private root with a real trust chain. The real-record track (a Namecheap-hosted zone) is deferred. |
+| "Is this the global DNS?" | `real-zivkovic` | The lab is a private root (`trust_context: lab`). But: `docker compose -f lab/compose.yaml --profile real run --rm real verify --scenario real-zivkovic` verifies a record we published in the real `zivkovic.me` zone, validated under the IANA root (`trust_context: global`); with `--device private-dns` it goes through the real dns.quad9.net. |
 | "Why Go?" | — | The tooling most likely to adopt this is Go (CoreDNS, AdGuard Home, Tailscale); one static binary; the validator is unbound itself via libunbound. |
 | "Did you touch anything real?" | — | No. Isolated Docker network, no egress, synthetic zones and throwaway keys. The only Internet traffic is image pulls at build time. |
 

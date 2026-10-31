@@ -60,11 +60,13 @@ mkcert() {
   rm -f "$out/req.csr" "$out/ext.cnf"
 }
 log "certificates"
-mkcert "$GEN/local-dot" dns.corp.lab "DNS:dns.corp.lab,DNS:dns2.corp.lab,DNS:dns.stale.lab,DNS:dns.expired.lab,DNS:dns.unsigned.lab,DNS:dns.wrongds.lab"
+mkcert "$GEN/local-dot" dns.corp.lab "DNS:dns.corp.lab,DNS:dns2.corp.lab,DNS:dns.stale.lab,DNS:dns.expired.lab,DNS:dns.unsigned.lab,DNS:dns.wrongds.lab,DNS:dns.splittrust.zivkovic.me"
 mkcert "$GEN/hotel-dot" dns.hotel.lab "DNS:dns.hotel.lab"
 mkcert "$GEN/pvd"       pvd.corp.lab  "DNS:pvd.corp.lab,DNS:pvd.hotel.lab,DNS:replay.hotel.lab,DNS:pvd.stale.lab,DNS:pvd.expired.lab,DNS:pvd.unsigned.lab,DNS:pvd.wrongds.lab"
 mkcert "$GEN/external"  quad9.lab     "DNS:quad9.lab"
 cp "$CADIR/ca.pem" "$GEN/client/ca.pem"
+# For the real-DNS scenario: the lab CA (announced resolver) plus the public CAs (dns.quad9.net).
+cat "$CADIR/ca.pem" /etc/ssl/certs/ca-certificates.crt > "$GEN/client/ca-real.pem"
 
 # ---------------------------------------------------------------- public DNSSEC hierarchy
 render() { # render ZONE TEMPLATE -> $WORK/zones/ZONE.zone (plus TXT lines when present)

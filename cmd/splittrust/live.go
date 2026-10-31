@@ -42,7 +42,7 @@ func loadEngine(errOut io.Writer) (*engine.Engine, int) {
 
 func deviceFlags(fs *flag.FlagSet) (*string, *string) {
 	d := fs.String("device", "", "simulated device: validating-stub | private-dns | hybrid (default: the scenario's default)")
-	r := fs.String("resolution", "via-network", "how a validating device resolves: via-network | iterative")
+	r := fs.String("resolution", "", "how a validating device resolves: via-network | iterative (default: the scenario's default, normally via-network)")
 	return d, r
 }
 
@@ -54,7 +54,7 @@ func options(device, resolution string) (verify.Options, error) {
 		return opt, fmt.Errorf("unknown device %q", device)
 	}
 	switch opt.Resolution {
-	case verify.ViaNetwork, verify.Iterative:
+	case "", verify.ViaNetwork, verify.Iterative:
 	default:
 		return opt, fmt.Errorf("unknown resolution %q", resolution)
 	}

@@ -31,7 +31,9 @@ import (
 const (
 	ClientDir  = "/gen/client"
 	CAFile     = ClientDir + "/ca.pem"
+	CARealFile = ClientDir + "/ca-real.pem" // lab CA + the system bundle, for profiles that also talk to the real Internet
 	AnchorFile = ClientDir + "/trust-anchor.key"
+	IANAAnchor = "/usr/share/dns/root.key" // Debian dns-root-data: the real root trust anchor
 	RootHints  = ClientDir + "/root.hints"
 	TTL        = 60
 )
@@ -89,9 +91,13 @@ func Generate(outDir string, now time.Time) error {
 				}
 				g = src[0]
 			} else {
-				salt := make([]byte, 16)
-				rand.Read(salt)
-				g.raw = claim.RawClaim{Resolver: spec.Resolver, Parent: sc.Parent, Subdomains: spec.Subdomains, Algorithm: "SHA384", Salt: base64.RawURLEncoding.EncodeToString(salt)}
+				saltB64 := spec.Salt
+				if saltB64 == "" {
+					salt := make([]byte, 16)
+					rand.Read(salt)
+					saltB64 = base64.RawURLEncoding.EncodeToString(salt)
+				}
+				g.raw = claim.RawClaim{Resolver: spec.Resolver, Parent: sc.Parent, Subdomains: spec.Subdomains, Algorithm: "SHA384", Salt: saltB64}
 				g.canon, err = claim.Canonicalize(g.raw)
 				if err != nil {
 					return fmt.Errorf("scenario %s: %v", sc.ID, err)
@@ -99,7 +105,7 @@ func Generate(outDir string, now time.Time) error {
 				g.raw.Subdomains = g.canon.Relative // PvD form: relative, canonical order
 				g.token, _, _ = claim.Token(g.canon)
 
-				if !g.canon.SpecialUse {
+				if !g.canon.SpecialUse && sc.TrustContext != "global" {
 					recordToken := g.token
 					if spec.RecordSalt == "other" {
 						other := g.canon
@@ -161,9 +167,21 @@ func Generate(outDir string, now time.Time) error {
 			External:      lab.Announced{ADN: "quad9.lab", Addr: cat.Addresses["external"] + ":853"},
 			DefaultDevice: sc.DefaultDevice, CAFile: CAFile, AnchorFile: AnchorFile, RootHints: RootHints,
 			PermittedNamespaces: []string{"lab.", "arpa."}, ExampleQName: sc.ExampleQName, Expected: sc.Expected,
+			TrustContext: "lab", DefaultResolution: sc.DefaultResolution,
 		}
 		if sc.ExternalAddr != "" {
 			p.External.Addr = sc.ExternalAddr
+		}
+		if sc.External != nil {
+			p.External = *sc.External
+		}
+		if sc.TrustContext == "global" {
+			// Validated under the real root: IANA anchor, built-in root hints, the lab CA
+			// plus the system bundle (the announced resolver is still the lab's), and the
+			// real parent zone is a permitted namespace. Needs Internet egress.
+			p.TrustContext, p.RequiresInternet = "global", true
+			p.AnchorFile, p.RootHints, p.CAFile = IANAAnchor, "", CARealFile
+			p.PermittedNamespaces = append(p.PermittedNamespaces, strings.TrimSuffix(sc.Parent, ".")+".")
 		}
 		if source == "pvd" {
 			p.PvDURL = "https://" + sc.PvDID + "/.well-known/pvd"

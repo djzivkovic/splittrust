@@ -144,11 +144,14 @@ func (v *Verifier) Verify(ctx context.Context, p lab.Profile, inline *claim.RawC
 	if opt.Device == "" {
 		opt.Device = DeviceValidatingStub
 	}
+	if opt.Resolution == "" && p.DefaultResolution != "" {
+		opt.Resolution = Resolution(p.DefaultResolution)
+	}
 	if opt.Resolution == "" {
 		opt.Resolution = ViaNetwork
 	}
 	now := v.now()
-	run := Run{SchemaVersion: 1, ScenarioID: p.ScenarioID, Device: opt.Device, Resolution: opt.Resolution, TrustContext: "lab"}
+	run := Run{SchemaVersion: 1, ScenarioID: p.ScenarioID, Device: opt.Device, Resolution: opt.Resolution, TrustContext: trustContext(p)}
 
 	var claims []claim.RawClaim
 	pvdStage := Stage{ID: "pvd", Status: "skipped", Code: "INLINE_CLAIM", Message: "claim supplied directly; no PvD document"}
@@ -467,6 +470,15 @@ func (v *Verifier) verifyClaim(ctx context.Context, p lab.Profile, i int, raw cl
 	rep.Decision, rep.Reason, rep.Grant = "accepted", reason, grant
 	rep.Stages = tr.finish("NOT_REACHED", "")
 	return rep
+}
+
+// trustContext labels a run: "lab" (private root) unless the profile validates
+// under the real root ("global").
+func trustContext(p lab.Profile) string {
+	if p.TrustContext != "" {
+		return p.TrustContext
+	}
+	return "lab"
 }
 
 func worst(claims []ClaimReport) string {

@@ -1,0 +1,7 @@
+{
+  "resolver": "dns.splittrust.zivkovic.me",
+  "parent": "zivkovic.me",
+  "subdomains": ["internal.splittrust"],
+  "algorithm": "SHA384",
+  "salt": "ef3XgSkZTxuXMH18506K5Q"
+}

@@ -41,6 +41,9 @@ func TestAllScenariosForwardAndReverse(t *testing.T) {
 	for pass, ids := range [][]string{order, reverse} {
 		for _, id := range ids {
 			p := e.Manifest.Profiles[id]
+			if p.RequiresInternet {
+				continue // real-DNS scenario: runs only in the egress-enabled "real" service
+			}
 			for _, exp := range p.Expected {
 				name := fmt.Sprintf("pass%d/%s/%s", pass, id, exp.Device)
 				t.Run(name, func(t *testing.T) {
@@ -81,6 +84,9 @@ func TestAPIParity(t *testing.T) {
 	}
 	for _, id := range e.Manifest.Order {
 		p := e.Manifest.Profiles[id]
+		if p.RequiresInternet {
+			continue
+		}
 		want, err := e.Verify(context.Background(), id, nil, verify.Options{Device: verify.Device(p.DefaultDevice)})
 		if err != nil {
 			t.Fatal(err)

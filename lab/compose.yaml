@@ -116,6 +116,28 @@ services:
         ipv4_address: 172.30.97.50
       console: {}
 
+  # The one container allowed to reach the Internet: runs the real-DNS scenario
+  # (IANA root anchor, Cloudflare-hosted zone, real dns.quad9.net). Same image as
+  # app; no published ports.
+  #   docker compose -f lab/compose.yaml --profile real run --rm real verify --scenario real-zivkovic
+  real:
+    profiles: ["real"]
+    build:
+      context: ..
+      dockerfile: lab/app/Dockerfile
+      args:
+        LIBUNBOUND: "1"
+    <<: *labgen
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+      local-dot:
+        condition: service_started
+    networks:
+      splitlab:
+        ipv4_address: 172.30.97.52
+      egress: {}
+
   test:
     profiles: ["tools"]
     build:
@@ -152,3 +174,6 @@ networks:
     driver: bridge
     driver_opts:
       com.docker.network.bridge.enable_ip_masquerade: "false"
+  # Ordinary NAT'd bridge, attached only to the "real" profile service.
+  egress:
+    driver: bridge

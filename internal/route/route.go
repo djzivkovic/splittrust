@@ -59,10 +59,16 @@ func (r *Resolver) Resolve(ctx context.Context, p lab.Profile, qname string, opt
 	if opt.Device == "" {
 		opt.Device = verify.DeviceValidatingStub
 	}
+	if opt.Resolution == "" && p.DefaultResolution != "" {
+		opt.Resolution = verify.Resolution(p.DefaultResolution)
+	}
 	if opt.Resolution == "" {
 		opt.Resolution = verify.ViaNetwork
 	}
 	rep := Report{QName: dns.Fqdn(strings.ToLower(qname)), QType: "A", Device: opt.Device, Answers: []string{}, TrustContext: "lab"}
+	if p.TrustContext != "" {
+		rep.TrustContext = p.TrustContext
+	}
 	if !lab.Permitted(rep.QName, p.PermittedNamespaces) {
 		rep.Route, rep.RouteReason, rep.ErrorCode = "none", "BLOCKED_OUT_OF_LAB_SCOPE", "OUT_OF_LAB_SCOPE"
 		rep.Error = fmt.Sprintf("%s is outside the lab namespaces %v; no query sent", rep.QName, p.PermittedNamespaces)
