@@ -35,22 +35,21 @@ export function HowItWorks() {
           <li>the company's resolver <code>dns.corp.lab</code> (CoreDNS over DNS-over-TLS), serving the split-horizon zones it was authorised for</li>
           <li>the hotel's resolver <code>dns.hotel.lab</code> with an honest view, a forging view, and plain DNS for guests without SplitTrust</li>
           <li>a PvD server with each network's claims, and <code>quad9.lab</code>, the external validating resolver a phone with Private DNS uses</li>
-          <li>three web servers that say who they are: the company intranet, the real bank, the hotel's fake bank</li>
-          <li>a plain client container (curl, no SplitTrust code) whose DNS server is the SplitTrust proxy, and a twin that uses the hotel's DNS directly</li>
+          <li>web servers that say who they are: Alfa's intranet, Beta's intranet, the lab's bank, and the hotel's fake page</li>
+          <li>a plain client container (curl, no SplitTrust code) whose DNS server is the SplitTrust proxy, and a twin that uses the network's resolver directly, as Beta's devices do</li>
         </ul>
-        <p className="mt-3 text-slate-800">Each network on the Demo page is one of these worlds. Each device is a way the RFC lets a client behave. Verdicts are produced by the Go engine (libunbound does the DNSSEC validation); this console only presents them.</p>
-        <p className="mt-3 text-slate-800">One scenario leaves the lab: <code>zivkovic.me</code>, our real Cloudflare-hosted, DNSSEC-signed zone, verified under the IANA root from the lab's only Internet-connected container.</p>
+        <p className="mt-3 text-slate-800">The Demo page compares two companies. <b>Alfa</b> adopted RFC 9704: its zone is <code>zivkovic.me</code>, our Cloudflare-hosted, DNSSEC-signed zone with the Verification Record published and the DS record at the .me registry; its devices verify. <b>Beta</b> (<code>beta.example</code>) did not; its devices use whatever resolver the network hands them. The office and hotel resolvers, the devices and the proxy have Internet access, like their real counterparts, so every Alfa verdict is computed against the real root, the real .me zone and the real dns.quad9.net. The lab's own private root and the .lab zones remain for the RFC's corner cases (unsigned zone, expired signatures, stale record, wrong key, Special-Use names), which you can run from the Tools page.</p>
+        <p className="mt-3 text-slate-800">Verdicts are produced by the Go engine (libunbound does the DNSSEC validation); this console only presents them.</p>
       </section>
 
       <section className="card">
         <h2 className="text-xl font-semibold">How to present</h2>
         <ol className="mt-3 list-decimal space-y-2 pl-6 text-slate-800">
-          <li><b>Choose the device</b> (<span className="kbd">1</span> laptop that validates, <span className="kbd">2</span> phone with Private DNS, <span className="kbd">3</span> hybrid).</li>
-          <li><b>Join a network</b> (<span className="kbd">←</span> <span className="kbd">→</span>). The card says what the network claims and what is actually true.</li>
-          <li><b>Watch the verification</b>: the query travels across the map, checks light up, and the map breaks where the scenario breaks. <span className="kbd">space</span> replays; the speed selector is for questions.</li>
-          <li><b>Resolve a name</b> as a plain client on that network would. Left: this device through SplitTrust. Right, on hotel networks: a device without SplitTrust on the same Wi-Fi.</li>
+          <li><b>The story</b>: the situation, what Beta's device does, what Alfa's device does, why it matters, and one command anyone in the room can run to check the real records.</li>
+          <li><b>Alfa's device checks</b> (<span className="kbd">→</span>): the query travels across the map of real actors, checks light up, and the map breaks where the scene breaks. <span className="kbd">space</span> replays; <span className="kbd">e</span> shows the evidence: the announcement verbatim, the query as dig would print it, the resolver's certificate next to the announced name. Keys <span className="kbd">1</span> <span className="kbd">2</span> <span className="kbd">3</span> switch Alfa's device (laptop that validates, phone with Private DNS, hybrid).</li>
+          <li><b>Both devices open the intranet</b>: real lookups and fetches, now. Beta's laptop on the left through the network's resolver, Alfa's on the right through SplitTrust. On the hotel scenes press <span className="kbd">2</span>: Alfa's phone reaches the real site through dns.quad9.net.</li>
         </ol>
-        <p className="mt-4 text-sm text-slate-600">Suggested five minutes: Hotel Guest, forged record (correct token, no signature chain, rejected). Corp Wi-Fi (accepted; resolve the intranet host). Hotel Guest, plain hijack: resolve <code>www.banka.lab</code> as the laptop (cannot resolve), then look at the device without SplitTrust (fake bank), then as the phone (real bank). Startup Cafe as the laptop (rejected), then as the phone (accepted, yellow): sign your zone.</p>
+        <p className="mt-4 text-sm text-slate-600">Order for the talk: Monday at the office (both work; only Alfa verified), Tuesday at the hotel (Beta gets the hotel's page, Alfa fails safely, the phone reaches the real site), What Alfa's IT did (sign the zone, publish one record, run a resolver that checks; a copied claim dies on the certificate; the real zone's records right now).</p>
       </section>
 
       <section>
@@ -62,9 +61,9 @@ export function HowItWorks() {
         <h2 className="text-xl font-semibold">Running it</h2>
         <Code>{`docker compose -f lab/compose.yaml up --build -d        # Docker only; the first build takes a few minutes
 open http://127.0.0.1:8000                              # this console
-docker compose -f lab/compose.yaml exec client curl -s http://host.internal.corp.lab
-docker compose -f lab/compose.yaml exec naive  curl -s http://www.banka.lab
-docker compose -f lab/compose.yaml --profile real run --rm real verify --scenario real-zivkovic
+docker compose -f lab/compose.yaml exec client curl -s http://host.internal.splittrust.zivkovic.me
+docker compose -f lab/compose.yaml exec naive  curl -s http://www.zivkovic.me
+docker compose -f lab/compose.yaml exec app splittrust verify --scenario real-hotel-forged
 docker compose -f lab/compose.yaml --profile tools run --rm test   # the integration suite
 docker compose -f lab/compose.yaml down -v`}</Code>
       </section>
@@ -74,10 +73,11 @@ docker compose -f lab/compose.yaml down -v`}</Code>
         <ul className="mt-2 list-disc space-y-1 pl-6 text-slate-700">
           <li>Nothing intercepts the host's DNS. Protection applies to clients that use the SplitTrust proxy (or the CLI) as their resolver. A product would drive the operating system's own split-DNS machinery (systemd-resolved, Windows NRPT).</li>
           <li>Discovery is pre-configured per network. The DHCP option is encoded and decoded, not sent on a wire.</li>
-          <li>The lab is a private root: real verdicts about a simulated Internet. Rejecting a claim does not make an untrusted default resolver safe, and publishing a record protects only clients that check.</li>
+          <li>The demo depends on the venue's Internet: the three scenes validate against the real DNS. The lab's own scenarios (Tools page) run without it.</li>
+          <li>Rejecting a claim does not make an untrusted default resolver safe, and publishing a record protects only clients that check.</li>
           <li>Unsigned zones can only be verified through an external resolver the device already trusts (RFC 9704 section 6.1). That is yellow for a reason.</li>
         </ul>
-        <p className="mt-4 text-sm text-slate-500">Team NXDOMAIN, DNS SEC(urity) Hackathon 2026. Go engine with libunbound; lab on CoreDNS, BIND, nginx and unbound; console in React. Built with AI assistance under the team's direction, as the rules allow. Repository docs: README, docs/demo.md, docs/rfc9704-example-erratum.md, docs/concept-and-ui-flow.md.</p>
+        <p className="mt-4 text-sm text-slate-500">Team NXDOMAIN, DNS SEC(urity) Hackathon 2026. Go engine with libunbound; lab on CoreDNS, BIND, nginx and unbound; console in React. Built with AI assistance under the team's direction, as the rules allow. Repository docs: README, docs/demo.md, docs/architecture.md, docs/rfc9704-example-erratum.md.</p>
       </section>
     </div>
   );

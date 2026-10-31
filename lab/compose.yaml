@@ -1,6 +1,8 @@
-# SplitTrust laboratory. Isolated lab network (no Internet access at runtime);
-# the only published port is the console on 127.0.0.1:8000, via a second
-# bridge without NAT (ports cannot be published on an internal network).
+# SplitTrust laboratory. The lab's own DNS (private root, parent zones, PvD
+# server, quad9.lab) lives on the isolated network "splitlab". The resolvers of
+# the office and the hotel, the devices (app, proxy) and the test runner also
+# join "egress" so the real-domain scenarios can validate against the real DNS.
+# The only published port is the console on 127.0.0.1:8000.
 #
 #   docker compose -f lab/compose.yaml up --build -d
 #   docker compose -f lab/compose.yaml exec app splittrust verify --scenario hotel-forged
@@ -46,6 +48,7 @@ services:
     networks:
       splitlab:
         ipv4_address: 172.30.97.20
+      egress: {}
 
   hotel-dot:
     image: coredns/coredns:1.12.0
@@ -57,6 +60,7 @@ services:
     networks:
       splitlab:
         ipv4_address: 172.30.97.21
+      egress: {}
 
   pvd:
     image: nginx:1.27-alpine
@@ -96,6 +100,9 @@ services:
       - "pvd.corp.lab:172.30.97.30"
       - "pvd.hotel.lab:172.30.97.30"
       - "replay.hotel.lab:172.30.97.30"
+      - "wifi.hotel.lab:172.30.97.30"
+      - "wifi-replay.hotel.lab:172.30.97.30"
+      - "pvd.splittrust.zivkovic.me:172.30.97.30"
       - "pvd.stale.lab:172.30.97.30"
       - "pvd.expired.lab:172.30.97.30"
       - "pvd.unsigned.lab:172.30.97.30"
@@ -116,7 +123,7 @@ services:
     networks:
       splitlab:
         ipv4_address: 172.30.97.50
-      console: {}
+      egress: {}
 
   # The DNS front door: ordinary stubs point here. Starts on the company network;
   # the console (or POST /join on :8001) moves it to another network.
@@ -143,6 +150,7 @@ services:
     networks:
       splitlab:
         ipv4_address: 172.30.97.60
+      egress: {}
 
   # A plain client with no SplitTrust code: its DNS server is the proxy.
   #   docker compose -f lab/compose.yaml exec client curl -s http://host.internal.corp.lab
@@ -174,10 +182,19 @@ services:
     build:
       context: ./web
     environment:
-      SITE_BANNER: "host.internal.corp.lab (172.30.97.70): the company intranet. Reached through the resolver the domain owner authorised."
+      SITE_BANNER: "INTRANET (172.30.97.70): company Alfa's internal host. Reached through the resolver the domain owner authorised."
     networks:
       splitlab:
         ipv4_address: 172.30.97.70
+
+  beta-intranet:
+    build:
+      context: ./web
+    environment:
+      SITE_BANNER: "intranet.beta.example (172.30.97.71): company Beta's intranet. Beta never adopted RFC 9704; its devices trust whatever resolver the network hands them."
+    networks:
+      splitlab:
+        ipv4_address: 172.30.97.71
 
   bank:
     build:
@@ -192,30 +209,10 @@ services:
     build:
       context: ./web
     environment:
-      SITE_BANNER: "FAKE www.banka.lab (172.30.97.66): a copy of the bank served by the hotel resolver. A real attacker would collect your login here."
+      SITE_BANNER: "FAKE PAGE (172.30.97.66): a copy of the site you asked for, served by the hotel resolver. A real attacker would collect your login here."
     networks:
       splitlab:
         ipv4_address: 172.30.97.66
-
-  # The one container allowed to reach the Internet: runs the real-DNS scenario
-  # (IANA root anchor, Cloudflare-hosted zone, real dns.quad9.net). Same image as
-  # app; no published ports.
-  #   docker compose -f lab/compose.yaml --profile real run --rm real verify --scenario real-zivkovic
-  real:
-    profiles: ["real"]
-    build:
-      context: ..
-      dockerfile: lab/app/Dockerfile
-    <<: *labgen
-    depends_on:
-      bootstrap:
-        condition: service_completed_successfully
-      local-dot:
-        condition: service_started
-    networks:
-      splitlab:
-        ipv4_address: 172.30.97.52
-      egress: {}
 
   test:
     profiles: ["tools"]
@@ -235,6 +232,7 @@ services:
     networks:
       splitlab:
         ipv4_address: 172.30.97.51
+      egress: {}
 
 volumes:
   labgen: {}
@@ -246,13 +244,8 @@ networks:
     ipam:
       config:
         - subnet: 172.30.97.0/24
-  # Published ports need a non-internal network. This one has NAT disabled, so
-  # the console is reachable from the host while the app still cannot reach
-  # anything outside the lab.
-  console:
-    driver: bridge
-    driver_opts:
-      com.docker.network.bridge.enable_ip_masquerade: "false"
-  # Ordinary NAT'd bridge, attached only to the "real" profile service.
+  # Ordinary bridge with Internet access, for the parts that have it in real
+  # life: the office and hotel resolvers, the devices (app, proxy) and the test
+  # runner. The lab's own zones never leave splitlab.
   egress:
     driver: bridge

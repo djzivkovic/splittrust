@@ -67,18 +67,21 @@ export function CertView({ claim }: { claim: ClaimReport }) {
 }
 
 /* The claim exactly as the network sent it. */
-export function ClaimView({ claim }: { claim: ClaimReport }) {
+export function ClaimView({ claim, compact = false }: { claim: ClaimReport; compact?: boolean }) {
   const pvd = stage(claim, "pvd");
   const doc = ev(pvd).document as Record<string, unknown> | undefined;
   const ins = claim.inspection;
-  const sent = doc ? doc : ins ? { resolver: ins.resolver, parent: ins.parent, subdomains: ins.relative } : null;
+  const sent = doc ? doc : ins ? { resolver: ins.canonical_resolver, parent: ins.canonical_parent, subdomains: ins.relative } : null;
+  if (compact) {
+    return <Pre title={doc ? "The announcement, verbatim (PvD document fetched over HTTPS)" : "The claim, as announced"} lines={[JSON.stringify(sent, null, 2)]} />;
+  }
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <Pre title={doc ? "PvD document (application/pvd+json), fetched over HTTPS" : "Claim, as announced"} lines={[JSON.stringify(sent, null, 2)]} />
       {ins && (
         <Pre title="What the device derives from it" lines={[
-          `resolver:       ${ins.resolver}`,
-          `parent:         ${ins.parent}`,
+          `resolver:       ${ins.canonical_resolver}`,
+          `parent:         ${ins.canonical_parent}`,
           `scopes:         ${ins.scopes.join(", ")}`,
           `record owner:   ${ins.record_owner}`,
           `expected token: ${ins.token}`,

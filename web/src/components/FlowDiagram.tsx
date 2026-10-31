@@ -15,14 +15,14 @@ const P: Record<NodeId, { x: number; y: number }> = {
   external: { x: 420, y: 420 }, root: { x: 760, y: 120 }, zone: { x: 760, y: 300 },
 };
 
-function nodes(c: ClaimReport, parent: string, announcedResolver: string, external: string): Node[] {
+function nodes(c: ClaimReport, parent: string, announcedResolver: string, external: string, real: boolean): Node[] {
   return [
     { id: "device", ...P.device, label: "device", sub: "the client being protected" },
     { id: "pvd", ...P.pvd, label: "PvD server", sub: "the network's claims" },
     { id: "resolver", ...P.resolver, label: announcedResolver || c.resolver, sub: "the network's resolver" },
-    { id: "external", ...P.external, label: external || "quad9.lab", sub: "external resolver (DoT)" },
-    { id: "root", ...P.root, label: "DNS root", sub: "trust anchor" },
-    { id: "zone", ...P.zone, label: parent, sub: "the owner's zone" },
+    { id: "external", ...P.external, label: external || "quad9.lab", sub: real ? "9.9.9.9, DNS over TLS" : "external resolver (DoT)" },
+    { id: "root", ...P.root, label: real ? "IANA root" : "lab DNS root", sub: real ? "real trust anchor, then .me" : "lab trust anchor" },
+    { id: "zone", ...P.zone, label: parent, sub: real ? "the owner's zone at Cloudflare" : "the owner's zone" },
   ];
 }
 
@@ -77,12 +77,12 @@ export function beatsFor(c: ClaimReport, device: Device, resolution: Resolution)
 
 const COLOR = { ok: "#15803d", fail: "#b91c1c", warn: "#b45309", info: "#1d4ed8" };
 
-export function FlowDiagram({ claim, device, resolution, beats, playedUpTo, parent, announced, external }: {
+export function FlowDiagram({ claim, device, resolution, beats, playedUpTo, parent, announced, external, real = false }: {
   claim: ClaimReport; device: Device; resolution: Resolution; beats: Beat[]; playedUpTo: number;
-  parent: string; announced: string; external: string;
+  parent: string; announced: string; external: string; real?: boolean;
 }) {
   void device; void resolution;
-  const ns = nodes(claim, parent, announced, external);
+  const ns = nodes(claim, parent, announced, external, real);
   const current = playedUpTo >= 0 ? beats[Math.min(playedUpTo, beats.length - 1)] : undefined;
   const marks = new Map<NodeId, Beat["result"]>();
   beats.slice(0, playedUpTo + 1).forEach((b) => { if (b.mark && b.result !== "info") marks.set(b.mark, b.result); });

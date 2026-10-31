@@ -36,6 +36,7 @@ type Service interface {
 	Capabilities() map[string]any
 	Verify(ctx context.Context, scenarioID string, inline *claim.RawClaim, opt verify.Options) (verify.Run, error)
 	Resolve(ctx context.Context, scenarioID, qname string, opt verify.Options) (route.Report, error)
+	Live(ctx context.Context, scenarioID string) (engine.LiveRecord, error)
 }
 
 type handler struct {
@@ -56,6 +57,7 @@ func NewHandlerWithProxy(svc Service, proxyURL string, browser *Browser) http.Ha
 	mux.HandleFunc("GET /api/client/status", h.clientStatus)
 	mux.HandleFunc("POST /api/client/join", h.clientJoin)
 	mux.HandleFunc("POST /api/browse", h.browse)
+	mux.HandleFunc("POST /api/live", h.live)
 	mux.HandleFunc("GET /api/health", h.health)
 	mux.HandleFunc("GET /api/capabilities", h.capabilities)
 	mux.HandleFunc("GET /api/scenarios", h.scenarios)
@@ -226,6 +228,25 @@ func (h *handler) resolve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, rep)
+}
+
+func (h *handler) live(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		ScenarioID string `json:"scenario_id"`
+	}
+	if !decode(w, r, &req) {
+		return
+	}
+	if req.ScenarioID == "" {
+		writeError(w, http.StatusUnprocessableEntity, "invalid request: scenario_id is required")
+		return
+	}
+	lr, err := h.svc.Live(r.Context(), req.ScenarioID)
+	if err != nil {
+		h.serviceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, lr)
 }
 
 func (h *handler) build(w http.ResponseWriter, r *http.Request) {

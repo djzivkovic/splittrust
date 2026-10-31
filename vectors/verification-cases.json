@@ -1,6 +1,60 @@
 {
   "cases": [
     {
+      "scenario": "real-office",
+      "title": "Alfa's office Wi-Fi",
+      "device": "validating-stub",
+      "decision": "accepted",
+      "reason": "AUTHORIZED",
+      "exercises": "",
+      "explanation": "Company Alfa adopted RFC 9704: its zone zivkovic.me is DNSSEC-signed at Cloudflare and publishes a Verification Record authorising dns.splittrust.zivkovic.me for internal.splittrust.zivkovic.me. Alfa's devices verify the office network's claim against the real DNS before using the office resolver for those names."
+    },
+    {
+      "scenario": "real-office",
+      "title": "Alfa's office Wi-Fi",
+      "device": "private-dns",
+      "decision": "accepted",
+      "reason": "EXTERNAL_TOKEN_MATCH",
+      "exercises": "",
+      "explanation": "Company Alfa adopted RFC 9704: its zone zivkovic.me is DNSSEC-signed at Cloudflare and publishes a Verification Record authorising dns.splittrust.zivkovic.me for internal.splittrust.zivkovic.me. Alfa's devices verify the office network's claim against the real DNS before using the office resolver for those names."
+    },
+    {
+      "scenario": "real-office",
+      "title": "Alfa's office Wi-Fi",
+      "device": "hybrid",
+      "decision": "accepted",
+      "reason": "AUTHORIZED",
+      "exercises": "",
+      "explanation": "Company Alfa adopted RFC 9704: its zone zivkovic.me is DNSSEC-signed at Cloudflare and publishes a Verification Record authorising dns.splittrust.zivkovic.me for internal.splittrust.zivkovic.me. Alfa's devices verify the office network's claim against the real DNS before using the office resolver for those names."
+    },
+    {
+      "scenario": "real-hotel-forged",
+      "title": "Hotel Wi-Fi claims Alfa's domain",
+      "device": "validating-stub",
+      "decision": "rejected",
+      "reason": "DNSSEC_BOGUS",
+      "exercises": "",
+      "explanation": "A hotel network claims all of zivkovic.me and its resolver serves a forged copy of the zone: every name points at the hotel's page and the Verification Record carries the correct token for the hotel's claim. Alfa's device validates against the real DNSSEC chain (root, .me, Cloudflare) and rejects the claim; the hotel cannot produce Cloudflare's signatures."
+    },
+    {
+      "scenario": "real-hotel-forged",
+      "title": "Hotel Wi-Fi claims Alfa's domain",
+      "device": "private-dns",
+      "decision": "rejected",
+      "reason": "RECORD_MISSING",
+      "exercises": "",
+      "explanation": "A hotel network claims all of zivkovic.me and its resolver serves a forged copy of the zone: every name points at the hotel's page and the Verification Record carries the correct token for the hotel's claim. Alfa's device validates against the real DNSSEC chain (root, .me, Cloudflare) and rejects the claim; the hotel cannot produce Cloudflare's signatures."
+    },
+    {
+      "scenario": "real-replay",
+      "title": "Hotel replays Alfa's claim",
+      "device": "validating-stub",
+      "decision": "rejected",
+      "reason": "TLS_IDENTITY_FAILED",
+      "exercises": "",
+      "explanation": "The hotel copies Alfa's real claim word for word and announces its own resolver under Alfa's resolver name. The certificate is for dns.hotel.lab, so TLS identity fails before any DNS query."
+    },
+    {
       "scenario": "legit",
       "title": "Company network, authorised claims",
       "device": "validating-stub",
@@ -125,24 +179,6 @@
       "reason": "SPECIAL_USE_NAME",
       "exercises": "s3: Special-Use Domain Names MUST NOT be validated",
       "explanation": "A network claims home.arpa. RFC 9704 section 3: Special-Use Domain Names MUST NOT be validated. Rejected without any network traffic."
-    },
-    {
-      "scenario": "real-zivkovic",
-      "title": "Real DNS: zivkovic.me authorises the lab resolver",
-      "device": "validating-stub",
-      "decision": "accepted",
-      "reason": "AUTHORIZED",
-      "exercises": "the same pipeline against the real DNS: IANA root anchor, Cloudflare-hosted zone, real dns.quad9.net for the private-dns device",
-      "explanation": "The only scenario that leaves the lab. The real zone zivkovic.me (Cloudflare) publishes dns.splittrust.zivkovic.me._splitdns-challenge.zivkovic.me; the device validates it under the IANA root trust anchor and, for the private-dns device, through the real dns.quad9.net. The lab's resolver has no Internet access, so this device resolves iteratively from the IANA root. Runs only in the egress-enabled `real` service: docker compose --profile real run --rm real verify --scenario real-zivkovic"
-    },
-    {
-      "scenario": "real-zivkovic",
-      "title": "Real DNS: zivkovic.me authorises the lab resolver",
-      "device": "private-dns",
-      "decision": "accepted",
-      "reason": "EXTERNAL_TOKEN_MATCH",
-      "exercises": "the same pipeline against the real DNS: IANA root anchor, Cloudflare-hosted zone, real dns.quad9.net for the private-dns device",
-      "explanation": "The only scenario that leaves the lab. The real zone zivkovic.me (Cloudflare) publishes dns.splittrust.zivkovic.me._splitdns-challenge.zivkovic.me; the device validates it under the IANA root trust anchor and, for the private-dns device, through the real dns.quad9.net. The lab's resolver has no Internet access, so this device resolves iteratively from the IANA root. Runs only in the egress-enabled `real` service: docker compose --profile real run --rm real verify --scenario real-zivkovic"
     }
   ],
   "description": "Expected verdicts of the SplitTrust lab scenarios per simulated device. trust_context is always \"lab\": a private root, not the global DNS.",

@@ -14,12 +14,18 @@ export interface Grant {
   resolver: string; scopes: string[]; expires_at: string; authorized_keys: string[];
   local_dnssec_mode: "delegated" | "not_established"; path: "dnssec" | "external"; external_ad: boolean; dot_addr: string;
 }
-export interface Inspection { resolver: string; parent: string; relative: string[]; scopes: string[]; token: string; record_owner: string; warnings?: string[] }
+export interface Inspection { canonical_resolver: string; canonical_parent: string; relative: string[]; scopes: string[]; whole_zone: boolean; algorithm: string; token: string; record_owner: string; warnings?: string[] }
 export interface ClaimReport { index: number; resolver: string; decision: Decision; reason: string; stages: Stage[]; inspection?: Inspection; grant?: Grant }
 export interface Run { schema_version: number; scenario_id: string; device: Device; resolution: Resolution; trust_context: string; decision: Decision; claims: ClaimReport[] }
 
-export interface Lookup { via: string; rcode: string; ad: boolean; answers: string[]; ede?: string; page?: string; page_error?: string; error?: string; millis: number }
+export interface Lookup { via: string; rcode: string; ad: boolean; answers: string[]; ede?: string; page?: string; page_url?: string; page_error?: string; error?: string; millis: number }
 export interface BrowseResult { name: string; device: Lookup; naive?: Lookup }
+
+export interface LiveRecord {
+  parent: string; record_owner: string; expected_token: string; checked_at: string; trust_context: string;
+  txt: { security: string; rcode: string; answer?: string[]; why?: string; forwarder?: string; rrsig_expires_at?: string };
+  ds: { security: string; rcode: string; answer?: string[]; why?: string };
+}
 
 export interface ClientStatus {
   scenario_id: string; title: string; device: Device; resolution: Resolution; trust_context: string; queries: number;
@@ -46,7 +52,8 @@ export const api = {
   capabilities: () => call<Record<string, unknown>>("/api/capabilities"),
   verify: (scenario_id: string, device?: Device, resolution?: Resolution) => call<Run>("/api/verify", { scenario_id, device: device ?? "", resolution: resolution ?? "" }),
   resolve: (scenario_id: string, qname: string, device?: Device, resolution?: Resolution) => call<ResolveReport>("/api/resolve", { scenario_id, qname, device: device ?? "", resolution: resolution ?? "" }),
-  browse: (name: string, with_naive = true) => call<BrowseResult>("/api/browse", { name, with_naive }),
+  browse: (name: string, with_naive = true, naive_dns = "") => call<BrowseResult>("/api/browse", { name, with_naive, naive_dns }),
+  live: (scenario_id: string) => call<LiveRecord>("/api/live", { scenario_id }),
   clientStatus: () => call<ClientStatus>("/api/client/status"),
   clientJoin: (scenario_id: string, device: Device) => call<ClientStatus>("/api/client/join", { scenario_id, device, resolution: "" }),
   inspect: (claim: unknown) => call<Inspection & { error?: string; detail?: string }>("/api/inspect", { claim }),

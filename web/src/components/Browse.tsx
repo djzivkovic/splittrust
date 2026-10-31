@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { api, type BrowseResult, type Lookup } from "../lib/api";
-import { suggestions } from "../lib/networks";
 
 export function Result({ title, l }: { title: string; l: Lookup }) {
   const failed = !!l.error || l.answers.length === 0;
@@ -20,7 +19,7 @@ export function Result({ title, l }: { title: string; l: Lookup }) {
         </div>
       ) : (
         <div className="mt-3">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Page returned</div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{l.page_url ? `Fetched ${l.page_url}` : "Page returned"}</div>
           <div className={`mt-1 text-lg font-semibold leading-snug ${fake ? "text-red-800" : "text-green-800"}`}>{l.page ?? l.page_error ?? "(no page)"}</div>
           <div className="mt-2 font-mono text-xs text-slate-500">{l.answers.join(", ")}; {l.rcode}{l.ad ? "; AD set (validated)" : ""}</div>
           {l.ede && <div className="mt-1 text-xs text-slate-500">{l.ede}</div>}
@@ -28,6 +27,12 @@ export function Result({ title, l }: { title: string; l: Lookup }) {
       )}
     </motion.div>
   );
+}
+
+function suggestions(scenarioId: string): string[] {
+  if (scenarioId.startsWith("real-")) return ["host.internal.splittrust.zivkovic.me", "www.zivkovic.me", "intranet.beta.example"];
+  if (scenarioId.startsWith("hotel")) return ["www.banka.lab", "host.internal.corp.lab"];
+  return ["host.internal.corp.lab", "host.mail.corp.lab", "www.corp.lab"];
 }
 
 export function Browse({ scenarioId, hotel, disabled }: { scenarioId: string; hotel: boolean; disabled?: boolean }) {

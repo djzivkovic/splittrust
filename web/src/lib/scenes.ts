@@ -1,135 +1,82 @@
-/* The demo as a sequence of scenes. Each scene is one lab network told as a real situation,
-   with the device the story starts on and the name the person tries to open. Presenter notes
-   are what to say; the screens show what is true. */
+/* The demo: two companies in the same situations. Alfa adopted RFC 9704 with SplitTrust; its zone is
+   the real, DNSSEC-signed zivkovic.me. Beta did not; its devices use whatever resolver the network
+   hands them. Every Alfa verdict is computed live against the real DNS. */
 
-import type { Device } from "./api";
+
+export interface Company {
+  name: string;
+  domain: string;
+  adopted: boolean;
+  intranet: string;     // the internal host an employee opens
+  publicSite: string;   // the company's public site (exists in the real DNS)
+  naiveDNS: string;     // the resolver a device without SplitTrust uses on this scene's network
+}
 
 export interface Scene {
-  id: string;            // scenario id
-  title: string;         // short, for the strip
-  situation: string;     // one or two sentences, plain language, present tense
-  device: Device;        // where the story starts
-  name: string;          // the name the person opens
-  announces: string;     // what the network says, in words
-  world: string;         // what is actually true
-  notes: string[];       // presenter notes per step (situation, announced, checks, verdict, proof)
-  talk?: boolean;        // part of the five-minute talk
+  id: string;             // Alfa's verification scenario on this network
+  title: string;
+  when: string;           // one line: where and when
+  situation: string;      // what happens, plain language
+  alfa: Company;
+  beta: Company;
+  withoutTool: string;    // what Beta's device does
+  withTool: string;       // what Alfa's device does
+  lesson: string;         // the takeaway for a company deciding whether to adopt
+  check: string;          // one command anyone in the room can run
+  notes: string[];        // presenter notes: story, verification, result
 }
+
+const ALFA_OFFICE: Company = { name: "Alfa", domain: "zivkovic.me", adopted: true, intranet: "host.internal.splittrust.zivkovic.me", publicSite: "zivkovic.me", naiveDNS: "172.30.97.20:53" };
+const BETA_OFFICE: Company = { name: "Beta", domain: "beta.example", adopted: false, intranet: "intranet.beta.example", publicSite: "beta.example", naiveDNS: "172.30.97.20:53" };
+const ALFA_HOTEL: Company = { ...ALFA_OFFICE, naiveDNS: "172.30.97.21:53" };
+const BETA_HOTEL: Company = { ...BETA_OFFICE, naiveDNS: "172.30.97.21:53" };
 
 export const SCENES: Scene[] = [
   {
-    id: "hotel-forged", title: "Hotel: forged record", talk: true, device: "validating-stub", name: "www.banka.lab",
-    situation: "You check into a hotel and join its Wi-Fi. The network tells your laptop that its own resolver answers for your bank's domain. You open the bank.",
-    announces: "dns.hotel.lab answers for everything under banka.lab.",
-    world: "The hotel's resolver serves its own copy of banka.lab, including a Verification Record with the correct token. It wrote the claim, so it knows the token. The bank's zone never signed any of it.",
+    id: "real-office", title: "1. Monday: at the office",
+    when: "Both employees are at their own company's office, on the company Wi-Fi.",
+    situation: "Each office network hands out a resolver that knows the company's internal hosts, which do not exist in the public DNS. Both employees open their intranet.",
+    alfa: ALFA_OFFICE, beta: BETA_OFFICE,
+    withoutTool: "Beta's laptop uses the resolver the network gave it. The intranet loads. Nothing was checked; nothing needed checking today.",
+    withTool: "Alfa's laptop first verifies the network's claim: it fetches Alfa's Verification Record from the real zivkovic.me zone, validates the DNSSEC chain from the root, and makes the office resolver prove its name. Only then does it use that resolver for internal.splittrust.zivkovic.me.",
+    lesson: "On a trusted network both companies work the same. The difference is invisible on Monday.",
+    check: "dig +short TXT dns.splittrust.zivkovic.me._splitdns-challenge.zivkovic.me",
     notes: [
-      "A hotel Wi-Fi tells your laptop: I answer for the bank. Nothing today lets the laptop check whether the bank agreed. Encrypting DNS does not help: you are talking to the wrong server, encrypted.",
-      "This is the claim as the network actually sent it: resolver name, parent domain, the names it wants, a salt. RFC 9704 turns this into a token the domain owner would have to publish.",
-      "The hotel publishes a record with the correct token. The token matches. But the record comes from the hotel's own copy of the zone, and the bank's signatures are missing. The device says: bogus.",
-      "The token is not the proof. The owner's DNSSEC signature is. Nothing under banka.lab is sent to the hotel's resolver.",
-      "Same Wi-Fi, two devices. Without SplitTrust: the hotel's fake bank. With SplitTrust: the name does not resolve. Failing safely is the feature.",
+      "Two companies, same job: an internal site that only the office resolver knows. Alfa published one TXT record in its real zone and runs the SplitTrust resolver on its laptops. Beta did neither.",
+      "Alfa's laptop does what RFC 9704 asks before trusting the office resolver with those names: token, TLS identity, the owner's record validated from the real root down. Accepted. This is live against the real DNS; the dig command on the left works from your laptop too.",
+      "Both intranets load. Alfa's answer is marked as coming from a resolver the domain owner authorised; Beta's is just an answer.",
     ],
   },
   {
-    id: "legit", title: "Office: the intranet", talk: true, device: "validating-stub", name: "host.internal.corp.lab",
-    situation: "You are on your company's Wi-Fi with a company laptop. The network says its resolver answers for the internal domain. You open an intranet host that does not exist in the public DNS.",
-    announces: "dns.corp.lab answers for internal.corp.lab; dns2.corp.lab answers for mail.corp.lab.",
-    world: "corp.lab is DNSSEC-signed and publishes both Verification Records. The first also delegates a DNSSEC key to the company resolver.",
+    id: "real-hotel-forged", title: "2. Tuesday: at the hotel",
+    when: "Both employees travel. They join the hotel Wi-Fi and open their intranet, as they do every day.",
+    situation: "The hotel network announces that its resolver answers for both companies' domains, and that resolver serves its own copy of each zone: every name points at the hotel's page, and for Alfa's domain it even publishes a Verification Record with the correct token, because it wrote the claim.",
+    alfa: ALFA_HOTEL, beta: BETA_HOTEL,
+    withoutTool: "Beta's laptop uses the resolver the network gave it, exactly as on Monday. The intranet name resolves to the hotel's server. The page looks like the intranet login.",
+    withTool: "Alfa's laptop verifies the hotel's claim against the real DNS. The token matches, but the record did not come from Cloudflare's signed zone: Bogus. The claim is rejected and the hotel's resolver is never used for zivkovic.me. The name fails to resolve instead of resolving to the wrong place.",
+    lesson: "The same employee behaviour, the same Wi-Fi. Beta's credentials are on the hotel's server. Alfa's laptop failed safely, and Alfa's phone with Private DNS reaches the real zivkovic.me through Quad9.",
+    check: "dig +short zivkovic.me @9.9.9.9   (the real addresses, not 172.30.97.66)",
     notes: [
-      "The legitimate case: split-horizon DNS that the domain owner actually agreed to. Same mechanism, opposite outcome.",
-      "Two claims this time. Each is verified on its own.",
-      "The record exists, is signed from the root down, and carries the expected token. The owner also delegated a key, so the device can validate the company resolver's own answers.",
-      "Authority established. Queries for internal.corp.lab go to dns.corp.lab over authenticated TLS and every answer is validated under the delegated key.",
-      "A plain client, no SplitTrust code inside, with the SplitTrust proxy as its DNS server: the intranet page loads and the answer carries the AD flag.",
+      "Tuesday. Same employees, same habit, hostile Wi-Fi. The hotel claims both domains. For Alfa's it goes further and forges the owner's record with the right token.",
+      "Alfa's laptop validates the record against the real DNSSEC chain: root, .me, Cloudflare. The hotel has the token but not Cloudflare's signatures. Bogus, rejected, resolver never used. The token is not the proof; the signature is.",
+      "Beta's laptop gets the fake page. Alfa's laptop cannot resolve the name and stops. Press 2: Alfa's phone with Private DNS asks Quad9 and reaches the real site. That is the whole case for adopting this: the attack that works on Beta does not work on Alfa.",
     ],
   },
   {
-    id: "hotel", title: "Hotel: plain hijack", talk: true, device: "validating-stub", name: "www.banka.lab",
-    situation: "The same hotel, without the forgery. The network still claims the bank, and its resolver simply answers www.banka.lab with its own address.",
-    announces: "dns.hotel.lab answers for everything under banka.lab.",
-    world: "The bank never published a Verification Record. The hotel relays the bank's signed denial unchanged and overrides www.banka.lab for its guests.",
+    id: "real-replay", title: "3. What Alfa's IT did",
+    when: "Back at the office, after the trip.",
+    situation: "Alfa's record is public, so a hotel can copy Alfa's claim word for word and announce its own resolver under Alfa's resolver name. Beta's IT asks what it would take to be in Alfa's position.",
+    alfa: ALFA_HOTEL, beta: BETA_HOTEL,
+    withoutTool: "Beta has nothing to copy and nothing to check. Any network can claim beta.example.",
+    withTool: "Alfa's laptop makes the resolver prove its name over TLS before any DNS query. The hotel's certificate is for dns.hotel.lab, not dns.splittrust.zivkovic.me. Rejected before a single query.",
+    lesson: "Three things Alfa did: signed its zone (DNSSEC), published one TXT record for the claim, and pointed its devices at a resolver that checks. No change to applications, no new servers at the hotel's mercy.",
+    check: "dig +short zivkovic.me DS   (the signed chain that makes the record provable)",
     notes: [
-      "The hotel does not bother to forge anything. It just answers the bank's name with its own server.",
-      "Same claim as before.",
-      "The device asks for the owner's record through the hotel. The bank's zone answers, signed: there is no such record. The hotel cannot hide a signed denial.",
-      "Rejected: the owner published nothing. The device keeps its normal path for the bank.",
-      "Now switch the device to the phone with Private DNS: it gets the real bank through Quad9. The device without SplitTrust gets the fake page either way.",
+      "Last question: is this just a TXT record anyone can copy? The record is public.",
+      "A copied claim is worthless without the resolver's certificate. Alfa's laptop rejects the hotel before the first DNS query.",
+      "What Alfa did, in order: DNSSEC on the zone, one TXT record built with the owner tool, the SplitTrust resolver on devices. The live records below are the actual state of the real zone, right now.",
     ],
-  },
-  {
-    id: "unsigned", title: "Cafe: unsigned zone", talk: true, device: "validating-stub", name: "host.internal.unsigned.lab",
-    situation: "A small company runs a cafe network. Its claim is honest and its record is correct, but it never signed its zone with DNSSEC.",
-    announces: "dns.unsigned.lab answers for internal.unsigned.lab.",
-    world: "The record is published and correct, but unsigned.lab has no DNSSEC. There is no signature chain to check.",
-    notes: [
-      "An honest network with a correct record, and still a problem: the zone is not signed.",
-      "The claim is fine. The owner did publish the matching record.",
-      "A device that validates DNSSEC gets a provably unsigned answer. Without a signature there is no proof, and the RFC says a validating device with nobody else to ask must treat this as failed.",
-      "Press 2 for the phone with Private DNS: it asks Quad9, Quad9 says the record exists, and the device accepts. Yellow: this authority rests entirely on Quad9. The fix is to sign the zone.",
-      "The laptop cannot resolve the internal host at all. The phone can. Both are correct under the RFC.",
-    ],
-  },
-  {
-    id: "replay", title: "Hotel: replayed claim", device: "validating-stub", name: "host.internal.corp.lab",
-    situation: "The hotel copies the company's claim word for word and announces its own resolver under the company's resolver name.",
-    announces: "dns.corp.lab answers for internal.corp.lab (the company's claim, copied).",
-    world: "The hotel's resolver sits at the announced address, but its certificate is for dns.hotel.lab.",
-    notes: [
-      "Can an attacker replay a legitimate claim? The record in the company's zone is public, after all.",
-      "The claim is a perfect copy of the company's.",
-      "Before any DNS query the device makes the resolver prove its name over TLS. The certificate says dns.hotel.lab, not dns.corp.lab.",
-      "Rejected before a single DNS query. A copied claim is worthless without the resolver's certificate.",
-      "Nothing to resolve: the device never used that resolver.",
-    ],
-  },
-  {
-    id: "hotel-blocks-external", title: "Hotel: Quad9 blocked", device: "private-dns", name: "www.banka.lab",
-    situation: "The hotel claims the bank and blocks port 853 to Quad9, so a phone with Private DNS cannot reach its own resolver.",
-    announces: "dns.hotel.lab answers for everything under banka.lab.",
-    world: "Port 853 to Quad9 is black-holed.",
-    notes: [
-      "What if the attacker blocks the external resolver a phone relies on?",
-      "Same claim.",
-      "The phone tries Quad9 and gets nothing.",
-      "No answer means verification failed, per the RFC. The hotel achieved a denial of service, not a redirect.",
-      "The phone keeps its defaults and cannot reach Quad9 at all on this network.",
-    ],
-  },
-  {
-    id: "stale-salt", title: "Branch: stale record", device: "validating-stub", name: "host.internal.stale.lab",
-    situation: "A branch office changed the salt in its claim but did not update the record in the zone.",
-    announces: "dns.stale.lab answers for internal.stale.lab (with a new salt).",
-    world: "The zone still carries the record for the old salt.",
-    notes: ["An honest operational mistake.", "The claim carries a new salt.", "The owner's record is valid and signed, but it was computed for the old salt.", "Rejected: tokens differ. RFC 9704 section 11: publish the new record before changing the claim.", "The internal host does not resolve on the laptop until the record is updated."],
-  },
-  {
-    id: "expired-signature", title: "Branch: expired signatures", device: "validating-stub", name: "host.internal.expired.lab",
-    situation: "A branch office signed its zone but let the signatures expire.",
-    announces: "dns.expired.lab answers for internal.expired.lab.",
-    world: "Every RRSIG in expired.lab expired an hour ago.",
-    notes: ["Signatures have lifetimes.", "The claim is fine.", "The chain of trust fails on the expired signatures.", "Rejected as bogus. Monitor your signer.", "The internal host does not resolve."],
-  },
-  {
-    id: "wrong-ds", title: "Branch: wrong key", device: "validating-stub", name: "host.internal.wrongds.lab",
-    situation: "A branch office published a record that delegates a DNSSEC key, but the resolver holds a different key.",
-    announces: "dns.wrongds.lab answers for internal.wrongds.lab.",
-    world: "The record's ds value does not match any key the resolver presents for resolver.arpa.",
-    notes: ["The owner can delegate a key to the resolver so local answers can be validated.", "The record carries a ds value.", "Everything checks out until the key comparison.", "Rejected. The device does not quietly downgrade to token-only authority.", "The internal host does not resolve."],
-  },
-  {
-    id: "special-use", title: "Home: home.arpa", device: "validating-stub", name: "printers.home.arpa",
-    situation: "A home router claims authority over home.arpa.",
-    announces: "dns.corp.lab answers for printers.home.arpa.",
-    world: "home.arpa is a Special-Use Domain Name (RFC 6761).",
-    notes: ["Not everything is verifiable.", "The claim names a Special-Use domain.", "RFC 9704 section 3: such names must not be verified this way. The device stops without sending anything.", "Rejected with zero network traffic.", "home.arpa names are handled by the local network as always."],
-  },
-  {
-    id: "real-zivkovic", title: "Real Internet: zivkovic.me", device: "validating-stub", name: "host.internal.splittrust.zivkovic.me",
-    situation: "Our own domain on the real Internet. The zone is hosted at Cloudflare, DNSSEC-signed, with the DS record at the .me registry.",
-    announces: "dns.splittrust.zivkovic.me answers for internal.splittrust.zivkovic.me.",
-    world: "A real Verification Record, validated under the IANA root trust anchor, from the lab's only Internet-connected container.",
-    notes: ["Is this only a lab trick?", "The same claim format, in a real zone.", "The verification runs from a terminal because the console's container has no Internet access.", "Accepted under the real root. Through the real dns.quad9.net: accepted as well.", "The lab names are not reachable from this container."],
   },
 ];
 
-export const STEP_NAMES = ["Situation", "What the network sent", "What the device checks", "Verdict and evidence", "Proof: two devices"];
+export const STEP_NAMES = ["The story", "Alfa's device checks", "Both devices open the intranet"];

@@ -62,7 +62,7 @@ mkcert() {
 log "certificates"
 mkcert "$GEN/local-dot" dns.corp.lab "DNS:dns.corp.lab,DNS:dns2.corp.lab,DNS:dns.stale.lab,DNS:dns.expired.lab,DNS:dns.unsigned.lab,DNS:dns.wrongds.lab,DNS:dns.splittrust.zivkovic.me"
 mkcert "$GEN/hotel-dot" dns.hotel.lab "DNS:dns.hotel.lab"
-mkcert "$GEN/pvd"       pvd.corp.lab  "DNS:pvd.corp.lab,DNS:pvd.hotel.lab,DNS:replay.hotel.lab,DNS:pvd.stale.lab,DNS:pvd.expired.lab,DNS:pvd.unsigned.lab,DNS:pvd.wrongds.lab"
+mkcert "$GEN/pvd"       pvd.corp.lab  "DNS:pvd.corp.lab,DNS:pvd.hotel.lab,DNS:replay.hotel.lab,DNS:wifi.hotel.lab,DNS:wifi-replay.hotel.lab,DNS:pvd.stale.lab,DNS:pvd.expired.lab,DNS:pvd.unsigned.lab,DNS:pvd.wrongds.lab,DNS:pvd.splittrust.zivkovic.me"
 mkcert "$GEN/external"  quad9.lab     "DNS:quad9.lab"
 cp "$CADIR/ca.pem" "$GEN/client/ca.pem"
 # For the real-DNS scenario: the lab CA (announced resolver) plus the public CAs (dns.quad9.net).
@@ -116,9 +116,12 @@ ds_line lab >> "$WORK/zones/root.zone"
 keygen .
 signzone . root "$START" "$END"
 
-# Trust anchor: the lab root KSK. Root hints: the lab root server.
-cp "$(ksk_file .)" "$GEN/client/trust-anchor.key"
-cp "$GEN/client/trust-anchor.key" "$GEN/external/trust-anchor.key"
+# Trust anchors. The lab device anchors at the "lab." KSK: the office and hotel
+# resolvers forward everything outside "lab." to the real Internet, so a device
+# anchored at the private root would see the real root's keys and go Bogus. The
+# external resolver (quad9.lab) recurses over the private root and keeps its KSK.
+cp "$(ksk_file lab)" "$GEN/client/trust-anchor.key"
+cp "$(ksk_file .)" "$GEN/external/trust-anchor.key"
 printf '.\t3600000\tIN\tNS\tns.lab.\nns.lab.\t3600000\tIN\tA\t%s\n' "$PUB" | tee "$GEN/client/root.hints" > "$GEN/external/root.hints"
 
 cat > "$GEN/public-dns/named.conf" <<EOF
@@ -144,7 +147,7 @@ named-checkconf "$GEN/public-dns/named.conf"
 
 # ---------------------------------------------------------------- local resolvers, PvD, external, client
 cp "$WORK"/local-dot/*.zone "$GEN/local-dot/"
-cp "$WORK"/hotel-dot/banka.lab.fake "$WORK"/hotel-dot/hosts "$GEN/hotel-dot/"
+cp "$WORK"/hotel-dot/*.fake "$WORK"/hotel-dot/hosts "$GEN/hotel-dot/"
 cp "$WORK"/pvd/*.json "$GEN/pvd/docs/"
 sed -e "s#@GEN@#$GEN#g" /bootstrap/unbound.conf.tmpl > "$GEN/external/unbound.conf"
 cp /bootstrap/conf/local-dot.Corefile "$GEN/local-dot/Corefile"
