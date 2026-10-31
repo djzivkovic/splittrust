@@ -34,4 +34,5 @@ export const api = {
   browse: (name: string, with_naive: boolean, naive_dns = "") => call<BrowseResult>("/api/browse", { name, with_naive, naive_dns }),
   live: (scenario_id: string) => call<LiveRecord>("/api/live", { scenario_id }),
   clientJoin: (scenario_id: string, device: Device) => call<unknown>("/api/client/join", { scenario_id, device, resolution: "" }),
+  inspect: (claim: { resolver: string; parent: string; subdomains: string[]; algorithm: string; salt: string }) => call<Inspection & { pseudo_wire_hex: string; token_input_hex: string }>("/api/inspect", { claim }),
 };

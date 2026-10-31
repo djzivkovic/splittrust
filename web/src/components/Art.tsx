@@ -70,9 +70,10 @@ export function Mask({ x = 0, y = 0 }: { x?: number; y?: number }) {
   );
 }
 
+/* Roughly 230 x 110, centred; room for two lines of text inside. */
 export function Cloud({ tone = INK }: { tone?: string }) {
   return (
-    <path d="M -70 20 a 24 24 0 0 1 10 -46 a 34 34 0 0 1 64 -10 a 28 28 0 0 1 46 22 a 22 22 0 0 1 -6 44 Z"
+    <path d="M -88 40 a 30 30 0 0 1 -12 -56 a 40 40 0 0 1 70 -30 a 44 44 0 0 1 78 6 a 34 34 0 0 1 50 30 a 28 28 0 0 1 -10 50 Z"
       fill="#fff" stroke={tone} strokeWidth={3} strokeLinejoin="round" />
   );
 }

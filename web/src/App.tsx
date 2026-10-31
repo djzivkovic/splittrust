@@ -7,6 +7,7 @@ import { api, type BrowseResult, type Device, type LiveRecord, type Run, type Su
 import { ALFA, BETA, REASONS, SCENES, type Scene } from "./lib/deck";
 import { SceneArt, stepsFor, type Step } from "./components/SceneArt";
 import { BrowserFrame } from "./components/Browser";
+import { BuiltSlide, FoundSlide } from "./components/Built";
 import { BLUE, Doc, GREEN, INK, Laptop, Lock, Mark, RED, Resolver, Shield } from "./components/Art";
 
 const BEAT_MS = 1500;
@@ -19,7 +20,7 @@ export default function App() {
   const [evidence, setEvidence] = useState(false);
   useEffect(() => { api.scenarios().then(setSummaries).catch((e) => setErr((e as Error).message)); }, []);
 
-  const total = SCENES.length + 1;
+  const total = SCENES.length + 3; // title, scenes, what we built, what we found
   const go = useCallback((n: number) => { setSlide(Math.max(0, Math.min(total - 1, n))); setDevice("validating-stub"); }, [total]);
 
   useEffect(() => {
@@ -38,13 +39,14 @@ export default function App() {
   if (err) return <Center><div className="text-red-700">Cannot reach the API: {err}</div></Center>;
   if (!summaries) return <Center><div className="text-slate-400">Loading...</div></Center>;
 
-  const scene = slide > 0 ? SCENES[slide - 1] : null;
+  const scene = slide > 0 && slide <= SCENES.length ? SCENES[slide - 1] : null;
+  const extra = slide === SCENES.length + 1 ? <BuiltSlide /> : slide === SCENES.length + 2 ? <FoundSlide /> : null;
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-slate-100 text-slate-900">
       <div className="min-h-0 flex-1 overflow-y-auto">
         <AnimatePresence mode="wait">
           <motion.div key={slide} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.25 }} className="h-full">
-            {scene ? <SceneSlide scene={scene} device={device} evidence={evidence} /> : <TitleSlide />}
+            {scene ? <SceneSlide scene={scene} device={device} evidence={evidence} /> : extra ?? <TitleSlide />}
           </motion.div>
         </AnimatePresence>
       </div>

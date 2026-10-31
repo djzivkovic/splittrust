@@ -12,7 +12,7 @@ export type NodeId = "beta" | "alfa" | "betaRes" | "alfaRes" | "hotelRes" | "bet
 const P: Record<NodeId, { x: number; y: number }> = {
   beta: { x: 170, y: 430 }, alfa: { x: 1030, y: 430 }, router: { x: 600, y: 440 },
   betaRes: { x: 330, y: 260 }, alfaRes: { x: 870, y: 260 }, hotelRes: { x: 600, y: 260 },
-  betaSrv: { x: 150, y: 90 }, fakeSrv: { x: 470, y: 90 }, alfaSrv: { x: 1050, y: 90 }, cloud: { x: 770, y: 80 },
+  betaSrv: { x: 150, y: 90 }, fakeSrv: { x: 470, y: 90 }, alfaSrv: { x: 1050, y: 90 }, cloud: { x: 770, y: 72 },
 };
 
 export interface Beat { from: NodeId; to: NodeId; side: "alfa" | "beta"; label?: string; stages?: string[]; mark?: { node: NodeId; ok: boolean; text?: string } }
@@ -126,9 +126,9 @@ export function SceneArt({ place, device, steps, at, resolverName }: { place: Pl
       <g transform={`translate(${P.alfaSrv.x}, ${P.alfaSrv.y})`}><Server tone={BLUE} /></g>
       {label("alfaSrv", `${ALFA.name} intranet`, hotel ? "unreachable from here" : undefined)}
       <g transform={`translate(${P.cloud.x}, ${P.cloud.y})`}><Cloud /></g>
-      <text x={P.cloud.x} y={P.cloud.y - 2} textAnchor="middle" fontSize={14} fontWeight={700} fill={INK}>the real DNS</text>
-      <text x={P.cloud.x} y={P.cloud.y + 16} textAnchor="middle" fontSize={11} fill={MUTED}>root, .me, Cloudflare, Quad9</text>
-      <g transform={`translate(${P.cloud.x + 62}, ${P.cloud.y - 30})`}><Lock tone={GREEN} /></g>
+      <text x={P.cloud.x - 6} y={P.cloud.y + 2} textAnchor="middle" fontSize={15} fontWeight={700} fill={INK}>the real DNS</text>
+      <text x={P.cloud.x - 6} y={P.cloud.y + 22} textAnchor="middle" fontSize={11} fill={MUTED}>root, .me, Cloudflare, dns.quad9.net</text>
+      <g transform={`translate(${P.cloud.x + 62}, ${P.cloud.y - 22})`}><Lock tone={GREEN} /></g>
 
       {/* packets */}
       <AnimatePresence>
@@ -145,7 +145,7 @@ export function SceneArt({ place, device, steps, at, resolverName }: { place: Pl
       {marks.map((m, i) => {
         const left = m.node === "alfa" || m.node === "alfaRes" || m.node === "alfaSrv";
         const nth = marks.slice(0, i).filter((o) => o.node === m.node).length; // later marks on the same actor stack upwards
-        const off = m.node === "cloud" ? { x: -70, y: 44 + nth * 30 } : m.node === "alfa" || m.node === "beta" ? { x: left ? -62 : 62, y: -44 - nth * 30 } : { x: left ? -66 : 66, y: -30 - nth * 30 };
+        const off = m.node === "cloud" ? { x: -92, y: 66 + nth * 30 } : m.node === "alfa" || m.node === "beta" ? { x: left ? -62 : 62, y: -44 - nth * 30 } : { x: left ? -66 : 66, y: -30 - nth * 30 };
         return (
           <g key={i} transform={`translate(${P[m.node].x + off.x}, ${P[m.node].y + off.y})`}>
             <motion.g initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 300, damping: 16 }}>
