@@ -10,10 +10,10 @@ export function BrowserFrame({ who, url, l, tone }: { who: string; url: string; 
   const border = !l ? "border-slate-200" : failed ? "border-slate-300" : fake ? "border-red-400" : "border-green-400";
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
-      className={`overflow-hidden rounded-xl border-2 bg-white shadow-md ${border}`}>
+      className={`min-w-0 overflow-hidden rounded-xl border-2 bg-white shadow-md ${border}`}>
       <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2">
         <span className="h-3 w-3 rounded-full bg-slate-300" /><span className="h-3 w-3 rounded-full bg-slate-300" /><span className="h-3 w-3 rounded-full bg-slate-300" />
-        <div className="ml-2 flex-1 truncate rounded-md border border-slate-200 bg-white px-3 py-1 font-mono text-sm text-slate-700">{url}</div>
+        <div className="ml-2 min-w-0 flex-1 truncate rounded-md border border-slate-200 bg-white px-3 py-1 font-mono text-sm text-slate-700">{url}</div>
         <span className={`chip ${tone === "alfa" ? "chip-blue" : "chip-grey"}`}>{who}</span>
       </div>
       <div className="min-h-24 px-5 py-3">

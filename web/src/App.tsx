@@ -1,5 +1,5 @@
-/* SplitTrust demo deck. Title, Monday, Tuesday, what Alfa did. Arrow keys move; space replays;
-   1 and 2 switch Alfa's device; e shows the raw evidence. Every verdict and page on screen is live. */
+/* SplitTrust demo deck. Title, Monday, Tuesday, what Pangolin did. Arrow keys move; space replays;
+   1 and 2 switch Pangolin's device; e shows the raw evidence. Every verdict and page on screen is live. */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -61,7 +61,7 @@ export default function App() {
     : kind === "close" ? <ClosingSlide /> : <TitleSlide />;
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-slate-100 text-slate-900">
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
         <AnimatePresence mode="wait">
           <motion.div key={slide} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.25 }} className="h-full">
             {content}
@@ -72,7 +72,7 @@ export default function App() {
         <span className="font-semibold text-slate-700">SplitTrust</span>
         <span className="flex gap-1.5">{Array.from({ length: total }, (_, i) => <button key={i} onClick={() => go(i)} className={`h-2.5 w-2.5 rounded-full ${i === slide ? "bg-slate-900" : "bg-slate-300"}`} aria-label={`slide ${i + 1}`} />)}</span>
         {scene && scene.id !== "real-replay" && (
-          <span className="ml-4 inline-flex items-center gap-1">Alfa's device
+          <span className="ml-4 inline-flex items-center gap-1">Pangolin's device
             {(["validating-stub", "private-dns"] as Device[]).map((d, i) => (
               <button key={d} onClick={() => setDevice(d)} className={`rounded px-2 py-0.5 font-semibold ${device === d ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600"}`}><span className="kbd mr-1">{i + 1}</span>{d === "private-dns" ? "phone" : "laptop"}</button>
             ))}
@@ -136,7 +136,7 @@ function SceneSlide({ scene, device, evidence }: { scene: Scene; device: Device;
 
   return (
     <Slide section={scene.day} title={scene.headline} sub={scene.sub}
-      right={claim && <span className={`rounded-md px-2.5 py-1 text-sm font-semibold ${claim.decision === "accepted" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>Alfa: {REASONS[claim.reason] ?? claim.reason}</span>}>
+      right={claim && <span className={`rounded-md px-2.5 py-1 text-sm font-semibold ${claim.decision === "accepted" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>Pangolin: {REASONS[claim.reason] ?? claim.reason}</span>}>
 
       {claim?.inspection && !recipe && (
         <div className="mt-1 truncate font-mono text-xs text-slate-500">
@@ -155,15 +155,15 @@ function SceneSlide({ scene, device, evidence }: { scene: Scene; device: Device;
           {claim && <StageStrip claim={claim} steps={steps} at={at} />}
           {evidence ? (
             <div className="h-64 pb-3">
-              <DigPanel leftTitle={`Beta's laptop asks the network's resolver (${scene.betaDNS})`} left={beta?.naive ?? null}
-                rightTitle={`Alfa's ${device === "private-dns" ? "phone" : "laptop"} asks the SplitTrust proxy (172.30.97.60)`} right={alfa?.device ?? null} />
+              <DigPanel leftTitle={`Dodo's laptop asks the network's resolver (${scene.betaDNS})`} left={beta?.naive ?? null}
+                rightTitle={`Pangolin's ${device === "private-dns" ? "phone" : "laptop"} asks the SplitTrust proxy (172.30.97.60)`} right={alfa?.device ?? null} />
             </div>
           ) : (
-            <div className="grid h-56 grid-cols-[1fr_1fr_1.2fr] gap-4 pb-3">
-              <div className={`transition-opacity ${done ? "opacity-100" : "opacity-0"}`}>
+            <div className="grid h-56 min-w-0 grid-cols-[1fr_1fr_1.2fr] gap-4 pb-3">
+              <div className={`min-w-0 transition-opacity ${done ? "opacity-100" : "opacity-0"}`}>
                 <BrowserFrame who={`${BETA.name}'s laptop`} url={`http://${scene.betaName}/`} l={beta?.naive ?? null} tone="beta" />
               </div>
-              <div className={`transition-opacity ${done ? "opacity-100" : "opacity-0"}`}>
+              <div className={`min-w-0 transition-opacity ${done ? "opacity-100" : "opacity-0"}`}>
                 <BrowserFrame who={`${ALFA.name}'s ${device === "private-dns" ? "phone" : "laptop"}`} url={`${phoneOff ? "https" : "http"}://${alfaName}/`} l={alfa?.device ?? null} tone="alfa" />
               </div>
               <ProxyDecisions since={runAt} />
@@ -187,7 +187,7 @@ function StageStrip({ claim, steps, at }: { claim: Run["claims"][number]; steps:
     !reached.has(s.id) ? "bg-slate-100 text-slate-400" : s.status === "pass" ? "bg-green-100 text-green-800" : s.status === "skipped" ? "bg-slate-100 text-slate-400" : s.status === "error" ? "bg-amber-100 text-amber-800" : "bg-red-100 text-red-800";
   return (
     <div className="mb-2 flex flex-wrap items-center gap-1.5 font-mono text-[11px]">
-      <span className="mr-1 text-slate-500">Alfa's device:</span>
+      <span className="mr-1 text-slate-500">Pangolin's device:</span>
       {claim.stages.map((s) => (
         <span key={s.id} className={`rounded px-1.5 py-0.5 transition-colors ${colour(s)}`} title={s.message}>{s.id}{reached.has(s.id) && s.code && s.status !== "skipped" ? `=${s.code}` : ""}</span>
       ))}
@@ -195,7 +195,7 @@ function StageStrip({ claim, steps, at }: { claim: Run["claims"][number]; steps:
   );
 }
 
-/* Slide 4: the three things Alfa did, with the real zone's records as they are right now. */
+/* Slide 4: the three things Pangolin did, with the real zone's records as they are right now. */
 function Recipe({ live, claim }: { live: LiveRecord | null; claim: Run["claims"][number] | null }) {
   const txt = live?.txt.answer?.[0]?.split(/\s+/).slice(-1)[0]?.replace(/"/g, "");
   const ds = live?.ds.answer?.[0]?.split(/\s+/).slice(3).join(" ");
@@ -226,7 +226,7 @@ function Recipe({ live, claim }: { live: LiveRecord | null; claim: Run["claims"]
         </svg>
         <div>
           <div className="text-xl font-bold lg:text-2xl">The record is public. Can it be copied?</div>
-          <p className="mt-1 text-base text-slate-700 lg:text-lg">Yes. A hotel copied Alfa's claim word for word (same resolver name, same salt, same token). Alfa's laptop opens DoT to the announced address with SNI <code>dns.splittrust.zivkovic.me</code> and checks the certificate first (RFC 9525): {claim ? <b className={claim.decision === "rejected" ? "text-red-700" : "text-green-700"}>{REASONS[claim.reason] ?? claim.reason}</b> : "..."}. No DNS query was ever sent to it.</p>
+          <p className="mt-1 text-base text-slate-700 lg:text-lg">Yes. A hotel copied Pangolin's claim word for word (same resolver name, same salt, same token). Pangolin's laptop opens DoT to the announced address with SNI <code>dns.splittrust.zivkovic.me</code> and checks the certificate first (RFC 9525): {claim ? <b className={claim.decision === "rejected" ? "text-red-700" : "text-green-700"}>{REASONS[claim.reason] ?? claim.reason}</b> : "..."}. No DNS query was ever sent to it.</p>
         </div>
       </div>
       <p className="mt-auto py-4 text-center text-lg font-medium text-slate-800 lg:text-xl">{SCENES[2].takeaway}</p>

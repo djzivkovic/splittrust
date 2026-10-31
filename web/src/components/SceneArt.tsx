@@ -1,4 +1,4 @@
-/* One drawing per scene: Beta on the left, Alfa on the right, the network in the middle, the real
+/* One drawing per scene: Dodo on the left, Pangolin on the right, the network in the middle, the real
    DNS above. Packets travel along the lines; marks appear where the real verification said so. */
 
 import { AnimatePresence, motion } from "framer-motion";

@@ -17,7 +17,7 @@ export function ProxyDecisions({ since, limit = 4 }: { since: number; limit?: nu
     return () => { stop = true; window.clearInterval(id); };
   }, [since, limit]);
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border-2 border-slate-200 bg-white shadow-md">
+    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border-2 border-slate-200 bg-white shadow-md">
       <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">
         <span className="h-2 w-2 animate-pulse rounded-full bg-green-500" /> SplitTrust proxy, live: what it decided for the laptop's queries
       </div>
@@ -52,14 +52,14 @@ function shorten(t: string): string {
 /* Full-width dig transcripts, side by side. */
 export function DigPanel({ left, right, leftTitle, rightTitle }: { left: Lookup | null; right: Lookup | null; leftTitle: string; rightTitle: string }) {
   const block = (title: string, l: Lookup | null) => (
-    <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-slate-700 bg-slate-900">
+    <div className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-slate-700 bg-slate-900">
       <div className="border-b border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-300">{title}</div>
-      <pre className="min-h-0 flex-1 overflow-auto p-3 font-mono text-[12px] leading-relaxed text-slate-100">
+      <pre className="min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap break-all p-3 font-mono text-[12px] leading-relaxed text-slate-100">
         {!l?.dig ? <span className="text-slate-500">waiting for the lookup...</span> : l.dig.split("\n").map((line, i) => (
           <div key={i} className={line.startsWith("$") ? "text-green-300" : line.includes("status: SERVFAIL") || line.startsWith(";; EDE") ? "text-red-300" : line.includes("status: NOERROR") ? "text-emerald-200" : line.startsWith(";;") ? "text-slate-400" : "text-sky-200"}>{line}</div>
         ))}
       </pre>
     </div>
   );
-  return <div className="grid h-full min-h-0 grid-cols-2 gap-4">{block(leftTitle, left)}{block(rightTitle, right)}</div>;
+  return <div className="grid h-full min-h-0 min-w-0 grid-cols-2 gap-4">{block(leftTitle, left)}{block(rightTitle, right)}</div>;
 }

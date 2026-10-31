@@ -51,7 +51,7 @@ lab:53 {
 }
 .:53 {
     file /gen/hotel-dot/zivkovic.me.fake zivkovic.me
-    file /gen/hotel-dot/beta.example.fake beta.example
+    file /gen/hotel-dot/dodo.example.fake dodo.example
     forward . 9.9.9.9 1.1.1.1
     errors
     log

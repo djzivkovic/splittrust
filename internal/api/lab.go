@@ -34,15 +34,15 @@ type labTarget struct {
 // "demo" group is what the scenes use; "testbed" serves the RFC's corner-case
 // scenarios, the plain clients used from the CLI, and the integration suite.
 var labTargets = []labTarget{
-	{"local-dot", "demo", "CoreDNS: Alfa's office resolver (DoT)", "172.30.97.20:853", "dot", "dns.splittrust.zivkovic.me", "internal.splittrust.zivkovic.me."},
-	{"local-dot :53", "demo", "CoreDNS: Beta's plain office resolver", "172.30.97.20:53", "dns", "", "intranet.beta.example."},
+	{"local-dot", "demo", "CoreDNS: Pangolin's office resolver (DoT)", "172.30.97.20:853", "dot", "dns.splittrust.zivkovic.me", "internal.splittrust.zivkovic.me."},
+	{"local-dot :53", "demo", "CoreDNS: Dodo's plain office resolver", "172.30.97.20:53", "dns", "", "intranet.dodo.example."},
 	{"hotel-dot :8853", "demo", "CoreDNS: the hotel's forging resolver (DoT)", "172.30.97.21:8853", "dot", "dns.hotel.lab", "zivkovic.me."},
-	{"hotel-dot :53", "demo", "CoreDNS: the hotel's plain DNS for guests", "172.30.97.21:53", "dns", "", "intranet.beta.example."},
+	{"hotel-dot :53", "demo", "CoreDNS: the hotel's plain DNS for guests", "172.30.97.21:53", "dns", "", "intranet.dodo.example."},
 	{"pvd", "demo", "nginx: the networks' PvD documents (HTTPS)", "172.30.97.30:443", "https", "pvd.splittrust.zivkovic.me", ""},
-	{"proxy", "demo", "splittrust proxy: Alfa's laptop's DNS server", "172.30.97.60:53", "dns", "", "lab."},
+	{"proxy", "demo", "splittrust proxy: Pangolin's laptop's DNS server", "172.30.97.60:53", "dns", "", "lab."},
 	{"proxy control", "demo", "splittrust proxy: control API (join, status, log)", "172.30.97.60:8001", "control", "", ""},
-	{"intranet", "demo", "nginx: Alfa's intranet", "172.30.97.70:80", "http", "host.internal.splittrust.zivkovic.me", ""},
-	{"beta-intranet", "demo", "nginx: Beta's intranet", "172.30.97.71:80", "http", "intranet.beta.example", ""},
+	{"intranet", "demo", "nginx: Pangolin's intranet", "172.30.97.70:80", "http", "host.internal.splittrust.zivkovic.me", ""},
+	{"dodo-intranet", "demo", "nginx: Dodo's intranet", "172.30.97.71:80", "http", "intranet.dodo.example", ""},
 	{"fake-bank", "demo", "nginx: the hotel's page", "172.30.97.66:80", "http", "www.zivkovic.me", ""},
 	{"public-dns", "testbed", "BIND: private root, lab TLD, 7 parent zones (1 unsigned)", "172.30.97.10:53", "dns", "", "lab."},
 	{"hotel-dot :853", "testbed", "CoreDNS: the hotel's honest view (lab scenario)", "172.30.97.21:853", "dot", "dns.hotel.lab", "banka.lab."},
