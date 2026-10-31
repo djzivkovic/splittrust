@@ -1,7 +1,8 @@
 # SplitTrust — what it is, what the lab is for, and how the console should flow
 
-Status: proposal for the UI rebuild (2026-10-31). The engine, lab and proxy exist and pass their tests;
-the console does not yet tell the story they make possible.
+Status: implemented (2026-10-31) as the React console in `web/` — Stage / Live / About. Section 5 below
+is the flow as built; section 6's backend additions exist (`/api/browse`, the story sentences live in
+`web/src/lib/story.ts`, network metadata in `web/src/lib/networks.ts`).
 
 ---
 

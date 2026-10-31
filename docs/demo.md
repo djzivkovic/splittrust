@@ -1,8 +1,9 @@
 # SplitTrust — the 5-minute demo
 
-Hard limit: 5 minutes. Three scenarios go live; the other seven stay in the lab for questions.
-Everything happens in `http://127.0.0.1:8000` (the console) with one terminal visible for the
-`resolve` payoff. Rehearse twice with a timer; record a backup video of the three scenarios.
+Hard limit: 5 minutes. Three networks go live; the rest stay in the lab for questions.
+Everything happens on the console's **Stage** page (`http://127.0.0.1:8000`): pick the device (`1 2 3`),
+join a network (`← →`), watch the animated check (`space` replays), browse. No terminal needed on stage.
+Rehearse twice with a timer; record a backup video.
 
 ## Before you go on stage
 
@@ -23,10 +24,10 @@ docker compose -f lab/compose.yaml down -v && docker compose -f lab/compose.yaml
 | Time | Say | Show |
 |---|---|---|
 | 0:00–0:40 | A hotel Wi-Fi tells your phone "I answer for banka.rs". Nothing today lets the phone check whether the bank agreed. Encrypting DNS does not help — you are talking to the wrong server, encrypted. RFC 9704 (Jan 2025) gives the bank a way to say *who* may answer *for what*, and the device a way to check it. No public implementation existed. We built one, plus the lab to attack it. | Slide 1: the hotel/bank picture. |
-| 0:40–1:30 | **The hotel forges the record.** The hotel's own resolver serves the Verification Record with the *correct* token — it wrote the claim, so it knows the token. The device computes the same token, fetches the record through the hotel, and the signature chain says: the bank's zone never signed this. Bogus. Rejected. The token is not the proof; the bank's signature is. | Console: `hotel-forged`, device `validating-stub`, **Verify**. Point at `public_dnssec: fail — no DNSSEC records … for DS banka.lab while building chain of trust`. |
-| 1:30–2:20 | **The company that actually agreed — and a client that never heard of SplitTrust.** corp.lab is signed and publishes two records; both claims accepted, the first delegates a key. The client container has plain curl and the SplitTrust proxy as its DNS server: the intranet page loads, `dig` shows the AD bit and the EDE text. Then move the client to the hotel Wi-Fi: the bank cannot be resolved (SERVFAIL, DNSSEC Bogus) while the naive twin on the same Wi-Fi gets the hotel's fake bank page. | Console: `legit` **Verify** (green). Terminal: `exec client curl -s http://host.internal.corp.lab`; console "Client on the network" → hotel; `exec client curl -s http://www.banka.lab` (fails) vs `exec naive curl -s http://www.banka.lab` ("FAKE … password :)"). |
-| 2:20–2:50 | **The unsigned zone — both answers the RFC gives.** A device that validates DNSSEC has no proof and no fallback: rejected (§6.2). A phone whose default resolver is Quad9 verifies through it (§6.1): accepted, but yellow — its security now rests entirely on that resolver. Sign your zone. | Console: `unsigned` as `validating-stub` → red; switch device to `private-dns` → yellow `EXTERNAL_TOKEN_MATCH`. |
-| 2:50–3:30 | What we built: one Go binary — verifier, CLI, API, console; a Docker lab with a private signed root, hybrid resolvers for a company and a hotel (honest and forging), PvD servers, an external resolver; ten scenarios, three simulated devices; published test vectors; an erratum. | Slide: architecture in one picture (design §5). |
+| 0:40–1:30 | **The hotel forges the record.** The hotel's own resolver serves the Verification Record with the *correct* token — it wrote the claim, so it knows the token. The device computes the same token, fetches the record through the hotel, and the signature chain says: the bank's zone never signed this. Bogus. Rejected. The token is not the proof; the bank's signature is. | Stage: device *Laptop*, network *Hotel Guest → forges the record*. Let the animation run: the packet reaches the `banka.lab zone` and the map breaks there. Read the verdict card aloud. |
+| 1:30–2:20 | **The company that actually agreed — and a client that never heard of SplitTrust.** corp.lab is signed and publishes two records; both claims accepted, the first delegates a key. In *Now browse*, `host.internal.corp.lab` loads the intranet page with the AD bit. Then back to *Hotel Guest*: browse `www.banka.lab` — your device cannot resolve it (SERVFAIL, DNSSEC Bogus) while the naive device on the same Wi-Fi gets "FAKE www.banka.lab … enter your password". | Stage: *Corp Wi-Fi* (green path lights up) → browse `host.internal.corp.lab`; then *Hotel Guest → plays it straight* → browse `www.banka.lab`: two columns. |
+| 2:20–2:50 | **The unsigned zone — both answers the RFC gives.** A device that validates DNSSEC has no proof and no fallback: rejected (§6.2). A phone whose default resolver is Quad9 verifies through it (§6.1): accepted, but yellow — its security now rests entirely on that resolver. Sign your zone. | Stage: *Startup Café* as *Laptop* → red at the zone; press `2` (Phone) → the packet goes to quad9.lab instead → yellow. |
+| 2:50–3:30 | What we built: one Go binary — verifier, DNS proxy, CLI, API, console; a Docker lab with a private signed root, hybrid resolvers for a company and a hotel (honest and forging), PvD servers, an external resolver, web servers and a plain client; ten lab networks, three simulated devices, one real zone (`zivkovic.me`, green under the IANA root); published test vectors; an erratum. | Slide: architecture in one picture (About page / design §5). |
 | 3:30–4:15 | **The RFC's only example is wrong — and we know exactly why.** 63 characters, 47 octets, SHA-384 gives 48. The printed token is the digest for the *previous draft's* salt with one zero byte dropped (a C-string bug), and the salt was reworded afterwards without recomputing. Two independent implementations (Go, Python) agree to the bit. Plus eight things the RFC leaves to implementers — `*` encoding, one claim per DHCP message, the replay counter, the DS owner name … | Slide: the forensics table from `docs/rfc9704-example-erratum.md`. |
 | 4:15–5:00 | Honest limits: needs OS/browser support; hybrid clients only; special-use names out of scope; unsigned zones lean on the external resolver; our lab is a private root — real verdicts, simulated world. Ask: file the erratum, publish the vectors to the ADD working group, get one resolver vendor to try it. | Slide: limits + ask. |
 
@@ -48,7 +49,8 @@ docker compose -f lab/compose.yaml down -v && docker compose -f lab/compose.yaml
 
 ## Recovery
 
-- Console shows "Cannot load scenarios": `docker compose -f lab/compose.yaml ps` — all six services must be `running`; `docker compose -f lab/compose.yaml logs app`.
+- Console shows "Cannot reach the API": `docker compose -f lab/compose.yaml ps` — all twelve services must be `running`; `docker compose -f lab/compose.yaml logs app proxy`.
+- *Now browse* says the proxy is unreachable: `docker compose -f lab/compose.yaml restart proxy`; the Stage page re-joins the client on the next network change.
 - A scenario says `DNS_LOOKUP_FAILED`/`RESOLVER_UNREACHABLE`: a resolver container restarted with a new generation. `down -v && up --build -d`.
 - Browser cannot reach 127.0.0.1:8000: `docker compose -f lab/compose.yaml port app 8000`.
 - Everything else: play the backup video.

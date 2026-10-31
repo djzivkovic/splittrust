@@ -1,5 +1,3 @@
-.git
+web/node_modules
 .superpowers
-docs
-lab/generated
-bin
+.git

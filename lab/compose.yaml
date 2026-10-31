@@ -84,11 +84,11 @@ services:
     build:
       context: ..
       dockerfile: lab/app/Dockerfile
-      args:
-        LIBUNBOUND: "1"
     command: ["serve", "--addr", "0.0.0.0:8000"]
     environment:
       SPLITTRUST_PROXY: http://172.30.97.60:8001
+      SPLITTRUST_PROXY_DNS: 172.30.97.60:53
+      SPLITTRUST_NAIVE_DNS: 172.30.97.21:53
     <<: *labgen
     ports:
       - "127.0.0.1:8000:8000"
@@ -124,8 +124,6 @@ services:
     build:
       context: ..
       dockerfile: lab/app/Dockerfile
-      args:
-        LIBUNBOUND: "1"
     command: ["proxy", "--scenario", "legit", "--listen", "0.0.0.0:53", "--control", "0.0.0.0:8001"]
     <<: *labgen
     extra_hosts: *pvdhosts
@@ -208,8 +206,6 @@ services:
     build:
       context: ..
       dockerfile: lab/app/Dockerfile
-      args:
-        LIBUNBOUND: "1"
     <<: *labgen
     depends_on:
       bootstrap:

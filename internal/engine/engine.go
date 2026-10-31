@@ -78,8 +78,7 @@ func (e *Engine) Verifier(p lab.Profile) (*verify.Verifier, error) {
 		return nil, err
 	}
 	factory := func(fwd *validate.Forwarder) (validate.PublicResolver, error) {
-		return validate.New(validate.Config{AnchorFile: p.AnchorFile, RootHintsFile: p.RootHints, CAFile: p.CAFile, Forward: fwd, Timeout: 6 * time.Second,
-			DaemonAddr: os.Getenv("SPLITTRUST_DAEMON")})
+		return validate.New(validate.Config{AnchorFile: p.AnchorFile, RootHintsFile: p.RootHints, CAFile: p.CAFile, Forward: fwd, Timeout: 6 * time.Second})
 	}
 	return &verify.Verifier{Deps: verify.Deps{
 		Public: factory,
