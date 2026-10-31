@@ -1,5 +1,6 @@
-# SplitTrust laboratory. Isolated network (no Internet access at runtime); the
-# only published port is the console on 127.0.0.1:8000.
+# SplitTrust laboratory. Isolated lab network (no Internet access at runtime);
+# the only published port is the console on 127.0.0.1:8000, via a second
+# bridge without NAT (ports cannot be published on an internal network).
 #
 #   docker compose -f lab/compose.yaml up --build -d
 #   docker compose -f lab/compose.yaml exec app splittrust verify --scenario hotel-forged
@@ -85,8 +86,7 @@ services:
       dockerfile: lab/app/Dockerfile
       args:
         LIBUNBOUND: "1"
-    # Task 5 replaces this with: command: ["serve", "--addr", "0.0.0.0:8000"]
-    entrypoint: ["sleep", "infinity"]
+    command: ["serve", "--addr", "0.0.0.0:8000"]
     <<: *labgen
     ports:
       - "127.0.0.1:8000:8000"
@@ -114,6 +114,7 @@ services:
     networks:
       splitlab:
         ipv4_address: 172.30.97.50
+      console: {}
 
   test:
     profiles: ["tools"]
@@ -144,3 +145,10 @@ networks:
     ipam:
       config:
         - subnet: 172.30.97.0/24
+  # Published ports need a non-internal network. This one has NAT disabled, so
+  # the console is reachable from the host while the app still cannot reach
+  # anything outside the lab.
+  console:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.enable_ip_masquerade: "false"
