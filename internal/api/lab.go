@@ -84,10 +84,10 @@ func labRoots() *x509.CertPool {
 	return pool
 }
 
-func probe(ctx context.Context, t labTarget, roots *x509.CertPool) LabProbe {
-	p := LabProbe{Name: t.name, Group: t.group, Role: t.role, Addr: t.addr, Kind: t.kind}
+func probe(ctx context.Context, t labTarget, roots *x509.CertPool) (p LabProbe) {
+	p = LabProbe{Name: t.name, Group: t.group, Role: t.role, Addr: t.addr, Kind: t.kind}
 	start := time.Now()
-	defer func() { p.Micros = time.Since(start).Microseconds() }()
+	defer func() { p.Micros = time.Since(start).Microseconds() }() // named result: the deferred write reaches the caller
 	d := net.Dialer{Timeout: 3 * time.Second}
 	switch t.kind {
 	case "dns":
