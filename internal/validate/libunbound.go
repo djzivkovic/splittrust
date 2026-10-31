@@ -24,9 +24,6 @@ func New(cfg Config) (PublicResolver, error) {
 	if cfg.AnchorFile == "" {
 		return nil, fmt.Errorf("validate: trust anchor file is required")
 	}
-	if cfg.Forward == nil && cfg.RootHintsFile == "" {
-		return nil, fmt.Errorf("validate: iterative resolution needs a root hints file")
-	}
 	if cfg.Forward != nil && cfg.CAFile == "" {
 		return nil, fmt.Errorf("validate: forwarding over TLS needs the CA bundle")
 	}
@@ -53,7 +50,9 @@ func (r *libunboundResolver) configText() string {
 		fmt.Fprintf(&b, "  tls-cert-bundle: %q\n", r.cfg.CAFile)
 	}
 	if r.cfg.Forward == nil {
-		fmt.Fprintf(&b, "  root-hints: %q\n", r.cfg.RootHintsFile)
+		if r.cfg.RootHintsFile != "" {
+			fmt.Fprintf(&b, "  root-hints: %q\n", r.cfg.RootHintsFile) // empty = unbound's built-in IANA root hints
+		}
 	} else {
 		host, port, _ := strings.Cut(r.cfg.Forward.Addr, ":")
 		if port == "" {

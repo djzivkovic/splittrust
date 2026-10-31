@@ -110,6 +110,7 @@ var exercises = map[string]string{
 	"replay":                "s5: resolver must present a certificate for the claimed ADN (RFC 9525)",
 	"hotel-blocks-external": "s6.1: no response from the external resolver -> verification failed",
 	"special-use":           "s3: Special-Use Domain Names MUST NOT be validated",
+	"real-zivkovic":         "the same pipeline against the real DNS: IANA root anchor, Cloudflare-hosted zone, real dns.quad9.net for the private-dns device",
 }
 
 func b64(b []byte) string { return base64.RawURLEncoding.EncodeToString(b) }

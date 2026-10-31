@@ -44,12 +44,13 @@ async function loadScenarios() {
     const tr = document.createElement("tr");
     tr.dataset.id = s.id;
     const opts = DEVICES.map((d) => `<option value="${d}" ${d === s.default_device ? "selected" : ""}>${d}</option>`).join("");
+    const real = s.requires_internet;
     tr.innerHTML = `
-      <td><div class="title">${esc(s.title)}</div><div class="id">${esc(s.id)} · example: <code>${esc(s.example_qname)}</code></div><div class="explain">${esc(s.explanation)}</div></td>
+      <td><div class="title">${esc(s.title)}${real ? ' <span class="chip caution">real DNS</span>' : ""}</div><div class="id">${esc(s.id)} · example: <code>${esc(s.example_qname)}</code></div><div class="explain">${esc(s.explanation)}</div></td>
       <td><select class="device">${opts}</select></td>
       <td class="expected"></td>
-      <td class="actual"><span class="muted">—</span></td>
-      <td><button class="verify">Verify</button> <button class="secondary resolve">Resolve example</button></td>`;
+      <td class="actual"><span class="muted">${real ? "this console has no Internet access — run it from the terminal (see explanation)" : "—"}</span></td>
+      <td>${real ? "" : `<button class="verify">Verify</button> <button class="secondary resolve">Resolve example</button>`}</td>`;
     tbody.appendChild(tr);
     const sel = tr.querySelector(".device");
     const renderExpected = () => {
@@ -60,8 +61,10 @@ async function loadScenarios() {
     };
     sel.addEventListener("change", renderExpected);
     renderExpected();
-    tr.querySelector(".verify").addEventListener("click", () => runVerify(s, tr));
-    tr.querySelector(".resolve").addEventListener("click", () => runResolve(s, tr));
+    if (!real) {
+      tr.querySelector(".verify").addEventListener("click", () => runVerify(s, tr));
+      tr.querySelector(".resolve").addEventListener("click", () => runResolve(s, tr));
+    }
   }
 }
 

@@ -37,23 +37,28 @@ type ClaimSpec struct {
 	DS         string   `json:"ds"`                    // "none" | "local" | "wrong"
 	RecordSalt string   `json:"record_salt,omitempty"` // "other": the published record uses a different salt
 	CopyOf     string   `json:"copy_of,omitempty"`     // reuse another scenario's generated claim
+	Salt       string   `json:"salt,omitempty"`        // fixed base64url salt (real-world records must not change per run)
 }
 
 // Scenario is one catalogue entry.
 type Scenario struct {
-	ID               string      `json:"id"`
-	Title            string      `json:"title"`
-	Explanation      string      `json:"explanation"`
-	Discovery        string      `json:"discovery"` // "dnr" | "ddr"
-	Parent           string      `json:"parent"`
-	NetworkResolvers []Announced `json:"network_resolvers"`
-	Claims           []ClaimSpec `json:"claims"`
-	PvDID            string      `json:"pvd_id,omitempty"`
-	ClaimSource      string      `json:"claim_source,omitempty"` // "" or "pvd" | "inline"
-	ExternalAddr     string      `json:"external_addr,omitempty"`
-	DefaultDevice    string      `json:"default_device"`
-	ExampleQName     string      `json:"example_qname"`
-	Expected         []Expected  `json:"expected"`
+	ID                string      `json:"id"`
+	Title             string      `json:"title"`
+	Explanation       string      `json:"explanation"`
+	Discovery         string      `json:"discovery"` // "dnr" | "ddr"
+	Parent            string      `json:"parent"`
+	NetworkResolvers  []Announced `json:"network_resolvers"`
+	Claims            []ClaimSpec `json:"claims"`
+	PvDID             string      `json:"pvd_id,omitempty"`
+	ClaimSource       string      `json:"claim_source,omitempty"` // "" or "pvd" | "inline"
+	ExternalAddr      string      `json:"external_addr,omitempty"`
+	External          *Announced  `json:"external,omitempty"`           // full override (e.g. the real dns.quad9.net)
+	TrustContext      string      `json:"trust_context,omitempty"`      // "" = lab; "global" = validated under the IANA root
+	Anchor            string      `json:"anchor,omitempty"`             // "" = lab root KSK; "iana" = the real root trust anchor
+	DefaultResolution string      `json:"default_resolution,omitempty"` // "" = via-network; "iterative" when the announced resolver cannot reach the zone
+	DefaultDevice     string      `json:"default_device"`
+	ExampleQName      string      `json:"example_qname"`
+	Expected          []Expected  `json:"expected"`
 }
 
 // Catalogue is the static part of the lab.
@@ -102,6 +107,9 @@ type Profile struct {
 	PermittedNamespaces []string    `json:"permitted_namespaces"`
 	ExampleQName        string      `json:"example_qname"`
 	Expected            []Expected  `json:"expected"`
+	TrustContext        string      `json:"trust_context"`     // lab | global
+	RequiresInternet    bool        `json:"requires_internet"` // global profiles need the egress-enabled "real" service
+	DefaultResolution   string      `json:"default_resolution,omitempty"`
 }
 
 // Manifest is what bootstrap writes and the app loads.
@@ -160,12 +168,14 @@ func (p Profile) AnnouncedFor(adn string) (Announced, bool) {
 
 // Summary is the console/CLI listing entry.
 type Summary struct {
-	ID            string     `json:"id"`
-	Title         string     `json:"title"`
-	Explanation   string     `json:"explanation"`
-	DefaultDevice string     `json:"default_device"`
-	ExampleQName  string     `json:"example_qname"`
-	Expected      []Expected `json:"expected"`
+	ID               string     `json:"id"`
+	Title            string     `json:"title"`
+	Explanation      string     `json:"explanation"`
+	DefaultDevice    string     `json:"default_device"`
+	ExampleQName     string     `json:"example_qname"`
+	Expected         []Expected `json:"expected"`
+	TrustContext     string     `json:"trust_context"`
+	RequiresInternet bool       `json:"requires_internet"`
 }
 
 // Summaries lists profiles in catalogue order.
@@ -173,7 +183,7 @@ func (m Manifest) Summaries() []Summary {
 	var out []Summary
 	for _, id := range m.Order {
 		p := m.Profiles[id]
-		out = append(out, Summary{ID: id, Title: p.Title, Explanation: p.Explanation, DefaultDevice: p.DefaultDevice, ExampleQName: p.ExampleQName, Expected: p.Expected})
+		out = append(out, Summary{ID: id, Title: p.Title, Explanation: p.Explanation, DefaultDevice: p.DefaultDevice, ExampleQName: p.ExampleQName, Expected: p.Expected, TrustContext: p.TrustContext, RequiresInternet: p.RequiresInternet})
 	}
 	return out
 }
