@@ -1,67 +1,82 @@
-# SplitTrust: the 5-minute demo
+# SplitTrust: the 5-minute presentation
 
-Two companies, the same week, the same employee habits. **SecureCompany** adopted RFC 9704 with SplitTrust: its
-zone is the real, DNSSEC-signed `zivkovic.me` and it published one Verification Record. **UnsecureCompany** did not:
-its devices use whatever resolver the network hands them. Every SecureCompany verdict that depends on DNS is computed live
-against the public DNS (root, `.me`, Cloudflare, dns.quad9.net); the replayed claim is rejected on the
-certificate before any DNS query. Every record can be checked from a laptop in the room.
+One company, one employee, one private GitLab bookmark: **`git.dev.corp.lab`**. Compare trusting network
+DNS directly with checking the company's authorization through the client-side SplitTrust proxy. These are
+clearly labeled illustrations, not live results. The presentation performs no API calls, DNS lookups,
+Docker commands or proxy network changes. Our separate playground runs the actual checks.
 
-Everything happens in the deck at `http://127.0.0.1:8000`. The main run is ten slides: 1 title, 2 the
-problem, 3 why now, 4 how RFC 9704 works, 5 at the office, 6 at the hotel, 7 what SecureCompany did,
-8 what we built, 9 live checks, 10 closing. After the closing slide comes an appendix for questions:
-11 what SplitTrust implements (inventory and limits), 12 who buys and who ships, 13 today's options (click
-the four), 14 what changes for a company, 15 try the owner tool, 16 roadmap. `→` advances, `space`
-replays an animation, `1 2` switch SecureCompany's device (laptop, phone), `t` shows the details on a
-demo slide: the claim, the stage codes, the raw records, and the dig output of the two real lookups.
-The proxy's decisions appear live next to the browser frames on every scene.
+The presentation is at `http://127.0.0.1:8000`. The main pitch has nine slides: 1 title, 2 the
+private-DNS problem, 3 how RFC 9704 works, 4 at the office, 5 at the hotel, 6 what the company configures,
+7 working deliverables, 8 demonstrated evidence, 9 closing.
+The appendix is numbered separately: A1 historical context, A2 detailed architecture, A3 proxy rules,
+A4 implementation inventory, A5 beneficiaries/deployers, A6 complementary protections, A7 deployment,
+A8 owner-record format, A9 one managed-device pilot. Left/right arrows
+navigate. The office and hotel examples animate packets and reveal checks in order; the setup example
+reveals its configuration steps. **Replay illustration** or **space** restarts these browser-only
+animations. Each step takes about 2.1 seconds; the active route is highlighted and the packet pauses
+before the next step. Reduced-motion preferences show the completed diagrams. There are no device switches,
+live evidence panels or embedded record-building forms. No animation makes a backend request.
 
 ## Before you go on stage
 
 ```bash
-docker compose -f lab/compose.yaml up --build -d        # from a clean clone: a few minutes
-docker compose -f lab/compose.yaml exec app splittrust verify --scenario real-office    # must say ACCEPTED
-open http://127.0.0.1:8000
+cd web
+npm ci
+npm run dev   # use the URL printed by Vite; no Docker or API needed for the slides
 ```
 
-If anything looks stale: `docker compose -f lab/compose.yaml down -v && docker compose -f lab/compose.yaml up --build -d`.
+If you will also show the live playground, start the Docker lab separately with
+`docker compose -f lab/compose.yaml up --build -d` from the repository root and open
+`http://127.0.0.1:8000`. Only the **Try it yourself** link leaves the presentation for `/demo`.
 
 ## Script
 
 | Time | Say | Show |
 |---|---|---|
-| 0:00-0:30 | A hotel Wi-Fi tells your laptop: my resolver answers for your bank. The laptop has no way to check that the bank agreed, and encrypting DNS to that resolver is a private conversation with the attacker. This is measured: interception in 259 of 3,047 networks in one study. RFC 9704, January 2025, gives the owner a way to say who may answer and the device a way to check. | Slides 1, 2. |
-| 0:30-0:50 | Why now: encrypted DNS has been in every OS for years, resolver discovery since 2022, and RFC 9704 came out in January 2025 with zero known implementations a month later. | Slide 3; click "Feb 2025". |
-| 0:50-1:15 | Three steps: the owner publishes one TXT record, a salted hash of the claim; the network announces the claim; the device checks the resolver's certificate over TLS, validates the record with DNSSEC and compares tokens. Only then does it route those names there. We built that check, a DNS proxy that enforces it, and the owner's tool. | Slide 4. |
-| 1:15-1:50 | Two companies. SecureCompany signed its zone (our real zivkovic.me), published the record, and its laptops check. UnsecureCompany trusts whatever resolver the network hands out. At the office both intranets load; only SecureCompany's laptop verified the resolver first. On a trusted network the difference is invisible. | Slide 5: the drawing runs, both browser frames show the intranets, the proxy's decisions appear on the right. |
-| 1:50-2:50 | At the hotel. The hotel's resolver claims both domains and serves a copy of each zone, including a record with the correct token. UnsecureCompany's laptop gets the hotel's login page. SecureCompany's laptop validates against the real DNSSEC chain: the hotel has the token but not the owner's signatures. Bogus, rejected, resolver never used. The name fails to resolve instead of resolving to the wrong place. Press 2: the phone with Private DNS asks Quad9 and reaches the real site. | Slide 6: the masked resolver, the red mark at "public DNS", "Intranet login" on the left, "This site can't be reached" on the right. Press `2` for the phone. Press `t` for the dig output: SERVFAIL with EDE 6 on the right, the hotel's A record on the left. |
-| 2:50-3:15 | What SecureCompany did: DNSSEC on the zone, one TXT record, devices pointed at a resolver that checks. No application changes. The record is public; a hotel that copies the claim is rejected on the certificate before the first query. | Slide 7: the three tiles, green; the copied claim rejected. Press `t` for the raw DS and TXT. |
-| 3:15-3:40 | What we built: one Go binary with libunbound in-process; CLI, HTTP API and a plain-DNS proxy that returns SERVFAIL with an Extended DNS Error when a claim is rejected. A Docker lab with a private signed root, the office and hotel resolvers, 13 attack and corner-case scenarios. And our own signed zone. | Slide 8. Point at the proxy tile: that is what the laptops in the scenes used. |
-| 3:40-4:10 | Live checks: the lab is probed from this page every four seconds, DNS, TLS, HTTP; on the right, what the proxy decided for the laptops' queries. | Slide 9. |
-| 4:10-5:00 | Built: the check, the proxy, the record tool, tested against our signed zone. Not yet: OS integration, claims over DHCP or PvD on the wire; unsigned zones only through a resolver the device already trusts. Ask: one OS or resolver vendor to try it, one company with split-horizon DNS for a managed-device pilot. | Slide 10. Appendix slides 11 to 16 are for questions. |
+| 0:00-0:20 | SplitTrust is private DNS with the owner's permission: a working verifier and enforcing proxy, not just a protocol illustration. | Slide 1. |
+| 0:20-0:50 | A company needs a private DNS view for GitLab. The employee takes the same bookmark to the hotel. Both networks can announce a resolver, but an announcement is not proof of the company's authorization. | Slide 2: two claims about the same names, not a bank-login attack. |
+| 0:50-1:20 | The owner publishes a Verification Record, the network supplies a claim, and the client authenticates the resolver and owner's permission before granting a scoped exception. | Slide 3: use the same corp.lab/dev.corp.lab naming. |
+| 1:20-2:00 | At the office, the private view is legitimate. SplitTrust retrieves the signed record through the resolver and validates it locally. It accepts the approved private answer while keeping the normal DNS policy for other names. | Slide 4: narrate over the animation rather than waiting and repeating it. |
+| 2:00-2:40 | At the hotel, VPN off, ordinary network DNS supplies an attacker IP. The company's authentic signed denial says the hotel has no authorization. The proxy grants no exception and rejects the invented GitLab answer on its normal validating path. HTTPS remains a separate safeguard. | Slide 5: signed denial returns to the client; the client decides. |
+| 2:40-3:00 | Copying the public claim is insufficient: the hotel's certificate cannot prove dns.corp.lab's identity. This is resolver DoT identity, not GitLab's web certificate. | Slide 6: keep the configuration recap brief. |
+| 3:00-3:35 | We built the verifier, a DNS proxy ordinary clients can use, and the owner's record builder. The prototype uses configured network profiles. | Slide 7: three delivered components, not every internal module. |
+| 3:35-4:15 | We demonstrated private GitLab access, rejected hotel authority, and refusal of the wrong delegated key. We provide scenario profiles, reproducible vectors and a documented RFC example discrepancy. Private-lab and public-DNS evidence are distinct; the discrepancy is not claimed as an accepted erratum. | Slide 8: accomplishments and evidence. |
+| 4:15-5:00 | The result is legitimate private DNS without granting every network authority over company names. The implementation is ready to inspect in the playground; the next step is one managed-device pilot. | Slide 9: close on the benefit. Enter the live playground only if the allotted slot includes it. |
+
+## Optional live playground
+
+At `/demo`, use the same bookmark, `git.dev.corp.lab`, through three steps: office (public NXDOMAIN,
+validated private answer and repository stand-in), unprotected hotel (fake login stand-in), protected
+hotel (unauthorized claim and bogus answer rejected). These run actual `dig`/`curl` commands inside
+Docker and show their evidence. The pages are HTTP stand-ins, collect no credentials, and do not
+demonstrate bypassing HTTPS. The owner builder is a separate tab on that page.
+The playground header has **Back to presentation** and **Go to appendix** links. The latter opens
+`/#appendix` at A1, so questions can go straight to the supporting material without replaying the pitch.
 
 ## Q&A
 
 | Question | Where | Answer |
 |---|---|---|
-| "Is this real or a lab trick?" | Slides 7 and 9, slide 15, and `t` on any scene | SecureCompany's zone is `zivkovic.me` at Cloudflare, DNSSEC-signed, DS at the `.me` registry. `dig +short TXT dns.splittrust.zivkovic.me._splitdns-challenge.zivkovic.me` and `dig +short zivkovic.me DS` from any laptop. The hotel and the office networks are containers; the verdicts are computed against the real DNS. |
+| "Are the slides showing actual results?" | Closing link to `/demo` | No: the slides are illustrations and make no backend requests. The separate playground shows actual command output using the private lab trust anchor. The CLI also supports the real-zone scenarios under the public DNSSEC chain. |
 | "What if the hotel does not forge, just hijacks?" | CLI: `verify --scenario hotel` | Secure denial from the real zone travels through the hotel intact: `RECORD_MISSING`. The hijacked answer is Bogus for a validating device: denial of service, not redirection. |
 | "What if the zone is not signed?" | CLI: `verify --scenario unsigned` (and `--device private-dns`) | A validating device has no proof and no fallback: rejected. A phone with Private DNS verifies through Quad9: accepted, yellow, because its security now rests on Quad9. Sign your zone. |
 | "What if IT changes the claim first, or lets signatures expire, or delegates the wrong key?" | CLI: `stale-salt`, `expired-signature`, `wrong-ds` | `TOKEN_MISMATCH` (publish the record first, RFC 9704 section 11), `DNSSEC_BOGUS`, `DS_MISMATCH` (no downgrade to token-only). |
 | "What if the hotel blocks Quad9?" | CLI: `hotel-blocks-external` | Section 6.1: no response means verification failed, `EXTERNAL_TIMEOUT`. The hotel gains only a denial of service. |
 | "home.arpa?" | CLI: `special-use` | Section 3: never verified this way; rejected with zero network traffic. |
-| "Do users have to run a CLI?" | Slides 5 and 11 | No. `splittrust proxy` is a DNS server; the demo's protected device is a plain container whose DNS server is the proxy. On a laptop this is the dnscrypt-proxy pattern (127.0.0.1); a product would drive the OS split-DNS machinery (systemd-resolved, Windows NRPT). |
-| "Why not just a VPN / DoH / DNSSEC?" | Slide 13 | Click through: encrypted DNS is a private conversation with the attacker; an always-on VPN does protect the company's own names (DNS goes through the tunnel to the office resolver) but gives up the local resolver entirely: hairpin, tunnel-first, no local names at partners, branches or home; DNSSEC alone rejects the forgery but also rejects the legitimate intranet, because internal names do not exist in the public zone. RFC 9704 adds the missing sentence: the owner allows this resolver for these names, so you can use the network you are on. |
-| "What does a company actually have to do?" | Slides 14 and 15 | Sign the zone, publish one TXT record (type it on slide 15: the token equals the one live in the zone), run DoT with a certificate on the office resolver, and give devices a resolver that checks. No application changes. |
-| "Do we need fifteen containers?" | Slide 9 | Fifteen compose services: eight long-running containers run the demo (the two networks' resolvers, PvD, proxy, app, three pages), five are the test bed (private root, quad9.lab, banka.lab, two plain clients), plus the one-shot bootstrap and the test runner profile. |
-| "Who would buy this?" | Slide 12 | Organisations with split-horizon DNS and roaming devices (banks, hospitals, agencies, universities, branch-heavy firms); OS and MDM vendors ship the check; resolver and DDI vendors (BIND, Unbound, Knot, CoreDNS, Infoblox, BlueCat) already serve inbound DoT with views and would add claim automation. Not consumers, not hotels, not filtering. |
-| "DNSSEC adoption is too low for this." | Slide 12 | True for a DNSSEC-only design: about 4 to 5 percent of .com is signed (Verisign 2023). RFC 9704 section 6.1 also allows verification through an external resolver the device already trusts; SplitTrust implements both paths and shows the second one as yellow, because the trust then rests on that resolver. |
-| "Nobody emits DNR or PvD, so how does the device learn the claim?" | Slides 3 and 16 | Correct today: systemd 257 parses DNR, Windows has it behind a flag, Apple fetches PvD partially, and no network side emits either. A pilot delivers the claim through MDM or VPN configuration; the verification is the same. |
-| "Why Go?" | (none) | The tooling most likely to adopt this is Go (CoreDNS, AdGuard Home, Tailscale); one static binary; DNSSEC validation is unbound itself via libunbound. |
+| "Do users have to run a CLI?" | Main 7, appendix A4 | No. Ordinary DNS clients can use the proxy. Endpoint configuration is required; native OS implementation is future work. |
+| "Why not just HTTPS / VPN / DoH / DNSSEC?" | Appendix A6 | They answer different questions. HTTPS authenticates the application; a VPN provides private connectivity and can supply trusted DNS policy; encrypted DNS protects a resolver connection; DNSSEC authenticates DNS data. Correctly configured private DNS can use DNSSEC. RFC 9704 adds its owner-authorized local-view mechanism alongside these protections. |
+| "What does a company actually have to do?" | Appendix A7-A8 | Authenticate the parent zone, publish authorization, provide a supported encrypted resolver with a matching certificate, and configure checking clients. Existing resolver software may need additional support; this is not zero deployment. |
+| "Does changing the resolver change the token?" | Appendix A8 | Not when the salt, algorithm and canonical relative subdomains stay the same. The resolver is bound by the Verification Record owner name. Changing only the resolver changes that DNS name, not the token hash. |
+| "Does presenting require Docker?" | Presentation versus `/demo` | No. The slides work from a static frontend or Vite without the API. Docker is needed only for the separate command playground and laboratory checks. |
+| "Who benefits?" | Appendix A5 | Organizations with private services and roaming managed devices. DNS, resolver and endpoint teams deploy the pieces; OS and management vendors are potential integration partners, not assumed current implementers. |
+| "What about unsigned parent zones?" | Appendix A4/A7 | RFC 9704 section 6.1 can authenticate the record through an external resolver the device already trusts. That path depends on the external resolver; it is not local DNSSEC validation of an unsigned record. |
+| "How does this prototype learn claims?" | Appendix A2/A9 | Network profiles are preconfigured. The prototype has PvD fetching and DHCP codec support, not complete automatic network discovery. A first pilot can distribute explicit configuration through existing management tools. |
+| "Is it the first implementation?" | Appendix A1 | The authors reported none known in February 2025. That historical report is not a current implementation census; our claim is working code and reproducible evidence. |
+| "Why Go?" | (none) | One Go executable and a useful resolver-tooling ecosystem; DNSSEC validation uses libunbound rather than a new cryptographic implementation. |
 | "Did you touch anything you do not own?" | (none) | No. Our own domain, our own containers; only ordinary DNS queries leave the machine. |
 
 ## Recovery
 
-- Console shows "Cannot reach the API": `docker compose -f lab/compose.yaml ps`; all services must be `running`; `docker compose -f lab/compose.yaml logs app proxy`.
-- SecureCompany's verdict says "no answer": the venue's Internet or DoT to 9.9.9.9 is blocked. Show the lab scenarios from the CLI (`docker compose -f lab/compose.yaml exec app splittrust verify --scenario hotel-forged`, no Internet needed) or play the backup video.
-- A browser frame says "Loading..." for more than a few seconds: `docker compose -f lab/compose.yaml restart proxy`; the deck re-joins the client on the next slide change.
-- Everything else: play the backup video.
+- If the slides do not load, check the static frontend server and rebuild `web`; they have no API dependency.
+- If `/demo` is unavailable, continue presenting. Inspect the Docker lab separately; there is no reason to restart DNS to show the slides.
+- An inconclusive playground run is not a successful attack or a successful block. Show its actual error rather than replacing it with the expected result.

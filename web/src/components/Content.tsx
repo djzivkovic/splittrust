@@ -1,35 +1,42 @@
 /* Content slides about the solution: why existing tools fall short, what SplitTrust brings, an
-   interactive owner tool, why a company adopts it, and what comes next. */
+   owner-record example, why a company adopts it, and what comes next. */
 
-import { useEffect, useState } from "react";
-import { api, type LiveRecord } from "../lib/api";
-import { BLUE, Doc, GREEN, INK, Laptop, Lock, Mark, RED, Resolver, Server, Shield } from "./Art";
+import { useState } from "react";
+import { BLUE, Doc, GREEN, Laptop, Lock, RED, Resolver, Server, Shield } from "./Art";
 import { Slide } from "./Slide";
+import { STORY } from "../lib/deck";
 
 /* ---------- Why existing tools do not solve it (interactive tabs) ---------- */
 
-const CRITERIA = ["stops the hotel's hijack", "the office intranet still works", "uses the local resolver, no hairpin", "no new infrastructure or app changes"];
-
-const OPTIONS: { name: string; short: string; marks: boolean[]; text: string; detail: string }[] = [
-  { name: "Encrypted DNS", short: "DoT / DoH to the network's resolver", marks: [false, true, true, true],
-    text: "The hotel hands out its resolver; the laptop encrypts its queries to it. The conversation is private, and it is with the attacker.",
-    detail: "Encryption protects the path, not the choice of resolver." },
-  { name: "Always-on VPN", short: "tunnel everything to the office", marks: [true, true, false, false],
-    text: "DNS goes through the tunnel to the office resolver, so the hotel never sees it. The cost: tunnel first, every packet through the office, and no local names at partner sites, branches or home.",
-    detail: "A VPN avoids the local resolver instead of making it safe." },
-  { name: "DNSSEC alone", short: "validate every answer", marks: [true, false, true, true],
-    text: "The forged copy fails validation. So does the office intranet: internal names do not exist in the public zone, and a validating laptop gets a signed proof of that.",
-    detail: "DNSSEC can say 'this is not the owner's answer'. It cannot say 'the owner allows this resolver for these names'. RFC 9704 adds that." },
-  { name: "RFC 9704 with SplitTrust", short: "the owner authorises, the device checks", marks: [true, true, true, true],
-    text: "One TXT record in the owner's zone names the resolver and carries a salted hash of the claimed names. The device validates it with DNSSEC, checks the resolver's certificate, then routes only those names there.",
-    detail: "A record in a zone you already run, and a resolver on the device that checks." },
+const OPTIONS = [
+  { name: "HTTPS", short: "Is this the genuine GitLab service?",
+    text: "Authenticates the application server and encrypts web traffic. A DNS redirect alone normally cannot impersonate a correctly validated HTTPS site.",
+    detail: "It does not tell the DNS client which network resolver the company authorized for its private view.",
+    relationship: "Keep HTTPS and application authentication. SplitTrust does not replace them." },
+  { name: "Encrypted DNS", short: "Is the DNS connection protected?",
+    text: "DoT or DoH protects the connection and authenticates the resolver's identity. A preconfigured trusted external resolver is different from one supplied by an untrusted network.",
+    detail: "Knowing that a resolver is dns.hotel.lab does not establish its authority over the company's private names.",
+    relationship: "RFC 9704 uses authenticated encrypted DNS; its external-resolver path can use an existing trusted service." },
+  { name: "VPN", short: "Can I reach the private network?",
+    text: "A VPN can provide trusted corporate connectivity and DNS policy. Full-tunnel and split-tunnel deployments both exist; not every VPN hairpins all traffic.",
+    detail: "A managed VPN is already a valid way to establish trust. RFC 9704 addresses owner authorization of local DNS views, not a replacement for network access.",
+    relationship: "Private GitLab may still require a VPN. SplitTrust does not create connectivity." },
+  { name: "DNSSEC", short: "Is this DNS data authentic?",
+    text: "Validates DNS data against trusted keys. Properly signed and delegated private DNS can work with DNSSEC; private views do not universally break validation.",
+    detail: "RFC 9704 defines a specific owner-authorized local-view mechanism, including optional delegation of a local DNSSEC key.",
+    relationship: "DNSSEC is a foundation of the checking path, not a competing feature that SplitTrust replaces." },
+  { name: "RFC 9704 / SplitTrust", short: "Did the owner approve this local view?",
+    text: "Authenticates the owner's Verification Record, checks the resolver identity, and permits a scoped local exception while preserving normal DNS policy elsewhere.",
+    detail: "Requires a checking client, an authenticated encrypted local resolver, and owner-published authorization. It is not zero-deployment infrastructure.",
+    relationship: "Adds scoped resolver authority alongside HTTPS, DNSSEC, encrypted DNS and appropriate network access." },
 ];
 
 export function WhyNotSlide() {
   const [i, setI] = useState(0);
   const o = OPTIONS[i];
   return (
-    <Slide section="Today's options" title="Why the usual tools do not close this gap">
+    <Slide section="Complementary protections" title="Different protections answer different questions"
+      takeaway="SplitTrust adds scoped DNS authority. It does not replace HTTPS, DNSSEC or a VPN.">
       <div className="grid flex-1 gap-5 lg:grid-cols-[2fr_3fr]">
         <div className="flex flex-col gap-2">
           {OPTIONS.map((opt, k) => (
@@ -37,7 +44,6 @@ export function WhyNotSlide() {
               className={`rounded-xl border-2 px-4 py-3 text-left transition ${k === i ? "border-blue-600 bg-white shadow-sm" : "border-slate-200 bg-white/60 hover:border-slate-400"}`}>
               <div className="flex items-center gap-3">
                 <span className="text-lg font-bold">{opt.name}</span>
-                <span className="ml-auto flex gap-1">{opt.marks.map((m, j) => <span key={j} className={`h-2.5 w-2.5 rounded-full ${m ? "bg-green-500" : "bg-red-400"}`} />)}</span>
               </div>
               <div className="text-sm text-slate-500">{opt.short}</div>
             </button>
@@ -47,13 +53,9 @@ export function WhyNotSlide() {
           <div className="text-2xl font-bold">{o.name}</div>
           <p className="mt-3 text-lg text-slate-800">{o.text}</p>
           <p className="mt-2 text-base text-slate-500">{o.detail}</p>
-          <div className="mt-6 grid gap-2 sm:grid-cols-2">
-            {CRITERIA.map((c, j) => (
-              <div key={c} className={`flex items-center gap-3 rounded-lg px-3 py-2 ${o.marks[j] ? "bg-green-50 text-green-900" : "bg-red-50 text-red-900"}`}>
-                <svg viewBox="-14 -14 28 28" className="h-6 w-6 shrink-0"><Mark ok={o.marks[j]} size={12} /></svg>
-                <span className="text-sm font-medium">{c}</span>
-              </div>
-            ))}
+          <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-4">
+            <h3 className="font-bold text-blue-900">How it fits with SplitTrust</h3>
+            <p className="mt-2 text-base text-blue-950">{o.relationship}</p>
           </div>
         </div>
       </div>
@@ -67,15 +69,15 @@ const FEATURES: { icon: React.ReactNode; title: string; lines: string[] }[] = [
   { icon: <g transform="scale(1.1)"><Shield /></g>, title: "The RFC 9704 client check",
     lines: ["claim canonicalisation and token (§5)", "resolver identity over DoT (RFC 9525)", "DNSSEC validation in-process (libunbound)", "ds key binding (§7), grants with expiry"] },
   { icon: <g transform="translate(0,4) scale(0.9)"><Laptop tone={BLUE} /></g>, title: "A DNS proxy that enforces it",
-    lines: ["any stub resolver can point at it", "rejected claims: SERVFAIL with an Extended DNS Error", "verdicts cached and re-verified", "no application changes"] },
+    lines: ["any stub resolver can point at it", "no authority from rejected claims; bogus answers refused", "verdicts cached and re-verified", "no application changes"] },
   { icon: <g transform="scale(1.1)"><Doc tone={BLUE} /></g>, title: "The owner's record tool",
     lines: ["claim in, TXT record out", "replace record and salt to revoke (after TTLs)", "DHCP option 90/11 codec, PvD documents"] },
   { icon: <g transform="scale(0.9)"><Resolver tone={GREEN} /></g>, title: "Tested against the public DNS",
     lines: ["our zone zivkovic.me, DNSSEC-signed", "validated under the IANA root", "phone profile through dns.quad9.net"] },
   { icon: <g transform="scale(0.9)"><Server /></g>, title: "A lab that attacks it",
-    lines: ["forged records, replayed claims, stale salts", "expired signatures, wrong keys, blocked Quad9", "13 scenarios, 3 device profiles"] },
+    lines: ["forged records, replayed claims, stale salts", "expired signatures, wrong keys, blocked Quad9", "15 scenarios, 3 device profiles"] },
   { icon: <g transform="scale(1.3)"><Lock tone={RED} /></g>, title: "Limits",
-    lines: ["discovery pre-configured; DHCP not sent on the wire", "no OS integration yet", "unsigned zones only via a trusted resolver (§6.1)"] },
+    lines: ["discovery pre-configured; DHCP not sent on the wire", "native OS resolver support remains future work", "unsigned zones only via a trusted resolver (§6.1)"] },
 ];
 
 export function SolutionSlide() {
@@ -96,56 +98,37 @@ export function SolutionSlide() {
   );
 }
 
-/* ---------- Try it: the owner tool, live ---------- */
-
-export function TryItSlide() {
-  const [resolver, setResolver] = useState("dns.splittrust.zivkovic.me");
-  const [parent, setParent] = useState("zivkovic.me");
-  const [subs, setSubs] = useState("internal.splittrust");
-  const [salt, setSalt] = useState("ef3XgSkZTxuXMH18506K5Q");
-  const [out, setOut] = useState<{ zone_line?: string; token?: string; record_owner?: string; error?: string; detail?: string } | null>(null);
-  const [live, setLive] = useState<LiveRecord | null>(null);
-  useEffect(() => { api.live("real-office").then(setLive).catch(() => undefined); }, []);
-  useEffect(() => {
-    const t = window.setTimeout(() => {
-      api.build({ resolver, parent, subdomains: subs.split(",").map((s) => s.trim()).filter(Boolean), algorithm: "SHA384", salt, ds: [] })
-        .then(setOut).catch((e) => setOut({ error: (e as Error).message }));
-    }, 250);
-    return () => window.clearTimeout(t);
-  }, [resolver, parent, subs, salt]);
-  const published = live?.txt.answer?.[0]?.match(/token=([A-Za-z0-9_-]+)/)?.[1];
-  const matches = !!out?.token && out.token === published;
-  const field = (label: string, v: string, set: (s: string) => void) => (
-    <label className="block text-sm">
-      <span className="text-slate-500">{label}</span>
-      <input className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm outline-none focus:border-blue-600" value={v} onChange={(e) => set(e.target.value)} spellCheck={false} />
-    </label>
-  );
+export function OwnerRecordSlide() {
+  const fields = [
+    ["Resolver identity", STORY.officeResolver],
+    ["Parent zone", STORY.parent],
+    ["Allowed scope", STORY.scope],
+    ["Salt", "Random bytes, also distributed with the claim"],
+  ];
   return (
-    <Slide section="Try it" title="What SecureCompany's IT typed" sub="The owner tool, live. Change anything and watch the token change."
-      takeaway="One record, computed from the exact claim. Change a letter of the claim and the record no longer fits.">
-      <div className="grid flex-1 gap-5 lg:grid-cols-[2fr_3fr]">
-        <div className="space-y-3 rounded-2xl border-2 border-slate-200 bg-white p-5 shadow-sm">
-          <div className="text-lg font-bold">splittrust build-record</div>
-          {field("resolver (the office DoT resolver, as announced)", resolver, setResolver)}
-          {field("parent zone (must be DNSSEC-signed)", parent, setParent)}
-          {field("subdomains it may answer for (comma-separated)", subs, setSubs)}
-          {field("salt (random, also given to the network)", salt, setSalt)}
+    <Slide section="Owner configuration" title="What the owner publishes" sub="An illustrative record, not a live DNS lookup."
+      takeaway="The builder prepares a record. Publishing and authenticating it are what establish the owner's permission.">
+      <div className="grid flex-1 content-center gap-5 lg:grid-cols-[2fr_3fr]">
+        <div className="rounded-2xl border-2 border-slate-200 bg-white p-5 shadow-sm">
+          <h3 className="text-xl font-bold">Start with the intended claim</h3>
+          <dl className="mt-4 space-y-4">
+            {fields.map(([label, value]) => <div key={label}>
+              <dt className="text-sm text-slate-500">{label}</dt>
+              <dd className="mt-1 break-words font-mono text-base">{value}</dd>
+            </div>)}
+          </dl>
         </div>
         <div className="flex flex-col gap-4">
           <div className="rounded-2xl border-2 border-slate-200 bg-white p-5 shadow-sm">
-            <div className="text-sm font-semibold uppercase tracking-wide text-slate-500">Publish this in the zone</div>
-            {out?.error ? <div className="mt-2 text-red-700">{out.error}{out.detail ? `: ${out.detail}` : ""}</div>
-              : <pre className="mt-2 whitespace-pre-wrap break-all font-mono text-sm text-slate-800">{out?.zone_line ?? "..."}</pre>}
-            <div className="mt-2 text-sm text-slate-500">token = SHA-384(len(salt), salt, canonical names), base64url. Anyone can read it; only the owner can sign it.</div>
+            <h3 className="text-xl font-bold">Publish a Verification Record</h3>
+            <pre className="mt-4 whitespace-pre-wrap break-all rounded-lg bg-slate-100 p-4 font-mono text-sm">{`${STORY.officeResolver}._splitdns-challenge.${STORY.parent}.\n  IN TXT "token=<derived base64url token>"`}</pre>
+            <p className="mt-3 text-sm text-slate-500">Example syntax only: the token above is a placeholder, not a publish-ready record.</p>
+            <p className="mt-3 text-base text-slate-700">The token hashes the salt length, salt and canonical relative subdomains. The resolver is bound through the record's DNS name.</p>
+            <p className="mt-2 text-sm font-semibold text-blue-800">Changing only the resolver changes the record name, not the token, when the other inputs stay the same.</p>
           </div>
-          <div className={`rounded-2xl border-2 p-5 shadow-sm ${matches ? "border-green-300 bg-green-50" : "border-slate-200 bg-white"}`}>
-            <div className="text-sm font-semibold uppercase tracking-wide text-slate-500">What the real zone says right now</div>
-            <pre className="mt-2 whitespace-pre-wrap break-all font-mono text-sm text-slate-800">{live?.txt.answer?.[0] ?? "looking up the real zivkovic.me..."}</pre>
-            <div className="mt-2 flex items-center gap-2 text-sm">
-              {live && <span className={`rounded px-2 py-0.5 font-semibold ${live.txt.security === "secure" ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"}`}>DNSSEC {live.txt.security}</span>}
-              {out?.token && live && <span className={`font-semibold ${matches ? "text-green-800" : "text-slate-500"}`}>{matches ? "identical to what you just built" : "differs from what you built (as it should, if you changed the claim)"}</span>}
-            </div>
+          <div className="rounded-2xl border-2 border-blue-200 bg-blue-50 p-5 shadow-sm">
+            <h3 className="text-lg font-bold">Readable by everyone, authorized by the owner</h3>
+            <p className="mt-2 text-base text-slate-700">A matching token alone is not proof. The client authenticates the record through DNSSEC or its pre-existing trusted external resolver. An optional <code>ds</code> value binds a local DNSSEC key.</p>
           </div>
         </div>
       </div>
@@ -165,19 +148,19 @@ export function ImpactSlide() {
     </div>
   );
   return (
-    <Slide section="Why adopt it" title="What changes for a company like SecureCompany"
+    <Slide section="Deployment" title="What changes for a company"
       takeaway="DNS and resolver configuration change. Applications do not.">
       <div className="grid flex-1 content-center gap-6 lg:grid-cols-2">
         {col("The company changes", "border-blue-200", [
           ["DNSSEC on the zone", "Enable it at the DNS provider; publish the DS through the registrar. Without it, devices can verify only through a resolver they already trust (§6.1)."],
           ["One TXT record per claim", "Built from the exact claim with the record tool. Replace record and salt to revoke; takes effect as caches expire."],
-          ["DoT on the office resolver", "With a certificate for the announced name. The resolver software does not change."],
+          ["Encrypted DNS on the office resolver", "Use a DoT-capable resolver with a certificate for its announced name. Existing software may need configuration or additional support."],
           ["A client that checks", "The SplitTrust proxy as the device's resolver today; the OS resolver once vendors ship the check."],
         ])}
         {col("What users see", "border-green-200", [
-          ["On the office network", "The intranet loads as before."],
-          ["On a hostile network", "The intranet name fails to resolve: SERVFAIL with an Extended DNS Error. No connection to the attacker's page."],
-          ["A copied claim", "Rejected on the resolver's certificate before the first query."],
+          ["On the office network", "The approved private view provides the GitLab address; network access and application authentication still apply."],
+          ["On a hostile network", "Rejected claims gain no authority. Valid default-path answers can still work; DNSSEC-bogus answers are refused with SERVFAIL and an Extended DNS Error."],
+          ["A copied claim", "An impersonator that cannot prove the claimed resolver's TLS identity is rejected before a DNS query is sent to it."],
           ["Evidence", "Every verdict carries its checks and the raw responses."],
         ])}
       </div>
@@ -188,37 +171,21 @@ export function ImpactSlide() {
 /* ---------- Roadmap ---------- */
 
 export function RoadmapSlide() {
-  const steps: [string, string, string][] = [
-    ["Now", "Verifier, proxy, owner tool, lab, tested against our real zone", "done"],
-    ["Next", "Pilot on managed devices: the proxy as a local service, claims delivered by MDM or VPN config (no DNR or PvD needed); a CoreDNS plugin for the office side", "planned"],
-    ["Then", "OS integration: systemd-resolved (DNR parsed since 257), Windows DNS client and NRPT, Apple NetworkExtension; DHCP option 90 and RA on the wire", "planned"],
-    ["Partners", "One OS or resolver vendor trying it; a managed-device pilot with a company that has split-horizon DNS", "ask"],
+  const steps = [
+    ["One company, one private service", "Start with a domain and resolver controlled by the organization, not a broad production rollout."],
+    ["Managed checking clients", "Deploy the proxy and explicit claim configuration through existing device management or VPN configuration."],
+    ["Measure operational behavior", "Evaluate network changes, rejected claims, expiry, recovery and user-visible failures before expanding."],
   ];
   return (
-    <Slide section="What's next" title="Next: a managed-device pilot, then OS integration">
+    <Slide section="What's next" title="Next: one managed-device pilot"
+      takeaway="A concrete pilot first. Automatic discovery and native OS integration follow the operational evidence.">
       <div className="flex flex-1 flex-col justify-center gap-6">
-        <svg viewBox="0 0 1200 120" className="h-28 w-full">
-          <line x1={80} y1={60} x2={1120} y2={60} stroke="#cbd5e1" strokeWidth={4} />
-          {steps.map((s, i) => {
-            const x = 150 + i * 300;
-            const done = s[2] === "done";
-            return (
-              <g key={s[0]} transform={`translate(${x}, 60)`}>
-                <circle r={22} fill={done ? GREEN : s[2] === "ask" ? BLUE : "#fff"} stroke={done ? GREEN : s[2] === "ask" ? BLUE : INK} strokeWidth={3} />
-                {done && <path d="M -9 0 L -3 7 L 10 -8" fill="none" stroke="#fff" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" />}
-                {!done && <text y={6} textAnchor="middle" fontSize={16} fontWeight={800} fill={s[2] === "ask" ? "#fff" : INK}>{i + 1}</text>}
-                <text y={-36} textAnchor="middle" fontSize={16} fontWeight={700} fill={INK}>{s[0]}</text>
-              </g>
-            );
-          })}
-        </svg>
-        <div className="grid gap-4 md:grid-cols-4">
-          {steps.map((s) => (
-            <div key={s[0]} className="rounded-2xl border-2 border-slate-200 bg-white p-4 shadow-sm">
-              <div className={`text-xs font-semibold uppercase tracking-wide ${s[2] === "done" ? "text-green-700" : s[2] === "ask" ? "text-blue-700" : "text-slate-500"}`}>{s[2]}</div>
-              <div className="mt-1 text-base text-slate-800">{s[1]}</div>
-            </div>
-          ))}
+        <div className="grid gap-5 md:grid-cols-3">
+          {steps.map(([title, text], index) => <div key={title} className="rounded-2xl border-2 border-slate-200 bg-white p-6 shadow-sm">
+            <p className="text-sm font-bold text-blue-700">Pilot step {index + 1}</p>
+            <h3 className="mt-2 text-xl font-bold">{title}</h3>
+            <p className="mt-3 text-base leading-relaxed text-slate-600">{text}</p>
+          </div>)}
         </div>
         <div className="grid gap-4 md:grid-cols-3 text-sm text-slate-600">
           <div className="rounded-xl bg-white p-4 shadow-sm"><b className="text-slate-900">Limit:</b> protection applies to clients that use the proxy or the CLI; nothing intercepts the host's DNS yet.</div>
@@ -229,4 +196,3 @@ export function RoadmapSlide() {
     </Slide>
   );
 }
-

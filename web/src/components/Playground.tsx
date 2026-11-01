@@ -13,9 +13,13 @@ export function Playground() {
             <h1 className="mt-1 text-3xl font-bold tracking-tight">Try SplitTrust</h1>
             <p className="mt-1 text-sm text-slate-600">Run real lab commands. Inspect the evidence. No changes to your device's DNS or public records.</p>
           </div>
-          <a href="/" className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-blue-700">
-            Back to presentation
-          </a>
+          <nav aria-label="Presentation navigation" className="flex flex-wrap gap-2">
+            {([["/", "Back to presentation"], ["/#appendix", "Go to appendix"]] as const).map(([href, label]) => (
+              <a key={href} href={href} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-blue-700">
+                {label}
+              </a>
+            ))}
+          </nav>
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-6 py-6">

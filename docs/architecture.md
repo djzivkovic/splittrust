@@ -68,7 +68,7 @@ payload; the lab does not send DHCP.
 
 What it is not: it does not intercept the host's DNS, and it does not listen for DHCP or Router
 Advertisements (discovery is pre-configured per scenario). Verdicts about the lab's private root carry
-`trust_context: "lab"`; the demo scenes validate our own Cloudflare-hosted zone `zivkovic.me` under the
+`trust_context: "lab"`; the real-domain CLI/API scenarios validate our own Cloudflare-hosted zone `zivkovic.me` under the
 IANA root and carry `trust_context: "global"`.
 
 ---
@@ -186,7 +186,7 @@ internal/engine       wiring: manifest -> verifier with real dependencies; used 
 internal/api          HTTP API, /api/browse, embedded console    internal/lab      catalogue (scenarios.json) and manifest
 internal/labgen       lab artefacts the engine must generate    internal/owner    the owner's record builder
 internal/vectors      published test vectors and the RFC 5.1 forensics
-web/                  the demo deck (React, Vite, Tailwind, framer-motion), built into internal/api/web/dist
+web/                  presentation and live playground (React, Vite, Tailwind), built into internal/api/web/dist
 tests/integration     runs inside the lab (compose service "test")
 ```
 
@@ -248,18 +248,33 @@ reports grants and the query count. The `client` container only knows the proxy 
 
 ### Path D: the console and API
 
-`splittrust serve` mounts the API and the built demo deck from the same binary. The deck is deliberately
-small: a title and three scenes, each a drawing that animates the real verification stages (built from the
-report's ordered stages) and two browser frames fed by `/api/browse`. Everything else is CLI and API. The API is a thin layer
+`splittrust serve` serves the frontend and API from the same binary, but the frontend has two separate roles.
+The presentation at `/` has a nine-slide main pitch and a separately numbered nine-slide appendix.
+The main pitch covers the problem, mechanism, examples, delivered components and reproducible evidence;
+historical context, detailed architecture and operational rules are appendix material. Its examples are labeled illustrations
+and compare the same GitLab bookmark under network DNS and SplitTrust. They animate predefined browser-only
+sequences at about 2.1 seconds per step, with active-route highlighting, replay, and reduced-motion support.
+Signed permission or denial records return to the client-side proxy, where validation is illustrated;
+public DNS is a data source, never the location of the client's trust decision.
+The decision rules and owner-record example are static. Navigation and explanatory controls make no
+API calls, DNS queries, or proxy state changes. The slides can also run from Vite or a static server
+without Docker or the backend.
+
+The closing link explicitly opens `/demo`. That playground fetches `/api/demo/presets`, runs a selected
+preset through `/api/demo/run`, and uses `/api/records/build` for the owner tool. Fixed `dig` and `curl`
+processes run inside the app container; their output and the dedicated demo proxy's evidence determine
+the report. The demonstration does not switch the presentation proxy's network.
+
+The existing engine API remains available independently of the presentation. It is a thin layer
 over the engine: strict JSON envelopes (unknown fields are 422, bodies over 16 KiB are 413, unknown
 scenarios 404, rejections are ordinary 200 reports). `POST /api/browse` is the proof endpoint: it resolves
 a name through the proxy (SecureCompany's device) and through a chosen lab resolver on port 53 (`naive_dns`, UnsecureCompany's
 device), then fetches the page: a lab address over plain HTTP by IP with the Host header, a real address
 over HTTPS by name, summarised as status, server header and title. `POST /api/live` resolves a scenario's
 Verification Record and the parent's DS iteratively from the trust anchor, the "check it yourself" view.
-`/api/client/*` relays to the proxy's control API so the console can move the client between networks.
-The console renders the engine's reports and never computes a verdict; its sentences are keyed by the
-stable reason codes.
+`/api/client/*` relays to the proxy's control API for callers that need to move that client between
+networks. None of `/api/browse`, `/api/live`, `/api/client/*`, or the health-probe endpoints is called
+by the presentation.
 
 ### Tests and what they prove
 
