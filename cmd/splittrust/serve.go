@@ -30,7 +30,7 @@ func runServe(args []string, out, errOut io.Writer) int {
 	var demo api.DemoRunner
 	if os.Getenv("SPLITTRUST_DEMO_COMMANDS") == "1" {
 		cfg := democmd.Config{HotelDNS: "172.30.97.21:53", PublicDNS: "172.30.97.10:53", ProxyDNS: "172.30.97.63:53",
-			ProxyURL: "http://172.30.97.63:8001", FakeIP: "172.30.97.66", IntranetIP: "172.30.97.70"}
+			ProxyURL: "http://172.30.97.63:8001", FakeIP: "172.30.97.66", IntranetIP: "10.20.0.10"}
 		runner, err := democmd.New(cfg, nil)
 		if err != nil {
 			return fail(errOut, err)

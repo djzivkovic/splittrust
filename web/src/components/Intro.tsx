@@ -1,6 +1,6 @@
 /* Introduction, the owner-permission mechanism, and the pitch closing. */
 
-import { BLUE, Cloud, Doc, GREEN, INK, Laptop, Lock, Mark, MUTED, RED, Resolver, Router, Shield } from "./Art";
+import { BLUE, Cloud, Doc, GREEN, INK, Laptop, Lock, Mark, MUTED, RED, Resolver, Router, Server, Shield } from "./Art";
 import { Canvas, Slide } from "./Slide";
 import { STORY } from "../lib/deck";
 
@@ -30,6 +30,44 @@ export function TitleSlide() {
         <g transform="translate(430,10)"><Lock tone={GREEN} /></g>
       </svg>
     </div>
+  );
+}
+
+/* Background: what split-horizon DNS is and why the laptop cannot validate those names today. */
+export function SplitHorizonSlide() {
+  return (
+    <Slide section="Background" title="Split-horizon DNS: names that exist only inside the company"
+      takeaway="Public DNS proves these names do not exist, so the laptop cannot validate them. In practice it trusts whatever resolver the network hands it.">
+      <Canvas viewBox="0 -10 1200 470" label="Public DNS answers for public names; the company resolver answers for internal ones">
+        <rect x={60} y={190} width={660} height={250} rx={24} fill="#eff6ff" />
+        <text x={390} y={428} textAnchor="middle" fontSize={15} fontWeight={600} fill="#1e40af">Company network (or its VPN)</text>
+        <line x1={200} y1={300} x2={420} y2={300} stroke="#cbd5e1" strokeWidth={3} />
+        <line x1={500} y1={300} x2={600} y2={300} stroke="#cbd5e1" strokeWidth={3} />
+        <line x1={200} y1={300} x2={200} y2={100} stroke="#cbd5e1" strokeWidth={3} strokeDasharray="7 7" />
+        <line x1={200} y1={100} x2={840} y2={100} stroke="#cbd5e1" strokeWidth={3} strokeDasharray="7 7" />
+        <g transform="translate(200, 320)"><Laptop tone={BLUE} /></g>
+        <text x={200} y={388} textAnchor="middle" fontSize={16} fontWeight={600} fill={INK}>employee's laptop</text>
+        <g transform="translate(460, 300)"><Resolver tone={BLUE} /></g>
+        <text x={460} y={358} textAnchor="middle" fontSize={16} fontWeight={600} fill={INK}>company resolver</text>
+        <text x={460} y={380} textAnchor="middle" fontSize={14} fill={MUTED}>{STORY.officeResolver}</text>
+        <g transform="translate(650, 300)"><Server tone={BLUE} fill="#fff" /></g>
+        <text x={650} y={362} textAnchor="middle" fontSize={16} fontWeight={600} fill={INK}>GitLab</text>
+        <text x={650} y={384} textAnchor="middle" fontSize={15} fontFamily="ui-monospace, Menlo, monospace" fill={GREEN}>{STORY.privateIP}</text>
+        <Bubble x={330} y={236} w={400} text={`${STORY.name} = ${STORY.privateIP}`} tone={BLUE} tail={110} />
+        <g transform="translate(940, 100)"><Cloud /></g>
+        <text x={934} y={96} textAnchor="middle" fontSize={17} fontWeight={700} fill={INK}>public DNS</text>
+        <text x={934} y={118} textAnchor="middle" fontSize={13} fill={MUTED}>{STORY.parent}, DNSSEC-signed</text>
+        <text x={934} y={196} textAnchor="middle" fontSize={15} fontFamily="ui-monospace, Menlo, monospace" fill={INK}>www.{STORY.parent} = 203.0.113.10</text>
+        <text x={934} y={226} textAnchor="middle" fontSize={15} fontFamily="ui-monospace, Menlo, monospace" fill={RED}>{STORY.name}: NXDOMAIN</text>
+        <text x={934} y={250} textAnchor="middle" fontSize={14} fill={MUTED}>a signed proof that the name does not exist</text>
+        <text x={520} y={86} textAnchor="middle" fontSize={14} fill={MUTED}>public names</text>
+      </Canvas>
+      <div className="grid grid-cols-3 gap-5 pb-2 text-base text-slate-700">
+        <div className="rounded-xl bg-white p-4 shadow-sm"><b>Normal and useful.</b> Internal services get private addresses, reachable only on the company network or over its VPN.</div>
+        <div className="rounded-xl bg-white p-4 shadow-sm"><b>Invisible to public DNS.</b> The signed public zone has no record for them. A validating resolver gets a signed denial.</div>
+        <div className="rounded-xl bg-white p-4 shadow-sm"><b>So nothing is checked.</b> Chaining the internal zone into the public one, or a trust anchor on every laptop, is rarely done.</div>
+      </div>
+    </Slide>
   );
 }
 

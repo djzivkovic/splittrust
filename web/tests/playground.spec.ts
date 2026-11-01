@@ -27,7 +27,7 @@ test("closing button opens a standalone playground that survives reload", async 
   await page.route("**/api/demo/presets", (route) => route.fulfill({ json: [] }));
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "SplitTrust", exact: true })).toBeVisible();
-  for (let i = 0; i < 8; i += 1) {
+  for (let i = 0; i < 9; i += 1) {
     await page.keyboard.press("ArrowRight");
     await expect(page.locator("footer")).toContainText(`${i + 2} /`);
   }

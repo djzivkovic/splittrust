@@ -4,7 +4,7 @@ import { SCENES, STORY, type Scene } from "./lib/deck";
 import { SceneArt } from "./components/SceneArt";
 import { BuiltSlide, DeliverySlide, EvidenceSlide } from "./components/Built";
 import { LabSlide } from "./components/Lab";
-import { ClosingSlide, HowSlide, ProblemSlide, TitleSlide } from "./components/Intro";
+import { ClosingSlide, HowSlide, ProblemSlide, SplitHorizonSlide, TitleSlide } from "./components/Intro";
 import { ImpactSlide, RoadmapSlide, SolutionSlide, OwnerRecordSlide, WhyNotSlide } from "./components/Content";
 import { AudienceSlide, WhyNowSlide } from "./components/Pitch";
 import { Slide } from "./components/Slide";
@@ -17,9 +17,9 @@ export default function App() {
 
 function Presentation() {
   // the deck, in order
-  type Kind = "title" | "problem" | "whynow" | "how" | "solution" | "scene" | "tryit" | "audience" | "whynot" | "impact" | "built" | "delivery" | "evidence" | "lab" | "roadmap" | "close";
-  // Nine-slide pitch; background, detailed architecture and policy stay in the appendix.
-  const order: Kind[] = ["title", "problem", "how", ...SCENES.map(() => "scene" as const), "delivery", "evidence", "close",
+  type Kind = "title" | "split" | "problem" | "whynow" | "how" | "solution" | "scene" | "tryit" | "audience" | "whynot" | "impact" | "built" | "delivery" | "evidence" | "lab" | "roadmap" | "close";
+  // Ten-slide pitch; history, detailed architecture and policy stay in the appendix.
+  const order: Kind[] = ["title", "split", "problem", "how", ...SCENES.map(() => "scene" as const), "delivery", "evidence", "close",
     "whynow", "built", "lab", "solution", "audience", "whynot", "impact", "tryit", "roadmap"];
   const appendixFrom = order.indexOf("close") + 1;
   const total = order.length;
@@ -49,7 +49,7 @@ function Presentation() {
   const kind = order[slide];
   const scene = kind === "scene" ? SCENES[sceneIndex(slide)] : null;
   const content = scene ? <SceneSlide scene={scene} />
-    : kind === "problem" ? <ProblemSlide /> : kind === "whynow" ? <WhyNowSlide /> : kind === "how" ? <HowSlide />
+    : kind === "split" ? <SplitHorizonSlide /> : kind === "problem" ? <ProblemSlide /> : kind === "whynow" ? <WhyNowSlide /> : kind === "how" ? <HowSlide />
     : kind === "solution" ? <SolutionSlide /> : kind === "tryit" ? <OwnerRecordSlide />
     : kind === "audience" ? <AudienceSlide /> : kind === "whynot" ? <WhyNotSlide /> : kind === "impact" ? <ImpactSlide />
     : kind === "delivery" ? <DeliverySlide /> : kind === "evidence" ? <EvidenceSlide />

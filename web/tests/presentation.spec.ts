@@ -20,7 +20,7 @@ for (const viewport of [{ width: 1366, height: 768 }, { width: 1280, height: 720
     await page.route("**/api/scenarios", (route) => route.fulfill({ json: [] }));
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "SplitTrust", exact: true })).toBeVisible();
-    for (let i = 0; i < 2; i += 1) {
+    for (let i = 0; i < 3; i += 1) {
       await page.keyboard.press("ArrowRight");
       await expect(page.locator("footer")).toContainText(`${i + 2} /`);
     }
@@ -60,7 +60,7 @@ for (const viewport of [{ width: 1366, height: 768 }, { width: 1280, height: 720
     await page.setViewportSize(viewport);
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "SplitTrust", exact: true })).toBeVisible();
-    for (let n = 1; n < 4; n++) await nextSlide(page);
+    for (let n = 1; n < 5; n++) await nextSlide(page);
     for (const name of ["Office example", "Hotel example"]) {
       const diagram = page.getByRole("img", { name, exact: true });
       await expect(diagram).toBeVisible();
@@ -82,7 +82,7 @@ test("every presentation slide works without the API and never starts a live che
   await expect(page.getByRole("heading", { name: "SplitTrust", exact: true })).toBeVisible();
 
   const titles = [
-    "SplitTrust", "Private DNS needs proof of permission", "How it works, in three steps",
+    "SplitTrust", "Split-horizon DNS: names that exist only inside the company", "Private DNS needs proof of permission", "How it works, in three steps",
     "At the office", "At the hotel", "What the company configures",
     "From RFC to a working DNS path", "What we built and demonstrated", "Private DNS, with the owner's permission",
     "Why this standard is worth implementing", "Architecture and test environment", "How the proxy decides",
@@ -90,23 +90,23 @@ test("every presentation slide works without the API and never starts a live che
     "What changes for a company", "What the owner publishes", "Next: one managed-device pilot",
   ];
   for (let slide = 1; slide <= titles.length; slide += 1) {
-    await expect(page.locator("footer")).toContainText(`${slide <= 9 ? slide : slide - 9} / 9`);
+    await expect(page.locator("footer")).toContainText(`${slide <= 10 ? slide : slide - 10} / ${slide <= 10 ? 10 : 9}`);
     await expect(page.getByRole("heading", { name: titles[slide - 1], exact: true })).toBeVisible();
-    await expect(page.locator("footer")).toContainText(slide <= 9 ? "Main pitch" : "Appendix");
+    await expect(page.locator("footer")).toContainText(slide <= 10 ? "Main pitch" : "Appendix");
     await expect(page.getByRole("button", { name: /laptop|phone/i })).toHaveCount(0);
     await expect(page.getByText("Resolver decisions", { exact: true })).toHaveCount(0);
     await expect(page.getByText(/^Demo [123]$/)).toHaveCount(0);
-    if (slide >= 4 && slide <= 6) {
+    if (slide >= 5 && slide <= 7) {
       await expect(page.getByText("Illustration", { exact: true })).toBeVisible();
       for (const key of ["1", "2", "t", "e", " "]) await page.keyboard.press(key);
     }
-    if (slide === 12) {
+    if (slide === 13) {
       await expect(page.getByRole("heading", { name: "How the proxy decides", exact: true })).toBeVisible();
       // Cover the old four-second polling interval without mocking animation clocks.
       await page.waitForTimeout(4500);
     }
-    if (slide === 9) await expect(page.getByRole("link", { name: "Try it yourself" })).toHaveAttribute("href", "/demo");
-    if (slide === 17) {
+    if (slide === 10) await expect(page.getByRole("link", { name: "Try it yourself" })).toHaveAttribute("href", "/demo");
+    if (slide === 18) {
       await expect(page.getByRole("heading", { name: "What the owner publishes", exact: true })).toBeVisible();
       await expect(page.getByRole("textbox")).toHaveCount(0);
       await page.waitForTimeout(400);
@@ -119,8 +119,8 @@ test("every presentation slide works without the API and never starts a live che
 });
 
 for (const example of [
-  { slide: 4, title: "At the office", mark: "Private GitLab reachable", proof: "TXT + signatures" },
-  { slide: 5, title: "At the hotel", mark: "Bogus answer blocked", proof: "Signed denial" },
+  { slide: 5, title: "At the office", mark: "Private GitLab reachable", proof: "TXT + signatures" },
+  { slide: 6, title: "At the hotel", mark: "Bogus answer blocked", proof: "Signed denial" },
 ]) {
   test(`${example.title} animates packets, reveals checks and replays without the API`, async ({ page }) => {
     const requests: string[] = [];

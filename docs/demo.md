@@ -5,9 +5,10 @@ DNS directly with checking the company's authorization through the client-side S
 clearly labeled illustrations, not live results. The presentation performs no API calls, DNS lookups,
 Docker commands or proxy network changes. Our separate playground runs the actual checks.
 
-The presentation is at `http://127.0.0.1:8000`. The main pitch has nine slides: 1 title, 2 the
-private-DNS problem, 3 how RFC 9704 works, 4 at the office, 5 at the hotel, 6 what the company configures,
-7 working deliverables, 8 demonstrated evidence, 9 closing.
+The presentation is at `http://127.0.0.1:8000`. The main pitch has ten slides: 1 title, 2 split-horizon
+DNS (background), 3 the private-DNS problem, 4 how RFC 9704 works, 5 at the office, 6 at the hotel,
+7 what the company configures, 8 working deliverables, 9 demonstrated evidence, 10 closing. The full
+spoken text is in `docs/speech.md`; the table below is the compressed version.
 The appendix is numbered separately: A1 historical context, A2 detailed architecture, A3 proxy rules,
 A4 implementation inventory, A5 beneficiaries/deployers, A6 complementary protections, A7 deployment,
 A8 owner-record format, A9 one managed-device pilot. Left/right arrows
@@ -33,15 +34,16 @@ If you will also show the live playground, start the Docker lab separately with
 
 | Time | Say | Show |
 |---|---|---|
-| 0:00-0:20 | SplitTrust is private DNS with the owner's permission: a working verifier and enforcing proxy, not just a protocol illustration. | Slide 1. |
-| 0:20-0:50 | A company needs a private DNS view for GitLab. The employee takes the same bookmark to the hotel. Both networks can announce a resolver, but an announcement is not proof of the company's authorization. | Slide 2: two claims about the same names, not a bank-login attack. |
-| 0:50-1:20 | The owner publishes a Verification Record, the network supplies a claim, and the client authenticates the resolver and owner's permission before granting a scoped exception. | Slide 3: use the same corp.lab/dev.corp.lab naming. |
-| 1:20-2:00 | At the office, the private view is legitimate. SplitTrust retrieves the signed record through the resolver and validates it locally. It accepts the approved private answer while keeping the normal DNS policy for other names. | Slide 4: narrate over the animation rather than waiting and repeating it. |
-| 2:00-2:40 | At the hotel, VPN off, ordinary network DNS supplies an attacker IP. The company's authentic signed denial says the hotel has no authorization. The proxy grants no exception and rejects the invented GitLab answer on its normal validating path. HTTPS remains a separate safeguard. | Slide 5: signed denial returns to the client; the client decides. |
-| 2:40-3:00 | Copying the public claim is insufficient: the hotel's certificate cannot prove dns.corp.lab's identity. This is resolver DoT identity, not GitLab's web certificate. | Slide 6: keep the configuration recap brief. |
-| 3:00-3:35 | We built the verifier, a DNS proxy ordinary clients can use, and the owner's record builder. The prototype uses configured network profiles. | Slide 7: three delivered components, not every internal module. |
-| 3:35-4:15 | We demonstrated private GitLab access, rejected hotel authority, and refusal of the wrong delegated key. We provide scenario profiles, reproducible vectors and a documented RFC example discrepancy. Private-lab and public-DNS evidence are distinct; the discrepancy is not claimed as an accepted erratum. | Slide 8: accomplishments and evidence. |
-| 4:15-5:00 | The result is legitimate private DNS without granting every network authority over company names. The implementation is ready to inspect in the playground; the next step is one managed-device pilot. | Slide 9: close on the benefit. Enter the live playground only if the allotted slot includes it. |
+| 0:00-0:15 | Team NXDOMAIN, SplitTrust: when a network says "my resolver answers for your company's names", can the laptop check that the company agreed? | Slide 1. |
+| 0:15-0:45 | Split-horizon DNS: internal names, private addresses, only on the company network or VPN. Public DNS proves they do not exist. Chaining the internal zone into the public one or installing trust anchors is rarely done, so the laptop trusts whatever resolver the network hands it. | Slide 2. |
+| 0:45-1:10 | The same bookmark at a hotel: the hotel's resolver can claim the same names. An announcement is not proof of authorization, and requiring DNSSEC would break the real intranet too. | Slide 3. |
+| 1:10-1:40 | RFC 9704: the owner publishes a Verification Record, the network supplies a claim, the client authenticates the resolver and the owner's permission before granting a scoped exception. | Slide 4. |
+| 1:40-2:15 | At the office the private view is legitimate: the signed record validates, the private 10.20.0.10 answer is accepted, normal DNS policy for everything else. | Slide 5: narrate over the animation. |
+| 2:15-2:55 | At the hotel, VPN off: network DNS hands out an attacker IP. The company's signed denial says the hotel has no authorization; the proxy rejects the invented answer. HTTPS remains a separate safeguard. | Slide 6. |
+| 2:55-3:15 | Copying the public claim is insufficient: the hotel's certificate cannot prove dns.corp.lab's identity. | Slide 7. |
+| 3:15-3:45 | We built the verifier, a DNS proxy ordinary clients can use, and the owner's record builder. Network profiles are configured in this prototype. | Slide 8. |
+| 3:45-4:20 | Demonstrated: private GitLab access, rejected hotel authority, refusal of a wrong delegated key; scenario profiles, reproducible vectors, a documented RFC example discrepancy. | Slide 9. |
+| 4:20-5:00 | Legitimate private DNS without granting every network authority over company names. Inspect it in the playground; the next step is one managed-device pilot. | Slide 10. |
 
 ## Optional live playground
 

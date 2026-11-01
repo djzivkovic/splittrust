@@ -67,7 +67,7 @@ func TestGitLabStoryGeneratesSignedOfficeAnswerAndHotelClaimForTheSameName(t *te
 			}
 		}
 	}
-	if key == nil || signature == nil || answer == nil || answer.A.String() != "172.30.97.70" {
+	if key == nil || signature == nil || answer == nil || answer.A.String() != "10.20.0.10" {
 		t.Fatal("GitLab must have an actual signed private address")
 	}
 	if err := signature.Verify(key, []dns.RR{answer}); err != nil {
