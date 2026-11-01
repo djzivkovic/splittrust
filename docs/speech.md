@@ -12,43 +12,41 @@ that aren't there.
 
 ## 1. Title (0:00)
 
-Hi everyone. We're Team NXDOMAIN and this is SplitTrust. It answers a question your laptop can't answer
-today. A network says: "my resolver answers for your company's names." Did the company actually agree?
+Hi, we're Team NXDOMAIN and this is SplitTrust. It answers a question your laptop can't answer today.
+A network says: "my resolver answers for your company's names." Did the company actually agree?
 
 ## 2. Split-horizon DNS (0:15)
 
-Quick background, because this is where the problem lives. Companies run internal services, say a
-GitLab, with an internal DNS view: `git.dev.corp.lab` resolves to a private address, 10.20.0.10, and
-only on the company network or through its VPN. Public DNS has never heard of that name. The public zone
-is signed, so a validating resolver gets a signed proof that it does not exist.
+Quick background. Companies run internal services, say a GitLab, with an internal DNS view:
+`git.dev.corp.lab` resolves to a private address, 10.20.0.10, only on the company network or its VPN.
+Public DNS has never heard of it; the signed public zone even proves the name does not exist.
 
-For years that worked because laptops used whatever resolver the network gave them. That's changing.
-Phones have Private DNS, Apple and Windows ship encrypted DNS to a resolver you pick, browsers do DNS over
-HTTPS. A device like that never talks to the office resolver, so the private GitLab name doesn't resolve
-for it at all. The company has to ask the device for an exception: "for these names, use this resolver."
+That worked while laptops used whatever resolver the network gave them. That's changing: Private DNS on
+phones, encrypted DNS on Apple and Windows, DNS over HTTPS in browsers. Such a device never talks to the
+office resolver, so the private name doesn't resolve for it at all. The company has to ask the device
+for an exception: "for these names, use this resolver."
 
 ## 3. The problem (0:45)
 
 And that exception is the problem, because any network can ask for it. A hotel router hands out a
-resolver that claims the very same names, and, in the RFC's own words, no existing hint mechanism lets
-the client find out whether the owner authorized it. So the device has two bad options: trust every
-hint, and a hotel can point `git.dev.corp.lab` wherever it likes; trust none, and the private view breaks
-whenever the device isn't on the network's resolver.
+resolver claiming the same names, and, in the RFC's words, no existing hint mechanism lets the client
+find out whether the owner authorized it. Two bad options: trust every hint, and a hotel points
+`git.dev.corp.lab` wherever it likes; trust none, and the private view breaks whenever the device isn't
+on the network's resolver.
 
-"Just use the VPN" covers the laptop whose tunnel is up and carrying DNS. It does not cover the minutes
-after you join the Wi-Fi, while the captive portal is open and your mail client is already resolving
-internal names. Not a split tunnel, not your phone, not a contractor's laptop, and not the office itself,
-where nobody runs a VPN and a rogue access point can hand out its own resolver. And requiring DNSSEC on
-the laptop breaks the real intranet exactly like the forged one. The device needs a way to ask the
-company: did you authorize this resolver for these names?
+"Just use the VPN" covers a laptop whose tunnel is up and carrying DNS. Not the minutes after joining
+the Wi-Fi, captive portal open, mail client already resolving internal names. Not a split tunnel, not
+your phone, not a contractor, and not the office itself, where nobody runs a VPN and a rogue access point
+can hand out its own resolver. Requiring DNSSEC breaks the real intranet like the forged one. The device
+needs a way to ask the company: did you authorize this resolver?
 
 ## 4. How RFC 9704 works (1:20)
 
 RFC 9704, published in January, answers that in three steps. One, the owner publishes a Verification
 Record: one TXT record in its signed public zone, under the resolver's name, with a salted hash of the
 names that resolver may answer for. Two, the network makes its claim: this resolver, these names, this
-salt. Three, the client checks before it trusts: TLS to the resolver, certificate must match the name;
-the owner's record, validated with DNSSEC; the hash recomputed and compared. Only then does it send those
+salt. Three, the client checks before it trusts: TLS to the resolver, certificate matching the name; the
+owner's record, validated with DNSSEC; the hash recomputed and compared. Only then does it send those
 names, and only those, to that resolver.
 
 ## 5. At the office (1:50)
@@ -61,16 +59,14 @@ private view was always legitimate. Now it's also checked.
 ## 6. At the hotel (2:20)
 
 Same laptop, same bookmark, hotel Wi-Fi, no tunnel. [the animation runs] Network DNS hands out an
-address the attacker controls, and a laptop that trusts the network connects to it. What leaks then
-depends on the application, and intranets are full of applications that leak: plain-HTTP tools, Windows
-clients that authenticate automatically to anything that looks internal, scripts that skip certificate
-checks. HTTPS with a proper certificate stops the impersonation, but the request has already left.
+address the attacker controls, and a laptop that trusts the network connects to it. What leaks depends
+on the application: plain-HTTP tools, Windows clients that authenticate automatically to anything
+internal, scripts that skip certificate checks. HTTPS stops the impersonation, not the request.
 
 With SplitTrust the laptop asks the public zone: is there a record authorizing the hotel's resolver? The
-company's signed answer: no. No exception, and the invented address is thrown away on the laptop's
-normal validating path. The name fails to resolve instead of resolving to the wrong place. This doesn't
-get you into GitLab from the hotel, you still need the office or the VPN for that. It makes sure the
-request never goes to the attacker.
+company's signed answer: no. No exception; the invented address is thrown away. The name fails to
+resolve instead of resolving to the wrong place. This doesn't get you into GitLab from the hotel, you
+still need the office or the VPN. It makes sure the request never goes to the attacker.
 
 ## 7. What the company configures (2:55)
 
@@ -78,23 +74,22 @@ Three things. DNSSEC on the zone. One Verification Record, built with our tool. 
 through the SplitTrust proxy as their resolver. No application changed.
 
 The record is public, so what if the hotel copies the whole claim? The laptop opens TLS to the announced
-resolver first and looks at the certificate: `dns.hotel.lab`, not `dns.corp.lab`. Rejected before a
-single DNS query.
+resolver first: the certificate says `dns.hotel.lab`, not `dns.corp.lab`. Rejected before a single query.
 
 ## 8. What we built (3:15)
 
 A working DNS path, not a drawing of a protocol. The verifier: owner's permission, resolver's identity,
-and the delegated key when the record carries one. An enforcing DNS proxy on the path ordinary
-applications use: scoped answers, anything DNSSEC-bogus refused with SERVFAIL and an Extended DNS Error.
-The owner's record builder: claim in, TXT record out. One Go binary, CLI and HTTP, and a Docker lab
-around it. One honest limit: network profiles are configured here, not discovered on the wire.
+the delegated key when there is one. An enforcing DNS proxy on the path ordinary applications use:
+scoped answers, anything DNSSEC-bogus refused with SERVFAIL and an Extended DNS Error. The record
+builder: claim in, TXT record out. One Go binary, CLI and HTTP, a Docker lab around it. One limit:
+network profiles are configured here, not discovered on the wire.
 
 ## 9. Evidence (3:45)
 
 What we showed: private GitLab access authorized under the delegated key; the hotel's claim rejected on
 the company's signed denial; a wrong delegated key refused instead of quietly downgrading. Behind it:
-fifteen scenario profiles, three device profiles, reproducible test vectors, a private DNSSEC lab and
-our own signed zone on the public DNS, and a documented discrepancy in the RFC's worked example.
+fifteen scenarios, three device profiles, reproducible test vectors, a private DNSSEC lab plus our own
+signed zone on the public DNS, and a documented discrepancy in the RFC's worked example.
 
 ## 10. Closing (4:15)
 
