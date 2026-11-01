@@ -9,9 +9,9 @@
     "blackhole": "172.30.97.99",
     "hijack_target": "172.30.97.66",
     "bank_www": "172.30.97.80",
-    "internal_host": "172.30.97.70",
+    "internal_host": "10.20.0.10",
     "real_hijack": "172.30.97.66",
-    "beta_intranet": "172.30.97.71"
+    "beta_intranet": "10.20.0.20"
   },
   "scenarios": [
     {

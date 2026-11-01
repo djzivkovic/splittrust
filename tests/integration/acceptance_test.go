@@ -142,7 +142,7 @@ func TestResolvePaths(t *testing.T) {
 	e := loadEngine(t)
 	ctx := context.Background()
 	rep, err := e.Resolve(ctx, "legit", "host.internal.corp.lab", verify.Options{})
-	if err != nil || rep.Route != "local" || len(rep.Answers) != 1 || rep.Answers[0] != "172.30.97.70" {
+	if err != nil || rep.Route != "local" || len(rep.Answers) != 1 || rep.Answers[0] != "10.20.0.10" {
 		t.Fatalf("legit local route: %v %+v", err, rep)
 	}
 	rep, _ = e.Resolve(ctx, "legit", "host.mail.corp.lab", verify.Options{})
@@ -221,7 +221,7 @@ func TestProxyFrontDoor(t *testing.T) {
 	if r.Rcode != dns.RcodeSuccess || !r.AuthenticatedData || len(r.Answer) == 0 {
 		t.Fatalf("company intranet via proxy: rcode=%s ad=%v answer=%v", dns.RcodeToString[r.Rcode], r.AuthenticatedData, r.Answer)
 	}
-	if a, ok := r.Answer[0].(*dns.A); !ok || a.A.String() != "172.30.97.70" {
+	if a, ok := r.Answer[0].(*dns.A); !ok || a.A.String() != "10.20.0.10" {
 		t.Errorf("answer = %v", r.Answer)
 	}
 	if r = ask("host.mail.corp.lab"); r.Rcode != dns.RcodeSuccess || r.AuthenticatedData {
@@ -255,7 +255,7 @@ func TestProxyFrontDoor(t *testing.T) {
 	if r.Rcode != dns.RcodeSuccess || len(r.Answer) == 0 {
 		t.Fatalf("office intranet host via proxy: rcode=%s", dns.RcodeToString[r.Rcode])
 	}
-	if a, ok := r.Answer[0].(*dns.A); !ok || a.A.String() != "172.30.97.70" {
+	if a, ok := r.Answer[0].(*dns.A); !ok || a.A.String() != "10.20.0.10" {
 		t.Errorf("office intranet host = %v", r.Answer)
 	}
 	join("real-hotel-forged", "validating-stub")

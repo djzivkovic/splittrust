@@ -14,7 +14,7 @@ export interface Scene {
 export const STORY = {
   company: "SecureCompany", parent: "corp.lab", name: "git.dev.corp.lab", scope: "dev.corp.lab",
   officeResolver: "dns.corp.lab", hotelResolver: "dns.hotel.lab",
-  privateIP: "172.30.97.70", attackerIP: "172.30.97.66",
+  privateIP: "10.20.0.10", attackerIP: "172.30.97.66",
 };
 
 export const SCENES: Scene[] = [

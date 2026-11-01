@@ -28,7 +28,7 @@ func (f *fakeExecutor) Execute(_ context.Context, name string, args ...string) C
 
 func testConfig() Config {
 	return Config{HotelDNS: "172.30.97.21:53", PublicDNS: "172.30.97.10:53", ProxyDNS: "172.30.97.63:53", ProxyURL: "http://172.30.97.63:8001",
-		FakeIP: "172.30.97.66", IntranetIP: "172.30.97.70"}
+		FakeIP: "172.30.97.66", IntranetIP: "10.20.0.10"}
 }
 
 func TestUnverifiedPresetUsesTheActualDNSAnswerForHTTP(t *testing.T) {
@@ -88,7 +88,7 @@ const blockedDig = `;; ->>HEADER<<- opcode: QUERY, status: SERVFAIL, id: 2150
 const officeDig = `;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 2151
 ;; flags: qr rd ra ad; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
 ; EDE: 0 (Other): (RFC 9704: authorised resolver dns.corp.lab, local DNSSEC delegated)
-git.dev.corp.lab. 3600 IN A 172.30.97.70
+git.dev.corp.lab. 3600 IN A 10.20.0.10
 `
 
 const publicDig = `;; ->>HEADER<<- opcode: QUERY, status: NXDOMAIN, id: 2152
@@ -206,7 +206,7 @@ func TestOfficeDigNeedsBothAuthenticatedAnswerAndDelegatedGrant(t *testing.T) {
 		{"delegated secure local answer", officeDig, "delegated", "authorized"},
 		{"AD absent", strings.ReplaceAll(officeDig, " ra ad;", " ra;"), "delegated", "inconclusive"},
 		{"token-only grant", officeDig, "token-only", "inconclusive"},
-		{"unexpected address", strings.ReplaceAll(officeDig, "172.30.97.70", "172.30.97.66"), "delegated", "inconclusive"},
+		{"unexpected address", strings.ReplaceAll(officeDig, "10.20.0.10", "172.30.97.66"), "delegated", "inconclusive"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := fixture("gitlab-office")
@@ -221,7 +221,7 @@ func TestOfficeDigNeedsBothAuthenticatedAnswerAndDelegatedGrant(t *testing.T) {
 					t.Fatalf("office must demonstrate public/private DNS and actually fetch GitLab: %+v", report)
 				}
 				if executor.calls[0][1] != "@172.30.97.10" || executor.calls[1][1] != "@172.30.97.63" ||
-					!strings.Contains(strings.Join(executor.calls[2], " "), "--resolve git.dev.corp.lab:80:172.30.97.70") {
+					!strings.Contains(strings.Join(executor.calls[2], " "), "--resolve git.dev.corp.lab:80:10.20.0.10") {
 					t.Fatalf("incorrect split-horizon demonstration: %v", executor.calls)
 				}
 			}

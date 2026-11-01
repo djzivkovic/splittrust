@@ -127,6 +127,8 @@ services:
     networks:
       splitlab:
         ipv4_address: 172.30.97.50
+      corp:
+        ipv4_address: 10.20.0.50
       egress: {}
 
   # The DNS front door: ordinary stubs point here. Starts on the company network;
@@ -195,6 +197,8 @@ services:
     networks:
       splitlab:
         ipv4_address: 172.30.97.61
+      corp:
+        ipv4_address: 10.20.0.61
 
   # The same client on the hotel Wi-Fi without SplitTrust: DNS straight from the hotel.
   naive:
@@ -207,25 +211,28 @@ services:
     networks:
       splitlab:
         ipv4_address: 172.30.97.62
+      corp:
+        ipv4_address: 10.20.0.62
 
-  # Web servers behind the names in play: the company intranet host, the real bank, the hotel's fake bank.
+  # Web servers behind the names in play. The internal GitLab hosts live on the
+  # corporate LAN (10.20.0.0/24): private addresses that public DNS never sees.
   intranet:
     build:
       context: ./web
     environment:
-      SITE_BANNER: "INTERNAL GITLAB (172.30.97.70): SecureCompany's private code repository. Office intranet reached through the resolver the domain owner authorised. Lab stand-in, not a full GitLab installation."
+      SITE_BANNER: "INTERNAL GITLAB (10.20.0.10): SecureCompany's private code repository. Reached through the resolver the domain owner authorised. Lab stand-in, not a full GitLab installation."
     networks:
-      splitlab:
-        ipv4_address: 172.30.97.70
+      corp:
+        ipv4_address: 10.20.0.10
 
   unsecure-intranet:
     build:
       context: ./web
     environment:
-      SITE_BANNER: "intranet.unsecure.example (172.30.97.71): company UnsecureCompany's intranet. UnsecureCompany never adopted RFC 9704; its devices trust whatever resolver the network hands them."
+      SITE_BANNER: "intranet.unsecure.example (10.20.0.20): company UnsecureCompany's intranet. UnsecureCompany never adopted RFC 9704; its devices trust whatever resolver the network hands them."
     networks:
-      splitlab:
-        ipv4_address: 172.30.97.71
+      corp:
+        ipv4_address: 10.20.0.20
 
   bank:
     build:
@@ -263,6 +270,8 @@ services:
     networks:
       splitlab:
         ipv4_address: 172.30.97.51
+      corp:
+        ipv4_address: 10.20.0.51
       egress: {}
 
 volumes:
@@ -275,6 +284,14 @@ networks:
     ipam:
       config:
         - subnet: 172.30.97.0/24
+  # The corporate LAN where the internal hosts live: private addresses, as in
+  # any split-horizon deployment. Devices join it to reach them.
+  corp:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 10.20.0.0/24
   # Ordinary bridge with Internet access, for the parts that have it in real
   # life: the office and hotel resolvers, the devices (app, proxy) and the test
   # runner. The lab's own zones never leave splitlab.

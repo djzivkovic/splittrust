@@ -178,8 +178,10 @@ func digFormat(server string, q, in *dns.Msg, rtt time.Duration) string {
 	return b.String()
 }
 
-// labIP reports whether an address belongs to the lab (172.30.97.0/24).
-func labIP(ip string) bool { return strings.HasPrefix(ip, "172.30.97.") }
+// labIP reports whether an address belongs to the lab (172.30.97.0/24) or the corporate LAN (10.20.0.0/24).
+func labIP(ip string) bool {
+	return strings.HasPrefix(ip, "172.30.97.") || strings.HasPrefix(ip, "10.20.0.")
+}
 
 // fetchPage follows the answer: a lab address serves one line of text over
 // plain HTTP (fetched by IP with the Host header); a real address is fetched

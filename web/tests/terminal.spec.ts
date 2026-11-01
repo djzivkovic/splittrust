@@ -108,10 +108,10 @@ test("office story starts with the business need and shows real public versus pr
   await page.route("**/api/demo/run", (route) => route.fulfill({ json: {
     preset_id: "office-authorized", hostname: "demo-app-fixture", verification_mode: "splittrust",
     outcome: "authorized", summary: "Public DNS has no GitLab address; the office resolver returned the private address and the GitLab page loaded.",
-    dns_answer: "172.30.97.70", http_url: "http://git.dev.corp.lab/", duration_ms: 42,
+    dns_answer: "10.20.0.10", http_url: "http://git.dev.corp.lab/", duration_ms: 42,
     commands: [{ command: ["dig", "@172.30.97.10", "git.dev.corp.lab", "A"], stdout: "status: NXDOMAIN", stderr: "", exit_code: 0, duration_ms: 10, truncated: false }],
     public_dns: { qname: "git.dev.corp.lab.", qtype: "A", server: "172.30.97.10:53", rcode: "NXDOMAIN", ad: false, flags: ["qr", "aa"], answers: [], ede: [] },
-    dns: { qname: "git.dev.corp.lab.", qtype: "A", server: "172.30.97.63:53", rcode: "NOERROR", ad: true, flags: ["qr", "ra", "ad"], answers: ["172.30.97.70"], ede: [] },
+    dns: { qname: "git.dev.corp.lab.", qtype: "A", server: "172.30.97.63:53", rcode: "NOERROR", ad: true, flags: ["qr", "ra", "ad"], answers: ["10.20.0.10"], ede: [] },
   } }));
   await openTerminal(page);
   await expect(page.getByRole("heading", { name: "Private code. One hostname. Two DNS views.", exact: true })).toBeVisible();
@@ -119,5 +119,5 @@ test("office story starts with the business need and shows real public versus pr
   await expect(page.getByRole("button", { name: "Office: open GitLab", exact: true })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "Run commands", exact: true }).click();
   await expect(page.getByRole("region", { name: "Split-horizon comparison" })).toContainText("NXDOMAIN");
-  await expect(page.getByRole("region", { name: "Split-horizon comparison" })).toContainText("172.30.97.70");
+  await expect(page.getByRole("region", { name: "Split-horizon comparison" })).toContainText("10.20.0.10");
 });
