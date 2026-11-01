@@ -91,6 +91,7 @@ services:
     command: ["serve", "--addr", "0.0.0.0:8000"]
     restart: unless-stopped
     environment:
+      SPLITTRUST_DEMO_COMMANDS: "1"
       SPLITTRUST_PROXY: http://172.30.97.60:8001
       SPLITTRUST_PROXY_DNS: 172.30.97.60:53
       SPLITTRUST_NAIVE_DNS: 172.30.97.21:53
@@ -109,6 +110,8 @@ services:
       - "pvd.unsigned.lab:172.30.97.30"
       - "pvd.wrongds.lab:172.30.97.30"
     depends_on:
+      demo-proxy:
+        condition: service_started
       bootstrap:
         condition: service_completed_successfully
       public-dns:
@@ -154,6 +157,32 @@ services:
         ipv4_address: 172.30.97.60
       egress: {}
 
+  # The terminal switches only this proxy, never the presentation's network.
+  demo-proxy:
+    build:
+      context: ..
+      dockerfile: lab/app/Dockerfile
+    command: ["proxy", "--scenario", "legit", "--listen", "0.0.0.0:53", "--control", "0.0.0.0:8001"]
+    restart: unless-stopped
+    <<: *labgen
+    extra_hosts: *pvdhosts
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+      public-dns:
+        condition: service_started
+      local-dot:
+        condition: service_started
+      hotel-dot:
+        condition: service_started
+      pvd:
+        condition: service_started
+      external:
+        condition: service_started
+    networks:
+      splitlab:
+        ipv4_address: 172.30.97.63
+
   # A plain client with no SplitTrust code: its DNS server is the proxy.
   #   docker compose -f lab/compose.yaml exec client curl -s http://host.internal.corp.lab
   client:
@@ -184,7 +213,7 @@ services:
     build:
       context: ./web
     environment:
-      SITE_BANNER: "INTRANET (172.30.97.70): company SecureCompany's internal host. Reached through the resolver the domain owner authorised."
+      SITE_BANNER: "INTERNAL GITLAB (172.30.97.70): SecureCompany's private code repository. Office intranet reached through the resolver the domain owner authorised. Lab stand-in, not a full GitLab installation."
     networks:
       splitlab:
         ipv4_address: 172.30.97.70
@@ -211,7 +240,7 @@ services:
     build:
       context: ./web
     environment:
-      SITE_BANNER: "FAKE PAGE (172.30.97.66): a copy of the site you asked for, served by the hotel resolver. A real attacker would collect your login here."
+      SITE_BANNER: "FAKE PAGE / GITLAB LOGIN (172.30.97.66): the hotel redirected your GitLab bookmark here. A real attacker would ask for your company credentials. Lab stand-in only; no credentials are collected."
     networks:
       splitlab:
         ipv4_address: 172.30.97.66

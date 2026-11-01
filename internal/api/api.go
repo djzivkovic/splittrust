@@ -43,6 +43,7 @@ type handler struct {
 	svc      Service
 	proxyURL string   // control endpoint of the lab's DNS proxy, "" when absent
 	browser  *Browser // in-lab page fetcher for the "now browse" panel, nil when absent
+	demo     DemoRunner
 }
 
 // NewHandler builds the HTTP handler: /api/* plus the console at /.
@@ -52,8 +53,15 @@ func NewHandler(svc Service) http.Handler { return NewHandlerWithProxy(svc, "", 
 // /api/client/* (so the console can move the simulated client between
 // networks) and, with a Browser, POST /api/browse.
 func NewHandlerWithProxy(svc Service, proxyURL string, browser *Browser) http.Handler {
-	h := &handler{svc: svc, proxyURL: strings.TrimSuffix(proxyURL, "/"), browser: browser}
+	return NewHandlerWithDemo(svc, proxyURL, browser, nil)
+}
+
+// NewHandlerWithDemo optionally enables the fixed, bounded Docker command presets.
+func NewHandlerWithDemo(svc Service, proxyURL string, browser *Browser, demo DemoRunner) http.Handler {
+	h := &handler{svc: svc, proxyURL: strings.TrimSuffix(proxyURL, "/"), browser: browser, demo: demo}
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/demo/presets", h.demoPresets)
+	mux.HandleFunc("POST /api/demo/run", h.demoRun)
 	mux.HandleFunc("GET /api/client/status", h.clientStatus)
 	mux.HandleFunc("GET /api/client/log", h.clientLog)
 	mux.HandleFunc("GET /api/client/events", h.clientEvents)

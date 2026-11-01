@@ -5,6 +5,7 @@
 tls://lab:853 {
     tls /gen/local-dot/cert.pem /gen/local-dot/key.pem
     file /gen/local-dot/internal.corp.lab.zone internal.corp.lab
+    file /gen/local-dot/dev.corp.lab.zone dev.corp.lab
     file /gen/local-dot/mail.corp.lab.zone mail.corp.lab
     file /gen/local-dot/internal.stale.lab.zone internal.stale.lab
     file /gen/local-dot/internal.expired.lab.zone internal.expired.lab

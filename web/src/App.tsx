@@ -15,10 +15,15 @@ import { ImpactSlide, RoadmapSlide, SolutionSlide, TryItSlide, WhyNotSlide } fro
 import { AudienceSlide, WhyNowSlide } from "./components/Pitch";
 import { Slide } from "./components/Slide";
 import { BLUE, Doc, GREEN, INK, Laptop, Lock, Mark, RED, Resolver, Shield } from "./components/Art";
+import { Playground } from "./components/Playground";
 
 const BEAT_MS = 1500;
 
 export default function App() {
+  return window.location.pathname.replace(/\/+$/, "") === "/demo" ? <Playground /> : <Presentation />;
+}
+
+function Presentation() {
   const [summaries, setSummaries] = useState<Summary[] | null>(null);
   const [err, setErr] = useState("");
   const [slide, setSlide] = useState(0);

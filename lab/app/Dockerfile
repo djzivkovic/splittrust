@@ -42,7 +42,7 @@ FROM debian:bookworm-slim AS runtime
 # dns-root-data provides /usr/share/dns/root.key, the IANA root trust anchor used
 # by the one scenario that validates against the real DNS.
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends libssl3 libexpat1 libevent-2.1-7 ca-certificates dns-root-data \
+  && apt-get install -y --no-install-recommends libssl3 libexpat1 libevent-2.1-7 ca-certificates dns-root-data bind9-dnsutils curl \
   && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /usr/local/lib/libunbound.so* /usr/local/lib/
 RUN ldconfig
