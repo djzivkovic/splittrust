@@ -35,15 +35,15 @@ If you will also show the live playground, start the Docker lab separately with
 | Time | Say | Show |
 |---|---|---|
 | 0:00-0:15 | Team NXDOMAIN, SplitTrust: when a network says "my resolver answers for your company's names", can the laptop check that the company agreed? | Slide 1. |
-| 0:15-0:45 | Split-horizon DNS: internal names, private addresses, only on the company network or VPN. Public DNS proves they do not exist. Chaining the internal zone into the public one or installing trust anchors is rarely done, so the laptop trusts whatever resolver the network hands it. | Slide 2. |
-| 0:45-1:10 | The same bookmark at a hotel: the hotel's resolver can claim the same names. An announcement is not proof of authorization, and requiring DNSSEC would break the real intranet too. | Slide 3. |
-| 1:10-1:40 | RFC 9704: the owner publishes a Verification Record, the network supplies a claim, the client authenticates the resolver and the owner's permission before granting a scoped exception. | Slide 4. |
-| 1:40-2:15 | At the office the private view is legitimate: the signed record validates, the private 10.20.0.10 answer is accepted, normal DNS policy for everything else. | Slide 5: narrate over the animation. |
-| 2:15-2:55 | At the hotel, VPN off: network DNS hands out an attacker IP. The company's signed denial says the hotel has no authorization; the proxy rejects the invented answer. HTTPS remains a separate safeguard. | Slide 6. |
+| 0:15-0:45 | Split-horizon DNS: internal names, private addresses, only on the company network. Public DNS proves they do not exist. Devices increasingly use their own encrypted resolver (Private DNS, DoH), so the private view does not resolve for them; the company must ask the device for an exception. | Slide 2. |
+| 0:45-1:20 | Any network can ask for that exception; no existing hint lets the device check the owner agreed. A VPN covers a device whose tunnel is up, not the time before, split tunnels, phones, contractors, partner sites, or a rogue AP at the office. Requiring DNSSEC breaks the real intranet too. | Slide 3. |
+| 1:20-1:50 | RFC 9704: the owner publishes a Verification Record, the network supplies a claim, the client authenticates the resolver and the owner's permission before granting a scoped exception. | Slide 4. |
+| 1:50-2:20 | At the office the private view is legitimate: the signed record validates, the private 10.20.0.10 answer is accepted, normal DNS policy for everything else. | Slide 5: narrate over the animation. |
+| 2:20-2:55 | At the hotel, VPN off: network DNS hands out an attacker IP. The company's signed denial says the hotel has no authorization; the proxy rejects the invented answer. HTTPS remains a separate safeguard. | Slide 6. |
 | 2:55-3:15 | Copying the public claim is insufficient: the hotel's certificate cannot prove dns.corp.lab's identity. | Slide 7. |
 | 3:15-3:45 | We built the verifier, a DNS proxy ordinary clients can use, and the owner's record builder. Network profiles are configured in this prototype. | Slide 8. |
 | 3:45-4:20 | Demonstrated: private GitLab access, rejected hotel authority, refusal of a wrong delegated key; scenario profiles, reproducible vectors, a documented RFC example discrepancy. | Slide 9. |
-| 4:20-5:00 | Legitimate private DNS without granting every network authority over company names. Inspect it in the playground; the next step is one managed-device pilot. | Slide 10. |
+| 4:15-5:00 | Legitimate private DNS without granting every network authority over company names. Inspect it in the playground; the next step is one managed-device pilot. | Slide 10. |
 
 ## Optional live playground
 

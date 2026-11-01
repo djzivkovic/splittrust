@@ -76,9 +76,10 @@ export function ProblemSlide() {
     <Slide section="The problem" title="Private DNS needs proof of permission"
       sub="The same GitLab bookmark follows an employee from office to hotel."
       takeaway="A network announcing a resolver does not prove the domain owner authorized it.">
-      <div className="mt-3 grid gap-3 text-base md:grid-cols-2">
-        <p className="rounded-xl border border-blue-200 bg-blue-50 p-4"><b>The legitimate need:</b> company GitLab has a private DNS view that public DNS does not provide.</p>
-        <p className="rounded-xl border border-slate-200 bg-white p-4"><b>The trust gap:</b> accepting every network's claimed private view also accepts an attacker's claim.</p>
+      <div className="mt-3 grid gap-3 text-base md:grid-cols-3">
+        <p className="rounded-xl border border-blue-200 bg-blue-50 p-4"><b>The legitimate need:</b> devices with their own encrypted resolver never see the private GitLab view; the company must ask them for an exception.</p>
+        <p className="rounded-xl border border-slate-200 bg-white p-4"><b>The trust gap:</b> any network can ask for that exception, and no existing hint lets the device check that the owner agreed.</p>
+        <p className="rounded-xl border border-slate-200 bg-white p-4"><b>Not settled by the VPN:</b> it covers a device whose tunnel is up. Not the time before, split tunnels, phones and contractors, partner sites, or a rogue access point at the office.</p>
       </div>
       <Canvas viewBox="0 0 1200 390" label="Office and hotel make the same GitLab DNS claim">
         <line x1={284} y1={190} x2={550} y2={250} stroke="#cbd5e1" strokeWidth={3} />
