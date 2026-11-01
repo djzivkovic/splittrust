@@ -248,6 +248,10 @@ func Generate(outDir string, now time.Time) error {
 		return writeZone(filepath.Join(outDir, "hotel-dot", strings.TrimSuffix(parent, ".")+".fake"), fake)
 	}
 	for _, sc := range cat.Scenarios {
+		if sc.ID == "gitlab-hotel" {
+			// This story overrides one bookmark, not the company's whole public zone.
+			continue
+		}
 		for i, spec := range sc.Claims {
 			if !strings.HasPrefix(spec.Resolver, "dns.hotel.") || i >= len(gens[sc.ID]) {
 				continue
@@ -262,6 +266,7 @@ func Generate(outDir string, now time.Time) error {
 		if err := forged(dns.Fqdn(strings.ToLower(z)), "", ""); err != nil {
 			return err
 		}
+		fmt.Fprintf(&hosts, "%s git.dev.corp.lab\n", hijack)
 	}
 	if err := os.WriteFile(filepath.Join(outDir, "hotel-dot", "hosts"), []byte(hosts.String()), 0o644); err != nil {
 		return err
@@ -330,6 +335,9 @@ func childZone(origin, resolver, hostIP string, ksk, zsk *dns.DNSKEY, kpriv, zpr
 		&dns.NS{Hdr: hdr(origin, dns.TypeNS), Ns: resolver},
 		&apexKSK, &apexZSK,
 		&dns.A{Hdr: hdr("host."+origin, dns.TypeA), A: parseIP(hostIP)},
+	}
+	if origin == "dev.corp.lab." {
+		rrs = append(rrs, &dns.A{Hdr: hdr("git."+origin, dns.TypeA), A: parseIP(hostIP)})
 	}
 	incep, exp := now.Add(-5*time.Minute), now.Add(48*time.Hour)
 	var out []dns.RR

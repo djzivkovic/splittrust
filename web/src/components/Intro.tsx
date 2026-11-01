@@ -96,8 +96,8 @@ export function HowSlide() {
         <g transform="translate(880, 340)"><Laptop tone={BLUE} /></g>
         <g transform="translate(924, 300)"><Shield /></g>
         {[
-          ["TLS: the certificate matches the name", ""],
-          ["DNSSEC: the owner's record validates", ""],
+          ["TLS: certificate matches", "the resolver's name"],
+          ["DNSSEC: record validates", "against the owner's signed zone"],
           ["the token matches the claim", "only then are those names routed there"],
         ].map(([t, s], i) => (
           <g key={t} transform={`translate(975, ${190 + i * 62})`}>
@@ -125,6 +125,12 @@ export function ClosingSlide() {
         {row("Built", "the RFC 9704 check, a DNS proxy that enforces it, the owner's record tool; tested against our own signed zone", "text-green-800")}
         {row("Not yet", "OS integration, and claims arriving over DHCP or PvD on the wire. Unsigned zones depend on a resolver the device already trusts (RFC 9704 §6.1)", "text-slate-600")}
         {row("Ask", "one OS or resolver vendor to try it, one company with split-horizon DNS for a managed-device pilot", "text-blue-800")}
+        <div className="pt-3 text-center">
+          <a href="/demo" className="inline-flex items-center gap-3 rounded-xl bg-blue-700 px-7 py-3 text-xl font-semibold text-white shadow-sm hover:bg-blue-800 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-700">
+            Try it yourself <span aria-hidden="true">→</span>
+          </a>
+          <p className="mt-2 text-sm text-slate-500">Run the live scenarios and build an authorization record.</p>
+        </div>
       </div>
     </Slide>
   );

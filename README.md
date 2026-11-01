@@ -20,7 +20,7 @@ has no test vectors, and its worked example cannot be reproduced. SplitTrust pro
 |---|---|
 | `splittrust` (one Go binary) | RFC 9704 verifier: claim canonicalisation, token, Verification Record lookup with local DNSSEC validation (libunbound) through the network's resolver or iteratively, the §6.1 external-resolver path for devices configured that way, resolver TLS identity (RFC 9525), §7 `ds` key binding over `resolver.arpa.`, grants with TTL/RRSIG/PvD-bounded expiry; scoped resolution; **a Do53 proxy so ordinary stubs resolve through the verdicts**; owner tool; DHCP option 90/11 codec; CLI, HTTP API and the embedded demo deck |
 | `lab/` | Docker Compose lab: CoreDNS hybrid resolvers for the office (`dns.splittrust.zivkovic.me` / `dns.corp.lab`, DoT, plus UnsecureCompany's plain-DNS resolver) and the hotel (`dns.hotel.lab`: honest, forging and plain views), both with Internet access; BIND serving a signed private root, `lab` TLD and seven parent zones (one expired, one unsigned); nginx PvD server; unbound as `quad9.lab`; web servers for both intranets and the hotel's fake page; a plain client and its twin without SplitTrust; a one-shot bootstrap that regenerates keys, zones and certificates |
-| Three real-domain scenes + ten lab scenarios × three simulated devices | demo: `real-office`, `real-hotel-forged`, `real-replay` (SecureCompany's real zone `zivkovic.me`); corner cases: `legit`, `hotel`, `hotel-forged`, `stale-salt`, `expired-signature`, `unsigned`, `wrong-ds`, `replay`, `hotel-blocks-external`, `special-use`; devices `validating-stub`, `private-dns`, `hybrid` |
+| Three real-domain scenes + twelve lab scenarios × three simulated devices | demo: `real-office`, `real-hotel-forged`, `real-replay` (SecureCompany's real zone `zivkovic.me`); terminal story: `gitlab-office`, `gitlab-hotel`; corner cases: `legit`, `hotel`, `hotel-forged`, `stale-salt`, `expired-signature`, `unsigned`, `wrong-ds`, `replay`, `hotel-blocks-external`, `special-use`; devices `validating-stub`, `private-dns`, `hybrid` |
 | `vectors/` | Published test vectors: token encoding (incl. the RFC example under both salts, `*`, IDN, SHA-512), TXT parsing, DHCP payloads, PvD documents, expected verdicts |
 | `docs/rfc9704-example-erratum.md` | The forensic explanation of the RFC's broken §5.1 example, a second erratum for Figure 1, and eight points the RFC leaves to implementers |
 | `docs/demo.md` | The 5-minute demo script and Q&A cards |
@@ -46,8 +46,61 @@ Internet access; the engine, CLI and lab scenarios do not.
 
 The console is React + Vite + Tailwind in `web/`, built in the image's first stage and embedded into the Go
 binary; the committed `internal/api/web/dist` is a convenience for `go build` on hosts without Node
-(`cd web && npm ci && npm run build` regenerates it). Everything else (all thirteen scenarios, every
+(`cd web && npm ci && npm run build` regenerates it). Everything else (all fifteen scenarios, every
 option, raw JSON) is reachable through the CLI and the HTTP API.
+
+### Try it yourself
+
+The closing slide links to `http://127.0.0.1:8000/demo`, a standalone playground. Its default
+**Live terminal** tab tells one story: SecureCompany hosts GitLab privately so its source code stays
+on the company network. Employees use **`git.dev.corp.lab`** at the office or over the corporate VPN.
+Public DNS has no address for it; an authorized office resolver supplies the private view. DNS chooses
+the address, while network controls and application authentication enforce access. A hotel must not
+gain authority over that name merely by supplying Wi-Fi DNS.
+
+Three ordered presets run real commands inside the Docker **app** container:
+
+| Preset | Actual commands and evidence |
+|---|---|
+| Office: open GitLab | `dig @172.30.97.10 git.dev.corp.lab A +dnssec` gets an authoritative public-view NXDOMAIN. Then `dig @172.30.97.63 git.dev.corp.lab A +dnssec` gets the validated private address through the proxy's `gitlab-office` profile. `curl --resolve` uses that actual address to fetch the `INTERNAL GITLAB` page. The report compares both observed DNS views. |
+| Hotel: trust the Wi-Fi | `dig @172.30.97.21 git.dev.corp.lab A` gets the hotel's fake address. `curl --resolve` visits that address using the same hostname. A successful attack requires the actual `FAKE PAGE / GITLAB LOGIN` response. No DNSSEC or RFC 9704 check is performed. |
+| Hotel: verify with SplitTrust | `dig @172.30.97.63 git.dev.corp.lab A +dnssec` queries the proxy's `gitlab-hotel` profile. The company's signed DNS does not authorize the hotel resolver; its invented answer produces `SERVFAIL` and Extended DNS Error 6 (DNSSEC Bogus). No HTTP request is made. |
+
+The pages are small HTTP stand-ins, not a GitLab installation, and collect no credentials. Blocking the
+hotel redirect does not provide VPN connectivity: the employee still needs the corporate VPN to reach
+the real private repository. The new `dev.corp.lab` view is separate from the deck's existing names.
+
+The terminal shows captured stdout, stderr, exit codes and timing after each run completes. The report
+below it uses that same DNS response and the proxy's status and events from the actual lookup, not
+a separate CLI verification or a scripted outcome. `dig` is an ordinary client: **the proxy performs
+the validation**. `+dnssec` requests DNSSEC data, while AD reports the trusted lab proxy's assertion.
+Even a `SERVFAIL` response can have process exit code 0; only matching DNSSEC-Bogus evidence counts as a blocked attack.
+Missing tools, timeouts, incomplete output and unexpected results remain **inconclusive**. This is an
+HTTP DNS-redirection lab, **not an HTTPS certificate bypass**, and plain `dig` does not validate DNSSEC.
+All three presets use the private lab trust environment and need no public DNS or HTTP traffic.
+The separate `demo-proxy` container has no published port or egress network. Before each protected run,
+the backend switches that proxy's lab profile and clears its grants using its existing control API.
+The presentation's `proxy` service is never switched by terminal runs.
+
+Compose explicitly enables these endpoints with `SPLITTRUST_DEMO_COMMANDS=1`; otherwise they return
+503. `GET /api/demo/presets` lists the presets and `POST /api/demo/run` accepts only
+`{"preset_id":"hotel-unverified"}` (or another listed ID). No caller-supplied commands or targets, shell,
+Docker socket, or `docker exec` endpoint are exposed. Only one run is allowed at a time (409 if busy),
+with a 35-second deadline and 64 KiB per output stream. HTTP follow-up is restricted to the two configured
+lab web-server IPs. Keep this demonstration service local, as the Compose localhost port binding does.
+
+The generic scenario-picker tab is intentionally omitted from the presentation playground. All scenarios,
+device profiles and full verifier reports remain available through the CLI and HTTP API.
+
+The **Build a record** tab uses the existing owner API to generate a TXT line and claim JSON. It does
+not publish DNS records or establish authorization, and its signing-status warning remains visible.
+Editing a field clears the previous output so it cannot be mistaken for the new claim's record.
+Use **Back to presentation** to return to the deck.
+
+The presentation's browser regression check catches clipped diagram labels at 1366×768 and 1280×720.
+From `web`, run `npm ci`, `npx playwright install chromium`, then `npm run test:presentation`.
+It starts and stops its own local frontend and supplies API responses at the network boundary, so no DNS
+lab is needed for the layout, navigation, command-transcript, playground-result and owner-form regression checks.
 
 ## Run it (Docker only; macOS, Windows or Linux)
 
@@ -65,6 +118,11 @@ docker compose -f lab/compose.yaml down -v                  # remove everything,
 Requirements: Docker Engine 26+ with Compose v2 (Docker Desktop or Rancher Desktop). No Go, Python or
 Node on the host. The lab regenerates its keys and signatures when they are older than 20 h; `down -v`
 forces a fresh generation.
+
+When upgrading an existing lab to the GitLab story, a new generation is required for its profiles,
+signed private zone and hotel override. Rebuild the images, stop **this Compose project's** DNS/app
+services, run its bootstrap with `FORCE=1`, then start the services again. Do not regenerate keys
+under running DNS servers: their loaded certificates and trust anchors would no longer match.
 
 ### Without the lab
 
@@ -111,6 +169,8 @@ validated under the delegated keys; everything else takes the device's default p
 | `replay` | rejected `TLS_IDENTITY_FAILED` | | |
 | `hotel-blocks-external` | | rejected `EXTERNAL_TIMEOUT` | |
 | `special-use` | rejected `SPECIAL_USE_NAME`, no traffic | | |
+| `gitlab-office` (private GitLab) | accepted `AUTHORIZED` | | |
+| `gitlab-hotel` (hotel claims developer services) | rejected `RECORD_MISSING` | | |
 | `real-office` (SecureCompany's office, real zone) | accepted `AUTHORIZED` | accepted `EXTERNAL_TOKEN_MATCH` (AD=1 from the real dns.quad9.net) | accepted |
 | `real-hotel-forged` (hotel claims SecureCompany's domain) | rejected `DNSSEC_BOGUS` | rejected `RECORD_MISSING` | |
 | `real-replay` (hotel replays SecureCompany's claim) | rejected `TLS_IDENTITY_FAILED` | | |
@@ -178,6 +238,7 @@ internal/pvd          RFC 8801 fetch/validate              internal/dot      DoT
 internal/validate     libunbound (cgo, -tags libunbound)   internal/verify   the pipeline, ds binding, local validation
 internal/route        scoped resolution                    internal/proxy    Do53 front door with grant cache + EDE
 internal/engine       wiring shared by CLI, API and proxy
+internal/democmd      preset-only lab command runner, bounded output and observed outcomes
 internal/api          HTTP API, /api/browse, /api/live, embedded deck   internal/lab  scenario catalogue + manifest
 web/                  the demo deck: React + Vite + Tailwind + framer-motion
 internal/labgen       lab artefacts the engine must make   internal/vectors  published vectors + forensics

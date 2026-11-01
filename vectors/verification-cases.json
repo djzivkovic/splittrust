@@ -179,6 +179,24 @@
       "reason": "SPECIAL_USE_NAME",
       "exercises": "s3: Special-Use Domain Names MUST NOT be validated",
       "explanation": "A network claims home.arpa. RFC 9704 section 3: Special-Use Domain Names MUST NOT be validated. Rejected without any network traffic."
+    },
+    {
+      "scenario": "gitlab-office",
+      "title": "Private GitLab on the company network",
+      "device": "validating-stub",
+      "decision": "accepted",
+      "reason": "AUTHORIZED",
+      "exercises": "",
+      "explanation": "The company keeps source code on git.dev.corp.lab. Public DNS has no address for it; the office resolver serves the private dev.corp.lab view. A signed Verification Record authorizes dns.corp.lab for that scope and delegates its local DNSSEC key."
+    },
+    {
+      "scenario": "gitlab-hotel",
+      "title": "Hotel Wi-Fi impersonates the company GitLab",
+      "device": "validating-stub",
+      "decision": "rejected",
+      "reason": "RECORD_MISSING",
+      "exercises": "",
+      "explanation": "The employee opens the same GitLab bookmark at a hotel. Hotel DNS invents an address for git.dev.corp.lab and claims authority for dev.corp.lab. The company never authorized dns.hotel.lab; the signed denial rejects that claim, and local DNSSEC validation rejects its invented GitLab answer."
     }
   ],
   "description": "Expected verdicts of the SplitTrust lab scenarios per simulated device. trust_context is always \"lab\": a private root, not the global DNS.",

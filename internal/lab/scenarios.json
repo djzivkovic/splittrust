@@ -500,6 +500,70 @@
           "reason": "SPECIAL_USE_NAME"
         }
       ]
+    },
+    {
+      "id": "gitlab-office",
+      "title": "Private GitLab on the company network",
+      "explanation": "The company keeps source code on git.dev.corp.lab. Public DNS has no address for it; the office resolver serves the private dev.corp.lab view. A signed Verification Record authorizes dns.corp.lab for that scope and delegates its local DNSSEC key.",
+      "discovery": "dnr",
+      "parent": "corp.lab",
+      "network_resolvers": [
+        {
+          "adn": "dns.corp.lab",
+          "addr": "172.30.97.20:853"
+        }
+      ],
+      "claims": [
+        {
+          "resolver": "dns.corp.lab",
+          "subdomains": [
+            "dev"
+          ],
+          "ds": "local"
+        }
+      ],
+      "claim_source": "inline",
+      "default_device": "validating-stub",
+      "example_qname": "git.dev.corp.lab",
+      "expected": [
+        {
+          "device": "validating-stub",
+          "decision": "accepted",
+          "reason": "AUTHORIZED"
+        }
+      ]
+    },
+    {
+      "id": "gitlab-hotel",
+      "title": "Hotel Wi-Fi impersonates the company GitLab",
+      "explanation": "The employee opens the same GitLab bookmark at a hotel. Hotel DNS invents an address for git.dev.corp.lab and claims authority for dev.corp.lab. The company never authorized dns.hotel.lab; the signed denial rejects that claim, and local DNSSEC validation rejects its invented GitLab answer.",
+      "discovery": "dnr",
+      "parent": "corp.lab",
+      "network_resolvers": [
+        {
+          "adn": "dns.hotel.lab",
+          "addr": "172.30.97.21:853"
+        }
+      ],
+      "claims": [
+        {
+          "resolver": "dns.hotel.lab",
+          "subdomains": [
+            "dev"
+          ],
+          "ds": "none"
+        }
+      ],
+      "claim_source": "inline",
+      "default_device": "validating-stub",
+      "example_qname": "git.dev.corp.lab",
+      "expected": [
+        {
+          "device": "validating-stub",
+          "decision": "rejected",
+          "reason": "RECORD_MISSING"
+        }
+      ]
     }
   ],
   "forged_zones": [
