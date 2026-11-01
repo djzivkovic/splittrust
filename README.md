@@ -31,7 +31,8 @@ tooling, a reproducible lab, test vectors and an analysis of the RFC's worked ex
 `http://127.0.0.1:8000` is the presentation. The **ten-slide main pitch** is: title, split-horizon DNS
 (the background), private-DNS problem, how owner authorization works, office example, hotel example,
 company configuration/copied claim, working deliverables, reproducible evidence, and closing. The spoken
-text is `docs/speech.md`. The footer counts the main pitch separately
+text is `docs/speech.md`; `docs/SplitTrust-pitch.pptx` is the same ten slides as a PowerPoint file with the speech
+as speaker notes (regenerate with `npm run build && npm run export:pptx` in `web/`). The footer counts the main pitch separately
 from the **nine-slide appendix**: historical context, detailed architecture, proxy rules, inventory,
 beneficiaries/deployers, complementary protections, deployment, owner-record format, and one concrete pilot.
 HTTPS, encrypted DNS, DNSSEC and VPNs are explained as complementary tools, not a winner/loser scorecard.
