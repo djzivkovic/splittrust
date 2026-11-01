@@ -1,6 +1,6 @@
 # SplitTrust: what to say
 
-Spoken text for the ten-slide main pitch, about 700 words, five minutes at a calm pace. Slide numbers
+Spoken text for the ten-slide main pitch, about 750 words, five minutes at a brisk pace. Slide numbers
 match the deck at `http://127.0.0.1:8000`. This is the shape of what to say, not a script to read out;
 say it your way, keep each slide to its one point. The slides are illustrations; the live checks run in
 the playground at `/demo`. The appendix (A1 to A9) is for questions; `docs/demo.md` has the Q&A table.
@@ -13,105 +13,94 @@ that aren't there.
 ## 1. Title (0:00)
 
 Hi everyone. We're Team NXDOMAIN and this is SplitTrust. It answers a question your laptop can't answer
-today. A network tells it: "my resolver answers for your company's names". Did the company actually
-agree to that?
+today. A network says: "my resolver answers for your company's names." Did the company actually agree?
 
 ## 2. Split-horizon DNS (0:15)
 
-Quick bit of background, because this is where the whole problem lives. Most companies run internal
-services, let's say a GitLab. For those they keep an internal DNS view. `git.dev.corp.lab` resolves to a
-private address, 10.20.0.10, and only on the company network or through its VPN. Public DNS has never
-heard of that name. In fact the public zone is signed, so a validating resolver gets a signed proof that
-the name does not exist.
+Quick background, because this is where the problem lives. Companies run internal services, say a
+GitLab, with an internal DNS view: `git.dev.corp.lab` resolves to a private address, 10.20.0.10, and
+only on the company network or through its VPN. Public DNS has never heard of that name. The public zone
+is signed, so a validating resolver gets a signed proof that it does not exist.
 
-For years that just worked, because laptops used whatever resolver the network gave them. That's
-changing. Phones have Private DNS. Apple and Windows ship encrypted DNS to a resolver you pick. Browsers
-do DNS over HTTPS to a public resolver. A device like that never talks to the office resolver, so the
-private GitLab name simply doesn't resolve for it. The company now has to ask the device for an
-exception: "for these names, please use this resolver".
+For years that worked because laptops used whatever resolver the network gave them. That's changing.
+Phones have Private DNS, Apple and Windows ship encrypted DNS to a resolver you pick, browsers do DNS over
+HTTPS. A device like that never talks to the office resolver, so the private GitLab name doesn't resolve
+for it at all. The company has to ask the device for an exception: "for these names, use this resolver."
 
 ## 3. The problem (0:45)
 
-And that exception is the problem, because any network can ask for it. The hotel's router hands out a
-resolver that claims the very same names. There are several ways to send that kind of hint: DHCP options,
-PvD documents, a VPN's configuration. The RFC says it plainly: none of them lets the client find out
-whether the domain owner authorized it. So the device has two bad options. Trust every hint, and a hotel
-can point `git.dev.corp.lab` wherever it likes. Trust none, and the private view breaks the moment the
-device isn't using the network's resolver.
+And that exception is the problem, because any network can ask for it. A hotel router hands out a
+resolver that claims the very same names, and, in the RFC's own words, no existing hint mechanism lets
+the client find out whether the owner authorized it. So the device has two bad options: trust every
+hint, and a hotel can point `git.dev.corp.lab` wherever it likes; trust none, and the private view breaks
+whenever the device isn't on the network's resolver.
 
-Now, the obvious answer is "just use the VPN". And a VPN is a perfectly good hint, the device trusts it
-because it trusts the tunnel. But think about when that tunnel is actually up. Not in the minutes after
-you join the Wi-Fi, while the captive portal is still open and your mail and chat clients are already
-resolving internal names. Not with a split tunnel where DNS stays local. Not on your phone, not on a
-contractor's laptop, not at a partner site. And not at the office itself, where nobody runs a VPN and a
-rogue access point can hand out its own resolver. "Just require DNSSEC" doesn't help either: the real
-intranet fails exactly like the forged one. What the device needs is a way to ask the company: did you
-authorize this resolver for these names?
+"Just use the VPN" covers the laptop whose tunnel is up and carrying DNS. It does not cover the minutes
+after you join the Wi-Fi, while the captive portal is open and your mail client is already resolving
+internal names. Not a split tunnel, not your phone, not a contractor's laptop, and not the office itself,
+where nobody runs a VPN and a rogue access point can hand out its own resolver. And requiring DNSSEC on
+the laptop breaks the real intranet exactly like the forged one. The device needs a way to ask the
+company: did you authorize this resolver for these names?
 
 ## 4. How RFC 9704 works (1:20)
 
-RFC 9704, published in January, answers that in three steps. One, the domain owner publishes a
-Verification Record: a single TXT record in its signed public zone, under the resolver's name, carrying a
-salted hash of the names that resolver may answer for. Two, the network makes its claim: this resolver,
-these names, this salt. Three, the client checks before it trusts. It opens TLS to the resolver and
-checks the certificate matches the announced name. It fetches the owner's record and validates it with
-DNSSEC. It recomputes the hash and compares. Only then does it send those names, and only those names,
-to that resolver.
+RFC 9704, published in January, answers that in three steps. One, the owner publishes a Verification
+Record: one TXT record in its signed public zone, under the resolver's name, with a salted hash of the
+names that resolver may answer for. Two, the network makes its claim: this resolver, these names, this
+salt. Three, the client checks before it trusts: TLS to the resolver, certificate must match the name;
+the owner's record, validated with DNSSEC; the hash recomputed and compared. Only then does it send those
+names, and only those, to that resolver.
 
 ## 5. At the office (1:50)
 
-So here's our employee at the office, GitLab bookmark open. [the animation runs] The laptop asks the
-company resolver to prove its name over TLS, fetches the company's record, validates it, compares the
-token. Accepted. The private answer, 10.20.0.10, is used, and every other name keeps its normal DNS
-policy. The private view was always legitimate. Now it's also checked.
+Our employee at the office, GitLab bookmark open. [the animation runs] The laptop asks the company
+resolver to prove its name over TLS, fetches the company's record, validates it, compares the token.
+Accepted. The private answer, 10.20.0.10, is used; every other name keeps its normal DNS policy. The
+private view was always legitimate. Now it's also checked.
 
 ## 6. At the hotel (2:20)
 
-Same laptop, same bookmark, hotel Wi-Fi, no tunnel. [the animation runs] Plain network DNS hands out an
-address the attacker controls, and a laptop that just trusts the network connects to it. What leaks then
-depends on the application, and intranets are full of applications that leak: tools on plain HTTP,
-Windows clients that authenticate automatically to anything that looks internal, scripts that skip
-certificate checks. HTTPS with a proper certificate stops the impersonation, but the request has already
-left the laptop.
+Same laptop, same bookmark, hotel Wi-Fi, no tunnel. [the animation runs] Network DNS hands out an
+address the attacker controls, and a laptop that trusts the network connects to it. What leaks then
+depends on the application, and intranets are full of applications that leak: plain-HTTP tools, Windows
+clients that authenticate automatically to anything that looks internal, scripts that skip certificate
+checks. HTTPS with a proper certificate stops the impersonation, but the request has already left.
 
-With SplitTrust the laptop asks the public zone: is there a record authorizing the hotel's resolver? It
-gets the company's signed answer: there isn't. No exception, and the invented GitLab address is thrown
-away on the laptop's normal validating path. The name fails to resolve instead of resolving to the wrong
-place. To be clear, this doesn't get you into GitLab from the hotel. For that you still need the office
-or the VPN. It makes sure the request never goes to the attacker.
+With SplitTrust the laptop asks the public zone: is there a record authorizing the hotel's resolver? The
+company's signed answer: no. No exception, and the invented address is thrown away on the laptop's
+normal validating path. The name fails to resolve instead of resolving to the wrong place. This doesn't
+get you into GitLab from the hotel, you still need the office or the VPN for that. It makes sure the
+request never goes to the attacker.
 
 ## 7. What the company configures (2:55)
 
-Three things. DNSSEC on the zone. One Verification Record, built with our tool. And laptops that check,
-here through the SplitTrust proxy as their resolver. No application changed.
+Three things. DNSSEC on the zone. One Verification Record, built with our tool. Laptops that check, here
+through the SplitTrust proxy as their resolver. No application changed.
 
-The record is public, so what if the hotel just copies the whole claim? The laptop opens TLS to the
-announced resolver first and looks at the certificate. It's for `dns.hotel.lab`, not for `dns.corp.lab`.
-Rejected before a single DNS query. That's the resolver's own identity, nothing to do with GitLab's web
-certificate.
+The record is public, so what if the hotel copies the whole claim? The laptop opens TLS to the announced
+resolver first and looks at the certificate: `dns.hotel.lab`, not `dns.corp.lab`. Rejected before a
+single DNS query.
 
 ## 8. What we built (3:15)
 
-This is a working DNS path, not a drawing of a protocol. The verifier: the owner's permission, the
-resolver's identity, and the delegated key when the record carries one. An enforcing DNS proxy that sits
-on the path ordinary applications use: scoped answers, and anything DNSSEC-bogus refused with SERVFAIL and
-an Extended DNS Error that says why. And the owner's record builder: claim in, TXT record out. One Go
-binary, CLI and HTTP, and an isolated Docker lab around it. One honest limit: in this prototype the
-network profiles are configured, not discovered on the wire.
+A working DNS path, not a drawing of a protocol. The verifier: owner's permission, resolver's identity,
+and the delegated key when the record carries one. An enforcing DNS proxy on the path ordinary
+applications use: scoped answers, anything DNSSEC-bogus refused with SERVFAIL and an Extended DNS Error.
+The owner's record builder: claim in, TXT record out. One Go binary, CLI and HTTP, and a Docker lab
+around it. One honest limit: network profiles are configured here, not discovered on the wire.
 
 ## 9. Evidence (3:45)
 
 What we showed: private GitLab access authorized under the delegated key; the hotel's claim rejected on
-the company's signed denial; and a wrong delegated key refused instead of quietly downgrading to a
-token-only trust. Behind it: fifteen scenario profiles, three device profiles, reproducible token, TXT,
-DHCP and PvD vectors, two trust contexts, a private DNSSEC lab and our own signed zone on the public
-DNS, and a documented discrepancy in the RFC's worked example, with a reproducer.
+the company's signed denial; a wrong delegated key refused instead of quietly downgrading. Behind it:
+fifteen scenario profiles, three device profiles, reproducible test vectors, a private DNSSEC lab and
+our own signed zone on the public DNS, and a documented discrepancy in the RFC's worked example.
 
 ## 10. Closing (4:15)
 
-So: private DNS that works, without handing every network you join authority over your company's names.
-The implementation is there to inspect in the playground. The next step we want is one managed-device
-pilot with a company that runs split-horizon DNS. Thank you.
+Private DNS that works, without handing every network you join authority over your company's names.
+It's there to inspect in the playground. What we want next is one managed-device pilot with a company
+that runs split-horizon DNS. Thank you.
 
 ---
 
