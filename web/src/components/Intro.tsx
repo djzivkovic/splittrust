@@ -1,7 +1,8 @@
-/* Introduction and closing slides: who we are, the problem, how RFC 9704 answers it, the two companies. */
+/* Introduction, the owner-permission mechanism, and the pitch closing. */
 
-import { BLUE, Cloud, Doc, GREEN, INK, Laptop, Lock, Mark, Mask, MUTED, RED, Resolver, Router, Server, Shield } from "./Art";
+import { BLUE, Cloud, Doc, GREEN, INK, Laptop, Lock, Mark, MUTED, RED, Resolver, Router, Shield } from "./Art";
 import { Canvas, Slide } from "./Slide";
+import { STORY } from "../lib/deck";
 
 const Bubble = ({ x, y, w, text, tone = INK, tail = 0 }: { x: number; y: number; w: number; text: string; tone?: string; tail?: number }) => (
   <g transform={`translate(${x}, ${y})`}>
@@ -17,8 +18,8 @@ export function TitleSlide() {
     <div className="mx-auto flex h-full max-w-6xl flex-col justify-center px-10">
       <div className="text-sm font-semibold uppercase tracking-widest text-blue-700">DNS SEC(urity) Hackathon 2026</div>
       <h1 className="mt-3 text-5xl font-bold tracking-tight lg:text-6xl xl:text-7xl">SplitTrust</h1>
-      <p className="mt-4 text-2xl text-slate-700 lg:text-3xl">Who may answer for your domain inside a network?</p>
-      <p className="mt-2 text-lg text-slate-500 lg:text-xl">RFC 9704 verification, tested against a hostile resolver.</p>
+      <p className="mt-4 text-2xl text-slate-700 lg:text-3xl">Private DNS, with the owner's permission.</p>
+      <p className="mt-2 max-w-3xl text-lg text-slate-500 lg:text-xl">Reach company services without blindly trusting every network's DNS. A working RFC 9704 verifier and enforcing proxy.</p>
       <div className="mt-12 text-base font-semibold text-slate-800">Team NXDOMAIN</div>
       <svg viewBox="-40 -50 520 130" className="mt-10 h-28 w-[520px] max-w-full">
         <g transform="translate(40,10)"><Laptop tone={BLUE} /></g>
@@ -34,27 +35,28 @@ export function TitleSlide() {
 
 export function ProblemSlide() {
   return (
-    <Slide section="The problem" title="Any network can say: my resolver answers for your domain" sub="The device has no way to check that the domain owner agreed."
-      takeaway={<span className="text-base text-slate-600">DNS interception was found in 259 of 3,047 networks measured (Liu et al., USENIX Security 2018). Hotel networks rewriting DNS are documented since 2013.</span>}>
-      <Canvas viewBox="0 -10 1200 480" label="A hotel network claims a bank's domain">
-        <rect x={60} y={300} width={1080} height={140} rx={24} fill="#fff7ed" />
-        <text x={600} y={428} textAnchor="middle" fontSize={14} fontWeight={600} fill="#9a3412">Hotel Wi-Fi</text>
-        {/* connections first, so nothing is drawn over the actors */}
-        <line x1={200} y1={340} x2={600} y2={340} stroke="#cbd5e1" strokeWidth={2.5} />
-        <line x1={600} y1={340} x2={600} y2={166} stroke="#cbd5e1" strokeWidth={2.5} />
-        <line x1={654} y1={140} x2={926} y2={100} stroke="#cbd5e1" strokeWidth={2.5} />
-        <g transform="translate(200, 370)"><Laptop /></g>
-        <text x={200} y={436} textAnchor="middle" fontSize={15} fontWeight={600} fill={INK}>your laptop</text>
-        <g transform="translate(600, 380)"><Router tone="#9a3412" /></g>
-        <Bubble x={820} y={250} w={360} text="my resolver answers for banka.rs" tone="#9a3412" tail={-150} />
-        <g transform="translate(600, 140)"><Resolver hostile /></g>
-        <text x={600} y={196} textAnchor="middle" fontSize={13} fill={MUTED}>the hotel's resolver</text>
-        <g transform="translate(960, 100)"><Server tone={RED} fill="#fef2f2" /><Mask x={0} y={-50} /></g>
-        <text x={960} y={160} textAnchor="middle" fontSize={15} fontWeight={600} fill={RED}>a copy of the bank's login page</text>
-        <g transform="translate(300, 310)"><Lock tone={MUTED} /></g>
-        <text x={330} y={316} fontSize={13} fill={MUTED}>encrypted, to the wrong server</text>
-        <text x={200} y={296} textAnchor="middle" fontSize={40} fontWeight={800} fill={INK}>?</text>
-        <g transform="translate(1040, 54)"><Mark ok={false} size={16} /></g>
+    <Slide section="The problem" title="Private DNS needs proof of permission"
+      sub="The same GitLab bookmark follows an employee from office to hotel."
+      takeaway="A network announcing a resolver does not prove the domain owner authorized it.">
+      <div className="mt-3 grid gap-3 text-base md:grid-cols-2">
+        <p className="rounded-xl border border-blue-200 bg-blue-50 p-4"><b>The legitimate need:</b> company GitLab has a private DNS view that public DNS does not provide.</p>
+        <p className="rounded-xl border border-slate-200 bg-white p-4"><b>The trust gap:</b> accepting every network's claimed private view also accepts an attacker's claim.</p>
+      </div>
+      <Canvas viewBox="0 0 1200 390" label="Office and hotel make the same GitLab DNS claim">
+        <line x1={284} y1={190} x2={550} y2={250} stroke="#cbd5e1" strokeWidth={3} />
+        <line x1={916} y1={190} x2={650} y2={250} stroke="#cbd5e1" strokeWidth={3} />
+        <Bubble x={230} y={80} w={360} text="I can answer for dev.corp.lab" tone={BLUE} />
+        <Bubble x={970} y={80} w={360} text="I can answer for dev.corp.lab" tone={RED} />
+        <g transform="translate(230,190)"><Resolver tone={BLUE} /></g>
+        <text x={230} y={245} textAnchor="middle" fontSize={18} fontWeight={700} fill={BLUE}>Company resolver</text>
+        <text x={230} y={273} textAnchor="middle" fontSize={15} fill={MUTED}>{STORY.officeResolver}</text>
+        <g transform="translate(970,190)"><Resolver hostile /></g>
+        <text x={970} y={245} textAnchor="middle" fontSize={18} fontWeight={700} fill={RED}>Hotel resolver</text>
+        <text x={970} y={273} textAnchor="middle" fontSize={15} fill={MUTED}>{STORY.hotelResolver}</text>
+        <g transform="translate(600,260)"><Laptop tone={BLUE} /></g>
+        <text x={600} y={330} textAnchor="middle" fontSize={18} fontWeight={700} fill={INK}>{STORY.name}</text>
+        <text x={600} y={200} textAnchor="middle" fontSize={40} fontWeight={800} fill={INK}>?</text>
+        <text x={600} y={365} textAnchor="middle" fontSize={17} fill={MUTED}>Who did the company authorize?</text>
       </Canvas>
     </Slide>
   );
@@ -70,7 +72,7 @@ export function HowSlide() {
   );
   return (
     <Slide section="RFC 9704" title="How it works, in three steps"
-      takeaway="Copying the record is not enough: the resolver must also prove the claimed name over TLS.">
+      takeaway="Authenticated permission creates a scoped local DNS exception, not blanket trust in the network.">
       <Canvas viewBox="0 0 1240 440" label="The three steps of RFC 9704">
         <line x1={300} y1={300} x2={470} y2={300} stroke="#cbd5e1" strokeWidth={2.5} strokeDasharray="6 6" />
         <line x1={700} y1={300} x2={840} y2={300} stroke="#cbd5e1" strokeWidth={2.5} strokeDasharray="6 6" />
@@ -80,16 +82,16 @@ export function HowSlide() {
 
         {/* 1: zone with lock and the TXT record */}
         <g transform="translate(200, 230)"><Cloud /></g>
-        <text x={194} y={226} textAnchor="middle" fontSize={15} fontWeight={700} fill={INK}>alfa.example zone</text>
+        <text x={194} y={226} textAnchor="middle" fontSize={15} fontWeight={700} fill={INK}>{STORY.parent} zone</text>
         <text x={194} y={246} textAnchor="middle" fontSize={12} fill={MUTED}>DNSSEC-signed</text>
         <g transform="translate(262, 190)"><Lock tone={GREEN} /></g>
         <g transform="translate(200, 350)"><Doc tone={BLUE} /></g>
-        <text x={200} y={404} textAnchor="middle" fontSize={12} fontFamily="ui-monospace, Menlo, monospace" fill={INK}>dns.alfa.example._splitdns-challenge.alfa.example</text>
+        <text x={200} y={404} textAnchor="middle" fontSize={12} fontFamily="ui-monospace, Menlo, monospace" fill={INK}>{STORY.officeResolver}._splitdns-challenge.{STORY.parent}</text>
         <text x={200} y={422} textAnchor="middle" fontSize={12} fontFamily="ui-monospace, Menlo, monospace" fill={BLUE}>TXT "token=&lt;hash(salt, subdomains)&gt;"</text>
 
         {/* 2: router announcing */}
         <g transform="translate(600, 330)"><Router tone={BLUE} /></g>
-        <Bubble x={600} y={230} w={400} text="dns.alfa.example answers for internal.alfa.example" tone={BLUE} />
+        <Bubble x={600} y={230} w={400} text={`${STORY.officeResolver} answers for ${STORY.scope}`} tone={BLUE} />
         <text x={600} y={404} textAnchor="middle" fontSize={13} fill={MUTED}>plus the salt</text>
 
         {/* 3: laptop with shield and three checks */}
@@ -120,16 +122,17 @@ export function ClosingSlide() {
     </div>
   );
   return (
-    <Slide section="Closing" title="What this is, what it is not, what we ask" takeaway="github.com/djzivkovic/splittrust">
+    <Slide section="Closing" title="Private DNS, with the owner's permission" takeaway="github.com/djzivkovic/splittrust">
       <div className="flex flex-1 flex-col justify-center gap-4">
-        {row("Built", "the RFC 9704 check, a DNS proxy that enforces it, the owner's record tool; tested against our own signed zone", "text-green-800")}
-        {row("Not yet", "OS integration, and claims arriving over DHCP or PvD on the wire. Unsigned zones depend on a resolver the device already trusts (RFC 9704 §6.1)", "text-slate-600")}
-        {row("Ask", "one OS or resolver vendor to try it, one company with split-horizon DNS for a managed-device pilot", "text-blue-800")}
+        <p className="mb-2 text-2xl leading-relaxed text-slate-700">Keep company services reachable without granting every network authority over company names.</p>
+        {row("Built", "a working verifier, an enforcing DNS proxy, and an owner-record builder", "text-blue-800")}
+        {row("Shown", "authorized private access, rejected hotel claims, and refusal of bogus answers", "text-green-800")}
+        <p className="text-base text-slate-600">Prototype: network profiles are configured. Next: one managed-device pilot; automatic discovery and native OS integration come later.</p>
         <div className="pt-3 text-center">
           <a href="/demo" className="inline-flex items-center gap-3 rounded-xl bg-blue-700 px-7 py-3 text-xl font-semibold text-white shadow-sm hover:bg-blue-800 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-700">
             Try it yourself <span aria-hidden="true">→</span>
           </a>
-          <p className="mt-2 text-sm text-slate-500">Run the live scenarios and build an authorization record.</p>
+          <p className="mt-2 text-sm text-slate-500">Open the separate GitLab playground for real commands and the owner tool.</p>
         </div>
       </div>
     </Slide>

@@ -12,14 +12,14 @@ const MILESTONES: { year: string; what: string; detail: string; source: string; 
   { year: "2018 to 2020", what: "Encrypted DNS in the OS", detail: "Android 9 Private DNS (2018); iOS 14 and macOS 11 system DoH/DoT with per-domain rules (2020); Windows 11 DoH.", source: "support.google.com/android/answer/9654714; WWDC 2020 session 10047", kind: "block" },
   { year: "2022 to 2024", what: "Resolver discovery", detail: "DDR on by default at Apple (2022); DDR and DNR published as RFC 9462 and 9463 (2023); systemd 257 parses DNR (2024).", source: "WWDC 2022 session 10079; rfc-editor.org/rfc/rfc9463; systemd PR 30952", kind: "block" },
   { year: "Jan 2025", what: "RFC 9704", detail: "Proposed Standard from the ADD working group: the owner publishes a token, the device checks before trusting a local resolver.", source: "rfc-editor.org/rfc/rfc9704", kind: "rfc" },
-  { year: "Feb 2025", what: "0 known implementations", detail: "Co-author Benjamin Schwartz at DNS-OARC 44: '0 number of known implementations'.", source: "indico.dns-oarc.net/event/52/contributions/1168", kind: "gap" },
+  { year: "Feb 2025", what: "Authors: none known", detail: "At DNS-OARC 44 in February 2025, co-author Benjamin Schwartz reported no known implementations. This is a dated report, not a claim that none exist today.", source: "indico.dns-oarc.net/event/52/contributions/1168", kind: "gap" },
 ];
 
 export function WhyNowSlide() {
   const [i, setI] = useState(3);
   const m = MILESTONES[i];
   return (
-    <Slide section="Why now" title="The client-side pieces exist. The authorisation check did not.">
+    <Slide section="Background" title="Why this standard is worth implementing">
       <div className="flex flex-1 flex-col justify-center gap-6">
         <svg viewBox="0 0 1200 150" className="h-36 w-full min-w-0 max-w-full">
           <line x1={60} y1={70} x2={1140} y2={70} stroke="#cbd5e1" strokeWidth={4} />
@@ -48,32 +48,24 @@ export function WhyNowSlide() {
 /* ---------- Who buys, who ships ---------- */
 
 export function AudienceSlide() {
-  const col = (rank: string, title: string, who: string[], deploys: string[], tone: string) => (
-    <div className={`flex flex-col rounded-2xl border-2 bg-white p-5 shadow-sm ${tone}`}>
-      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{rank}</div>
-      <div className="mt-1 text-xl font-bold leading-tight">{title}</div>
-      <ul className="mt-3 space-y-1 text-sm text-slate-700">{who.map((d) => <li key={d}>{d}</li>)}</ul>
-      <div className="mt-4 text-xs font-semibold uppercase tracking-wide text-slate-500">They deploy</div>
-      <ul className="mt-1 space-y-1 text-sm text-slate-800">{deploys.map((d) => <li key={d} className="flex gap-2"><span className="text-blue-600">+</span><span>{d}</span></li>)}</ul>
-    </div>
-  );
   return (
-    <Slide section="Who it is for" title="Who buys, who ships"
-      takeaway="First pilots: managed laptops and phones where one organisation controls the domain, the certificate, the office resolver and the client.">
-      <div className="grid flex-1 content-center gap-4 lg:grid-cols-3">
-        {col("1. Buys", "Companies with split-horizon DNS and roaming staff",
-          ["banks, hospitals, agencies, universities", "run Windows DNS, BIND, Infoblox, BlueCat", "today: trust the local resolver, or VPN everything"],
-          ["a signed zone (or a trusted resolver, §6.1)", "one TXT record per claim", "DoT and a certificate on the office resolver", "a client that checks"], "border-blue-300")}
-        {col("2. Ships", "OS and device-management vendors",
-          ["already discover resolvers: DDR, DNR", "already route per domain: resolved, NRPT, NetworkExtension", "missing: the authorisation check"],
-          ["the RFC 9704 check in the system resolver", "fail closed, Extended DNS Errors to apps", "policy through MDM or GPO"], "border-slate-200")}
-        {col("3. Enables", "Resolver, DDI and ZTNA vendors",
-          ["BIND, Unbound, Knot, CoreDNS: inbound DoT, views", "Infoblox, BlueCat: inbound DoT shipped", "Cloudflare Gateway, Umbrella, Tailscale: endpoint routing"],
-          ["a certificate for the announced name", "claim and TXT automation, salt rotation", "DHCP, RA or PvD emission (none yet)"], "border-slate-200")}
+    <Slide section="Who it is for" title="Who benefits, and who deploys it"
+      takeaway="First pilot: one organization that controls the domain, resolver, certificates and managed clients.">
+      <div className="grid flex-1 content-center gap-5 md:grid-cols-2">
+        <div className="rounded-2xl border-2 border-blue-200 bg-white p-6 shadow-sm">
+          <h3 className="text-2xl font-bold">People using private services</h3>
+          <p className="mt-4 text-lg text-slate-700">Developers, staff and researchers whose devices move between company networks, home and third-party Wi-Fi.</p>
+          <p className="mt-3 text-base text-slate-600">They need legitimate private DNS views without accepting every network's claims. Existing VPN and managed-DNS policies remain valid options.</p>
+        </div>
+        <div className="rounded-2xl border-2 border-slate-200 bg-white p-6 shadow-sm">
+          <h3 className="text-2xl font-bold">DNS and endpoint teams</h3>
+          <p className="mt-4 text-lg text-slate-700">The domain team publishes authorization; the resolver team provides authenticated encrypted DNS; the endpoint team configures the checking client.</p>
+          <p className="mt-3 text-base text-slate-600">Resolver, OS and device-management vendors are possible integration partners, not assumed to ship this check already.</p>
+        </div>
       </div>
       <div className="grid gap-4 pb-2 md:grid-cols-2 text-sm text-slate-600">
-        <div className="rounded-xl bg-white p-3 shadow-sm"><b className="text-slate-900">Not for:</b> DNS filtering or Special-Use names (RFC 9704 §3). Consumers and hotels are not the buyers.</div>
-        <div className="rounded-xl bg-white p-3 shadow-sm"><b className="text-slate-900">Constraint:</b> few zones are DNSSEC-signed (about 4 percent of .com, Verisign 2023). The §6.1 path, also implemented, widens the reach.</div>
+        <div className="rounded-xl bg-white p-4 shadow-sm"><b className="text-slate-900">Not a replacement for:</b> VPN connectivity, application authentication or HTTPS.</div>
+        <div className="rounded-xl bg-white p-4 shadow-sm"><b className="text-slate-900">Scope:</b> owner-authorized private DNS views, not DNS filtering or Special-Use names (RFC 9704 §3).</div>
       </div>
     </Slide>
   );

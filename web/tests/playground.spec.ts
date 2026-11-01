@@ -27,7 +27,7 @@ test("closing button opens a standalone playground that survives reload", async 
   await page.route("**/api/demo/presets", (route) => route.fulfill({ json: [] }));
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "SplitTrust", exact: true })).toBeVisible();
-  for (let i = 0; i < 9; i += 1) {
+  for (let i = 0; i < 8; i += 1) {
     await page.keyboard.press("ArrowRight");
     await expect(page.locator("footer")).toContainText(`${i + 2} /`);
   }
@@ -38,6 +38,25 @@ test("closing button opens a standalone playground that survives reload", async 
   await expect(page.getByRole("heading", { name: "Try SplitTrust", exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Back to presentation" }).click();
   await expect(page.getByRole("heading", { name: "SplitTrust", exact: true })).toBeVisible();
+});
+
+test("playground can open the appendix directly, refresh there, and return Home", async ({ page }) => {
+  await openDemo(page);
+  await expect(page.getByRole("link", { name: "Back to presentation", exact: true })).toHaveAttribute("href", "/");
+  const appendix = page.getByRole("link", { name: "Go to appendix", exact: true });
+  await expect(appendix).toHaveAttribute("href", "/#appendix");
+  await appendix.click();
+  await expect(page).toHaveURL(/\/#appendix$/);
+  await expect(page.getByRole("heading", { name: "Why this standard is worth implementing", exact: true })).toBeVisible();
+  await expect(page.locator("footer")).toContainText("Appendix");
+  await expect(page.locator("footer")).toContainText("1 / 9");
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Why this standard is worth implementing", exact: true })).toBeVisible();
+  await expect(page.locator("footer")).toContainText("Appendix");
+  await page.keyboard.press("Home");
+  await expect(page.getByRole("heading", { name: "SplitTrust", exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator("footer")).toContainText("Main pitch");
 });
 
 test("playground focuses on the terminal story and owner tool, not the scenario catalogue", async ({ page }) => {

@@ -3,16 +3,16 @@
 **Who may answer for a domain inside a network: an implementation and test lab for [RFC 9704](https://www.rfc-editor.org/rfc/rfc9704).**
 Team NXDOMAIN, DNS SEC(urity) Hackathon 2026.
 
-A hotel Wi-Fi can tell your device "my resolver is authoritative for `banka.rs`". Nothing today proves the
-bank agreed, and encrypting DNS does not help when you are talking to the wrong server. RFC 9704 lets the
-domain owner publish a signed statement of *which resolver may answer for which names*, and lets the device
-check it in a way the local network cannot tamper with. We found no public implementation of the standard (its authors reported none known in February 2025), it
-has no test vectors, and its worked example cannot be reproduced. SplitTrust provides all three.
+Companies need private DNS views for services such as GitLab. A network announcing a resolver does not
+prove that the domain owner authorized it to provide that view. RFC 9704 lets a client authenticate
+the owner's permission and use the local resolver only for the approved names.
+SplitTrust implements that check, puts it on an ordinary DNS path through a proxy, and provides owner
+tooling, a reproducible lab, test vectors and an analysis of the RFC's worked example.
 
-> The demo compares two companies in the same situations. **SecureCompany** adopted RFC 9704: its zone is the real,
-> DNSSEC-signed `zivkovic.me` and its devices verify. **UnsecureCompany** did not. SecureCompany's verdicts carry
-> `trust_context: "global"` and are computed live against the real DNS. The lab also keeps a private DNS
-> root with a real DNSSEC chain for the RFC's corner cases; those verdicts carry `trust_context: "lab"`.
+> The presentation and playground follow one employee's private GitLab bookmark across office and hotel
+> networks. The playground uses the lab's private DNSSEC chain (`trust_context: "lab"`); the slides are
+> illustrations, not measured results. The CLI/API also retain the real-zone cases for DNSSEC-signed
+> `zivkovic.me`, validated against public DNS with `trust_context: "global"`.
 
 ## What is in the box
 
@@ -23,26 +23,37 @@ has no test vectors, and its worked example cannot be reproduced. SplitTrust pro
 | Three real-domain scenes + twelve lab scenarios × three simulated devices | demo: `real-office`, `real-hotel-forged`, `real-replay` (SecureCompany's real zone `zivkovic.me`); terminal story: `gitlab-office`, `gitlab-hotel`; corner cases: `legit`, `hotel`, `hotel-forged`, `stale-salt`, `expired-signature`, `unsigned`, `wrong-ds`, `replay`, `hotel-blocks-external`, `special-use`; devices `validating-stub`, `private-dns`, `hybrid` |
 | `vectors/` | Published test vectors: token encoding (incl. the RFC example under both salts, `*`, IDN, SHA-512), TXT parsing, DHCP payloads, PvD documents, expected verdicts |
 | `docs/rfc9704-example-erratum.md` | The forensic explanation of the RFC's broken §5.1 example, a second erratum for Figure 1, and eight points the RFC leaves to implementers |
-| `docs/demo.md` | The 5-minute demo script and Q&A cards |
+| `docs/demo.md` | The presentation script, separate playground handoff, and Q&A cards |
 | `docs/architecture.md` | What the tool does exactly, how the Docker lab is built, and how a request travels through the code |
 
 ## The console
 
-`http://127.0.0.1:8000` is the presentation. A ten-slide main run that fits five minutes: the problem;
-why now (a sourced timeline, interactive); how RFC 9704 works; three live scenes with the proxy's
-decisions beside the browser frames (details and the dig output of the real lookups on `t`); the
-architecture; live checks of the lab and the proxy; closing. Then an appendix for questions: what
-SplitTrust implements; who buys and who ships; why encrypted DNS, VPNs and DNSSEC alone do not close the
-gap (interactive); what changes for a company; the owner tool live against the real zone (interactive);
-roadmap. **SecureCompany**
-adopted RFC 9704 (its zone is the real `zivkovic.me`); **UnsecureCompany** did not. *Monday, at the office*: both
-intranets load; only SecureCompany's laptop checked that the resolver was allowed to answer. *Tuesday, at the
-hotel*: the hotel claims both domains; UnsecureCompany's laptop gets the hotel's login page, SecureCompany's laptop refuses
-the forged answer and fails safely; press `2` and SecureCompany's phone reaches the real site through Quad9.
-*What SecureCompany did*: sign the zone, publish one record, devices that check; a copied claim fails on the
-certificate. Each scene animates the real checks on a drawing, then shows what each employee's browser
-gets. Keys: left/right arrows, `space` replay, `1 2` SecureCompany's device, `t` details. The deck needs
-Internet access; the engine, CLI and lab scenarios do not.
+`http://127.0.0.1:8000` is the presentation. The **nine-slide main pitch** is: title, private-DNS problem,
+how owner authorization works, office example, hotel example, company configuration/copied claim,
+working deliverables, reproducible evidence, and closing. The footer counts the main pitch separately
+from the **nine-slide appendix**: historical context, detailed architecture, proxy rules, inventory,
+beneficiaries/deployers, complementary protections, deployment, owner-record format, and one concrete pilot.
+HTTPS, encrypted DNS, DNSSEC and VPNs are explained as complementary tools, not a winner/loser scorecard.
+The historical February 2025 implementation report is not presented as a current novelty claim.
+The examples compare the **same employee and `git.dev.corp.lab` bookmark** under two DNS policies:
+trust network DNS directly, or use SplitTrust to verify a scoped local exception. The office view
+explains legitimate private access. At the hotel, an authenticated missing-record response establishes
+that the hotel has no authorization; a separate forged GitLab answer then fails DNSSEC. Validation is
+shown at the client-side proxy, never at the public-DNS cloud. The copied-claim example distinguishes
+the resolver's DNS-over-TLS certificate from GitLab's HTTPS certificate.
+
+The presentation is **explanation-only**: no device switch, live browser frames, resolver-decision logs,
+health probes, or live record builder. Visiting or navigating any slide makes **no API requests** and
+does not query DNS, run Docker commands, or change the proxy's network. Left/right arrows navigate;
+the timeline and comparison buttons change local explanatory content only. The examples animate packets
+and reveal checks using a local, explanatory sequence, not live results. Each step lasts about 2.1 seconds,
+with active-path highlighting and a reading pause after packet travel. **Replay illustration** or
+**space** restarts the sequence; reduced-motion preferences show the completed illustration instead.
+The old `1`, `2`, `t` and `e` device/evidence controls remain removed. The closing **Try it yourself** link explicitly opens `/demo`,
+where the real command runner and owner tool remain.
+
+For slides alone, run `npm run dev` from `web` or serve the built frontend as static files; Docker
+and the API are not required. The separate playground needs the running lab.
 
 The console is React + Vite + Tailwind in `web/`, built in the image's first stage and embedded into the Go
 binary; the committed `internal/api/web/dist` is a convenience for `go build` on hosts without Node
@@ -95,12 +106,15 @@ device profiles and full verifier reports remain available through the CLI and H
 The **Build a record** tab uses the existing owner API to generate a TXT line and claim JSON. It does
 not publish DNS records or establish authorization, and its signing-status warning remains visible.
 Editing a field clears the previous output so it cannot be mistaken for the new claim's record.
-Use **Back to presentation** to return to the deck.
+Use **Back to presentation** to return to the title, or **Go to appendix** to open its first slide
+directly at `/#appendix`. Reloading that URL keeps the appendix entry point; Home returns to the main pitch.
 
 The presentation's browser regression check catches clipped diagram labels at 1366×768 and 1280×720.
 From `web`, run `npm ci`, `npx playwright install chromium`, then `npm run test:presentation`.
 It starts and stops its own local frontend and supplies API responses at the network boundary, so no DNS
 lab is needed for the layout, navigation, command-transcript, playground-result and owner-form regression checks.
+The presentation check visits all 18 slides with `/api/*` blocked and verifies that no requests are attempted.
+Geometry checks cover label clipping and clearance between the architecture boxes and public-zone cloud.
 
 ## Run it (Docker only; macOS, Windows or Linux)
 
