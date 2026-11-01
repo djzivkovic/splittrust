@@ -106,7 +106,7 @@ function SceneSlide({ scene }: { scene: Scene }) {
           <div className="rounded-xl border border-slate-200 bg-white p-4">
             <h3 className="text-lg font-bold">Trust network DNS</h3>
             <p className="mt-2 text-base text-slate-700">{hotel
-              ? "The hotel's answer points at an attacker-controlled IP. This is a wrong DNS destination, not proof that an HTTPS login can be impersonated."
+              ? "The hotel's answer points at an attacker-controlled IP and the laptop connects to it. What leaks depends on the application: plain-HTTP tools, clients that authenticate automatically to anything internal, scripts that skip certificate checks."
               : "Network DNS returns the private GitLab IP. It works, but that same policy would also accept the hotel's invented answer."}</p>
           </div>
           <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
@@ -116,7 +116,7 @@ function SceneSlide({ scene }: { scene: Scene }) {
               : `Authenticate the company's permission for ${STORY.scope}, validate the local answer, and retain normal DNS policy for every other name.`}</p>
           </div>
         </div>
-        {hotel && <p className="pb-2 text-sm text-slate-500">Private GitLab still needs office/VPN access. HTTPS normally rejects an attacker's certificate; the fake login page is shown only in the separate HTTP lab.</p>}
+        {hotel && <p className="pb-2 text-sm text-slate-500">HTTPS with a valid certificate stops the impersonation, not the connection; the fake login page is shown only in the separate HTTP lab. Reaching the private GitLab still needs office or VPN access: the check stops misdirection, it does not grant access.</p>}
       </>}
     </Slide>
   );
